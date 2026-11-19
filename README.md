@@ -24,6 +24,18 @@ uv run ruff check
 uv run codezoo --help
 ```
 
+## Web UI
+
+```bash
+uv run codezoo serve --open
+```
+
+Opens `http://localhost:8765/` with three panes: the stage, Blockly blocks and the Python code, kept in sync through the engine. Drag blocks and the code appears; tick "let me type" to edit the code and the blocks follow. Run or Step to watch the animal, with the current line and block lit up. Drag the bars between the panes to resize them. Everything the page needs ships in the package, so it works offline.
+
+**Players and grown-ups.** Each child picks their picture; stars and progress are saved per player. "Just try it" plays without saving. The Grown-ups button opens a gate (a sum in words, plus a PIN if one is set) with the daily time limit, private mode, a learning report per player, export and remove.
+
+**Where data lives.** Only on this computer, as JSON files: `%APPDATA%\CodeZoo` on Windows, `~/Library/Application Support/CodeZoo` on macOS, `~/.local/share/codezoo` on Linux. Set `CODEZOO_HOME` or use `codezoo serve --data-dir PATH` to keep it elsewhere (for example a separate folder per classroom).
+
 ## Try it
 
 Look at a level, then check a program for it. [playground/](playground/README.md) has an example for every level, plus `oops/` programs that show the error messages.
@@ -52,6 +64,10 @@ mse_codezoo/        the package (flat layout, no src/)
   goals.py          goal checks and stars
   levels.py         level and pack loading, structural validation
   game.py           parse + run + check one level
+  profiles.py       players, progress, daily time, grown-up settings (local JSON files)
+  server.py         stdlib HTTP server and JSON API behind `codezoo serve`
+  web/              browser client: app.js, blocks.js (Blockly <-> IR), stage.js, code.js,
+                    players.js (picker, grown-ups, goodbye), layout.js (splitters)
   cli.py            click commands (the only module importing click)
   content/levels/   level JSON + reference solutions (<file>.solution.py)
   content/animals/  animal packs
@@ -63,8 +79,11 @@ tests/              includes test_differential.py: our interpreter vs CPython
 | Command | What it does |
 | --- | --- |
 | `codezoo run LEVEL PROGRAM.py [--trace] [--json] [--animal NAME]` | Runs a program in a level; `--trace` shows every step and the grid |
-| `codezoo check LEVEL PROGRAM.py` | Goal, stars and a hint; exit code 0 only when solved |
+| `codezoo check LEVEL PROGRAM.py [--profile NAME]` | Goal, stars and a hint; exit code 0 only when solved; `--profile` saves the result |
 | `codezoo blocks PROGRAM.py` | Block outline with each block's lines and node id |
+| `codezoo serve [--port 8765] [--open] [--data-dir PATH]` | Local web UI with stage, blocks and code |
+| `codezoo profile list/add/remove/export/import` | Players on this computer; `add NAME --picture fox` |
+| `codezoo parent show/set/pin/report` | Grown-up settings: `set --daily-minutes 30 --private`, `pin`, `report NAME` |
 | `codezoo schema [-o FILE]` | JSON Schema of the program model (IR), the contract with the web client |
 | `codezoo levels list` | Bundled levels |
 | `codezoo levels show LEVEL [--solution]` | One level: goal, star rules, blocks, grid and hints; `--solution` adds the reference solution |
@@ -75,3 +94,11 @@ tests/              includes test_differential.py: our interpreter vs CPython
 ## Supported Python (phase 0)
 
 Calls, variables, `=` and `+=`-style updates, `for` loops, `+ - * / // %`, numbers, text, `True`/`False`/`None`, comments and `pass`; builtins `print range len abs min max int float str bool round`. Anything else is kept as raw code with a friendly note and does not run yet.
+
+## Third-party software
+
+| Component | Version | Licence | Where |
+| --- | --- | --- | --- |
+| [Blockly](https://github.com/RaspberryPiFoundation/blockly) | 13.3.0 | Apache-2.0 | `mse_codezoo/web/vendor/blockly/` (unchanged copy, see its README and LICENSE) |
+
+CodeZoo's own code is MIT-licensed (see `LICENSE`); vendored components keep their own licences.

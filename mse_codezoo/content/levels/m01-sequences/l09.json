@@ -1,0 +1,40 @@
+{
+  "id": "m01-l09",
+  "title": "Staircase",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".##",
+      "..#",
+      "#.B"
+    ],
+    "start": [
+      0,
+      0,
+      "south"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 8
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Down one, right one, down one, right one.",
+    "When facing down, turn_left() makes the monkey face right."
+  ],
+  "mode": "blocks_only"
+}

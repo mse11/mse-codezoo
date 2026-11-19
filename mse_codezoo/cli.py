@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,13 @@ from typing import Any
 import click
 
 from mse_codezoo import __version__, ir
-from mse_codezoo.game import LevelRun, run_level, solution_errors
+from mse_codezoo.game import (
+    LevelRun,
+    attempt_from_run,
+    run_level,
+    run_to_json,
+    solution_errors,
+)
 from mse_codezoo.interpreter import Step
 from mse_codezoo.lang_python import ParseResult, block_label, outline, parse, print_program
 from mse_codezoo.levels import (
@@ -23,6 +30,7 @@ from mse_codezoo.levels import (
     solution_path,
     validate_level,
 )
+from mse_codezoo.profiles import MAX_NAME, PICTURES, ProfileError, ProfileStore
 from mse_codezoo.world import World
 
 ProgramPath = click.Path(exists=True, dir_okay=False, path_type=Path)
@@ -118,7 +126,7 @@ def run(level: str, program: Path, animal: str | None, trace: bool, as_json: boo
         raise click.ClickException(str(exc)) from None
 
     if as_json:
-        click.echo(json.dumps(_run_json(result), indent=2))
+        click.echo(json.dumps(run_to_json(result), indent=2))
     else:
         _echo_run(result, show_grid=not trace)
     if not result.parsed.ok or (result.result and result.result.error):
@@ -140,52 +148,23 @@ def _echo_run(run: LevelRun, show_grid: bool) -> None:
         click.echo(f"Finished in {len(run.result.steps)} steps.")
 
 
-def _run_json(run: LevelRun) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "level": run.level.id,
-        "diagnostics": [vars(d) for d in run.parsed.diagnostics],
-        "program": ir.to_dict(run.parsed.program) if run.parsed.program else None,
-    }
-    if run.result is not None and run.world is not None and run.check is not None:
-        error = run.result.error
-        data |= {
-            "ok": run.result.ok,
-            "error": (
-                {
-                    "message": error.message,
-                    "node_id": error.node_id,
-                    "line": run.line_of(error.node_id),
-                }
-                if error
-                else None
-            ),
-            "output": run.result.output,
-            "steps": [
-                {**vars(step), "line": run.line_of(step.node_id)} for step in run.result.steps
-            ],
-            "world": run.world.to_dict(),
-            "check": {
-                "solved": run.check.solved,
-                "message": run.check.message,
-                "stars": [vars(star) for star in run.check.stars],
-            },
-        }
-    else:
-        data["ok"] = False
-    return data
-
-
 @main.command()
 @click.argument("level")
 @click.argument("program", type=ProgramPath)
 @click.option("--animal", help="Play as another animal (default: the level's animal).")
-def check(level: str, program: Path, animal: str | None) -> None:
+@click.option("--profile", "player", help="Save the result to this player's progress.")
+def check(level: str, program: Path, animal: str | None, player: str | None) -> None:
     """Check PROGRAM against LEVEL's goal and constraints; print stars and hints."""
     lvl, source = _load(level, program)
     try:
         result = run_level(lvl, source, animal=animal)
     except LevelError as exc:
         raise click.ClickException(str(exc)) from None
+    if player is not None:
+        try:
+            _store().record(player, attempt_from_run(result, source))
+        except ProfileError as exc:
+            raise click.ClickException(str(exc)) from None
     click.echo(_level_header(lvl, animal))
     _echo_diagnostics(result.parsed)
     if result.check is None:
@@ -218,6 +197,37 @@ def blocks(program: Path) -> None:
 
 
 @main.command()
+@click.option("--host", default="127.0.0.1", show_default=True, help="Address to listen on.")
+@click.option("--port", default=8765, show_default=True, help="Port to listen on (0 = any).")
+@click.option("--open", "open_browser", is_flag=True, help="Open the page in a web browser.")
+@click.option("--verbose", is_flag=True, help="Log every request.")
+@click.option(
+    "--data-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Keep players and progress here (default: CODEZOO_HOME or the OS user-data folder).",
+)
+def serve(host: str, port: int, open_browser: bool, verbose: bool, data_dir: Path | None) -> None:
+    """Start the local web UI: stage, blocks and code in the browser."""
+    import webbrowser
+
+    from mse_codezoo.server import CodeZooServer
+
+    try:
+        server = CodeZooServer(host, port, verbose=verbose, store=ProfileStore(data_dir))
+    except OSError as exc:
+        raise click.ClickException(f"cannot listen on {host}:{port}: {exc}") from None
+    click.echo(f"CodeZoo is running at {server.url}  (press Ctrl+C to stop)")
+    if open_browser:
+        webbrowser.open(server.url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        click.echo("\nBye!")
+    finally:
+        server.server_close()
+
+
+@main.command()
 @click.option(
     "-o",
     "--output",
@@ -232,6 +242,182 @@ def schema(output: Path | None) -> None:
     else:
         output.write_text(text, encoding="utf-8", newline="\n")
         click.echo(f"wrote {output}")
+
+
+# --- profiles and grown-ups -----------------------------------------------------------
+
+
+def _store() -> ProfileStore:
+    return ProfileStore()
+
+
+def _profile_errors(fn: Any) -> Any:
+    """Show ProfileError as a plain message instead of a traceback."""
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except ProfileError as exc:
+            raise click.ClickException(str(exc)) from None
+
+    return wrapper
+
+
+def _plural(n: float, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def _ask_pin(store: ProfileStore) -> str | None:
+    if not store.parent().has_pin:
+        return None
+    pin = click.prompt("Grown-up PIN", hide_input=True)
+    store.check_pin(pin)
+    return pin
+
+
+@main.group()
+def profile() -> None:
+    """On-device learner profiles (no accounts, nothing leaves the computer)."""
+
+
+@profile.command("list")
+@_profile_errors
+def profile_list() -> None:
+    """List players and their stars."""
+    store = _store()
+    players = store.profiles()
+    for p in players:
+        levels = store.progress(p.id)["levels"]
+        stars = sum(e.get("stars", 0) for e in levels.values())
+        solved = sum(1 for e in levels.values() if e.get("solved"))
+        click.echo(f"{p.name:<{MAX_NAME}}  {p.picture:<8}  {solved} levels solved, {stars} stars")
+    click.echo(f"{len(players)} player(s) in {store.root}")
+
+
+@profile.command("add")
+@click.argument("name")
+@click.option("--picture", type=click.Choice(PICTURES), default=PICTURES[0], show_default=True)
+@_profile_errors
+def profile_add(name: str, picture: str) -> None:
+    """Add a player."""
+    created = _store().add(name, picture)
+    click.echo(f"Added {created.name} ({created.picture}).")
+
+
+@profile.command("remove")
+@click.argument("name")
+@click.option("--yes", is_flag=True, help="Don't ask for confirmation.")
+@_profile_errors
+def profile_remove(name: str, yes: bool) -> None:
+    """Remove a player and their progress (needs the grown-up PIN if one is set)."""
+    store = _store()
+    target = store.find(name)
+    _ask_pin(store)
+    if not yes:
+        click.confirm(f"Remove {target.name} and all their progress?", abort=True)
+    store.remove(target.id)
+    click.echo(f"Removed {target.name}.")
+
+
+@profile.command("export")
+@click.argument("name")
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path), required=True)
+@_profile_errors
+def profile_export(name: str, output: Path) -> None:
+    """Save a player's progress to a file (for another computer, or as a backup)."""
+    data = _store().export(name)
+    output.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    click.echo(f"Saved {data['profile']['name']} to {output}")
+
+
+@profile.command("import")
+@click.argument("file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@_profile_errors
+def profile_import(file: Path) -> None:
+    """Load a player from a file made by `codezoo profile export`."""
+    try:
+        data = json.loads(file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise click.ClickException(f"Can't read {file.name}: {exc}") from None
+    created = _store().import_(data)
+    click.echo(f"Imported {created.name}.")
+
+
+@main.group()
+def parent() -> None:
+    """Grown-up settings: daily time limit, private mode, PIN, and a learning report."""
+
+
+@parent.command("show")
+@_profile_errors
+def parent_show() -> None:
+    """Show the current grown-up settings."""
+    settings = _store().parent()
+    limit = f"{settings.daily_minutes} minutes" if settings.daily_minutes else "none"
+    click.echo(f"Daily limit:  {limit}")
+    click.echo(f"Private mode: {'on' if settings.private_mode else 'off'}")
+    click.echo(f"PIN:          {'set' if settings.has_pin else 'not set'}")
+
+
+@parent.command("set")
+@click.option("--daily-minutes", type=int, help="Daily play limit per player (0 = no limit).")
+@click.option(
+    "--private/--no-private",
+    "private_mode",
+    default=None,
+    help="Private mode keeps only stars and solved levels.",
+)
+@_profile_errors
+def parent_set(daily_minutes: int | None, private_mode: bool | None) -> None:
+    """Change the daily limit or private mode."""
+    store = _store()
+    pin = _ask_pin(store)
+    minutes: int | None | str = "keep"
+    if daily_minutes is not None:
+        minutes = None if daily_minutes == 0 else daily_minutes
+    store.update_parent(pin=pin, daily_minutes=minutes, private_mode=private_mode)
+    click.echo("Saved.")
+
+
+@parent.command("pin")
+@click.option("--clear", is_flag=True, help="Remove the PIN.")
+@_profile_errors
+def parent_pin(clear: bool) -> None:
+    """Set, change or clear the grown-up PIN (4 to 8 digits)."""
+    store = _store()
+    pin = _ask_pin(store)
+    if clear:
+        store.update_parent(pin=pin, clear_pin=True)
+        click.echo("PIN removed.")
+        return
+    new_pin = click.prompt("New PIN", hide_input=True, confirmation_prompt=True)
+    store.update_parent(pin=pin, new_pin=new_pin)
+    click.echo("PIN saved.")
+
+
+@parent.command("report")
+@click.argument("name")
+@_profile_errors
+def parent_report(name: str) -> None:
+    """What a player has learned so far."""
+    store = _store()
+    _ask_pin(store)
+    report = store.report(name, [load_level(path) for path in level_files()])
+    who = report["profile"]
+    click.echo(f"{who['name']} ({who['picture']})")
+    click.echo(
+        f"Solved {_plural(report['levelsSolved'], 'level')}, {_plural(report['stars'], 'star')}, "
+        f"{_plural(report['minutesThisWeek'], 'minute')} in the last 7 days"
+    )
+    click.echo("Ideas:")
+    for row in report["concepts"]:
+        done = f"({row['solved']}/{row['levels']} levels)"
+        click.echo(f"  {row['concept']:<10} {row['status']:<10} {done}")
+    if report["mistakes"]:
+        click.echo("Often:")
+        for row in report["mistakes"]:
+            click.echo(f"  {row['text']} ({row['count']}x)")
 
 
 # --- levels -----------------------------------------------------------------------

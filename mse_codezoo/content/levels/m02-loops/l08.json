@@ -1,0 +1,45 @@
+{
+  "id": "m02-l08",
+  "title": "Banana stairs",
+  "module": "loops-1",
+  "concepts": [
+    "for",
+    "range"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "....",
+      ".B..",
+      "..B.",
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Each stair is: right one, down one, grab.",
+    "Put one stair inside a loop of 3."
+  ],
+  "mode": "blocks_with_preview"
+}

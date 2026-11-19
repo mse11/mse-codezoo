@@ -1,0 +1,39 @@
+{
+  "id": "m01-l07",
+  "title": "Fix the path",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "....B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 2
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "starter": "step(3)\ngrab()\n",
+  "hints": [
+    "Run it first and watch where the monkey stops.",
+    "The banana is 4 squares away, not 3."
+  ],
+  "mode": "blocks_only"
+}

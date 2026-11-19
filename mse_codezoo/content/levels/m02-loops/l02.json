@@ -1,0 +1,42 @@
+{
+  "id": "m02-l02",
+  "title": "Long row",
+  "module": "loops-1",
+  "concepts": [
+    "for",
+    "range"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBBBBBBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Nine bananas: the same two blocks nine times.",
+    "repeat 9 times: step 1, grab."
+  ],
+  "mode": "blocks_with_preview"
+}

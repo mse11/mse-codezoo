@@ -101,3 +101,28 @@ def test_solution_that_misses_a_star_is_reported(tmp_path):
     data = {**GOOD, "constraints": {"maxLines": 1}}
     errors = solution_errors(load_level(write_level(tmp_path, data)))
     assert "earns 2/3 stars" in errors[0]
+
+
+STARTERS = [load_level(p) for p in BUNDLED if load_level(p).starter]
+
+
+def test_some_levels_open_with_a_starter_program():
+    assert len(STARTERS) >= 3
+
+
+@pytest.mark.parametrize("level", STARTERS, ids=lambda lvl: lvl.id)
+def test_debugging_starters_need_fixing(level):
+    run = run_level(level, level.starter)
+    assert run.parsed.ok
+    assert run.check is not None and run.check.earned < 3, "the starter already solves the level"
+
+
+def test_modules_one_and_two_have_about_twelve_levels():
+    ids = [load_level(p).id for p in BUNDLED]
+    assert sum(i.startswith("m01-") for i in ids) >= 10
+    assert sum(i.startswith("m02-") for i in ids) >= 10
+
+
+def test_validate_rejects_a_starter_that_is_not_python(tmp_path):
+    data = {**GOOD, "starter": "step(\n"}
+    assert "starter is not valid Python" in validate_level(write_level(tmp_path, data)).errors

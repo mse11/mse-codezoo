@@ -1,0 +1,44 @@
+{
+  "id": "m02-l07",
+  "title": "Row and column",
+  "module": "loops-1",
+  "concepts": [
+    "for",
+    "range"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB",
+      "...B",
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Two loops: one along the top, one down the side.",
+    "Turn between the loops."
+  ],
+  "mode": "blocks_with_preview"
+}

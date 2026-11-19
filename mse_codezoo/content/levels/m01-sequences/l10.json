@@ -1,0 +1,39 @@
+{
+  "id": "m01-l10",
+  "title": "Corner snack",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B.B",
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "The monkey is already standing on a banana.",
+    "Grab, walk, grab, turn, walk, grab."
+  ],
+  "mode": "blocks_only"
+}

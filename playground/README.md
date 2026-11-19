@@ -1,6 +1,6 @@
 # Playground
 
-Example programs for the bundled levels. Each file is named after the level it solves; run the commands from the repository root.
+Example programs for some of the bundled levels (`codezoo levels list` shows all 23). Each file is named after the level it solves; run the commands from the repository root.
 
 ```bash
 uv run codezoo levels show m01-l03

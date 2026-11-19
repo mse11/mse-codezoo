@@ -1,0 +1,38 @@
+{
+  "id": "m01-l08",
+  "title": "Turn around",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B..."
+    ],
+    "start": [
+      3,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 4
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "The banana is behind the monkey.",
+    "Two left turns face the other way."
+  ],
+  "mode": "blocks_only"
+}

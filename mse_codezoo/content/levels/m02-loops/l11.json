@@ -1,0 +1,44 @@
+{
+  "id": "m02-l11",
+  "title": "Banana square (boss)",
+  "module": "loops-1",
+  "concepts": [
+    "for",
+    "range"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "BBB",
+      "B.B",
+      "BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Eight bananas around the edge, and the monkey stands on one.",
+    "One side: step, grab, step, grab, turn. Repeat it 4 times."
+  ],
+  "mode": "blocks_with_preview"
+}

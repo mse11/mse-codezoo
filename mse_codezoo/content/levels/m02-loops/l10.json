@@ -1,0 +1,42 @@
+{
+  "id": "m02-l10",
+  "title": "Back and forth",
+  "module": "loops-1",
+  "concepts": [
+    "for",
+    "range"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B...B"
+    ],
+    "start": [
+      2,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Bananas at both ends.",
+    "To turn around, repeat turn_left() 2 times."
+  ],
+  "mode": "blocks_with_preview"
+}

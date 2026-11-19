@@ -1,0 +1,39 @@
+{
+  "id": "m01-l12",
+  "title": "Jungle trail (boss)",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B#B.",
+      "...B."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 10
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Three bananas and a rock. Plan the path on the grid first.",
+    "Grab the first banana, go under the rock, then up to the last one."
+  ],
+  "mode": "blocks_only"
+}

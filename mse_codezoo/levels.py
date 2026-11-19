@@ -12,6 +12,7 @@ from typing import Any
 
 from mse_codezoo import ir
 from mse_codezoo.goals import GOAL_TYPES
+from mse_codezoo.lang_python import parse
 from mse_codezoo.world import Pack, World
 
 CONTENT_DIR = Path(__file__).parent / "content"
@@ -39,6 +40,7 @@ class Level:
     unlocked_blocks: list[str] = field(default_factory=list)
     mode: str = "blocks_only"
     animal: str = DEFAULT_ANIMAL
+    starter: str = ""  # program the level opens with (e.g. a broken one to fix)
     path: Path | None = None
 
     @classmethod
@@ -55,6 +57,7 @@ class Level:
             unlocked_blocks=list(data.get("unlockedBlocks", [])),
             mode=data.get("mode", "blocks_only"),
             animal=data.get("animal", DEFAULT_ANIMAL),
+            starter=data.get("starter", ""),
             path=path,
         )
 
@@ -165,6 +168,12 @@ def validate_level(path: Path) -> LevelReport:
     unknown = [n for n in constraints.get("mustUse", []) if n not in ir.NODE_TYPES]
     if unknown:
         report.errors.append(f"constraints.mustUse has unknown node types: {', '.join(unknown)}")
+
+    starter = data.get("starter", "")
+    if not isinstance(starter, str):
+        report.errors.append("starter must be Python code as text")
+    elif starter and not parse(starter).ok:
+        report.errors.append("starter is not valid Python")
 
     animal = data.get("animal", DEFAULT_ANIMAL)
     if not (ANIMALS_DIR / animal / "pack.json").is_file():

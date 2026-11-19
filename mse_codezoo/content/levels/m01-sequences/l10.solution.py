@@ -1,0 +1,6 @@
+grab()
+step(2)
+grab()
+turn_right()
+step(1)
+grab()

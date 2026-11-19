@@ -170,3 +170,62 @@ def test_levels_validate_runs_the_solution(tmp_path):
     result = invoke("levels", "validate", tmp_path / "l01.json")
     assert result.exit_code == 0, result.output
     assert "1/1 level(s) valid" in result.output
+
+
+# --- players and grown-ups -------------------------------------------------------------
+
+
+@pytest.fixture
+def home(tmp_path, monkeypatch):
+    path = tmp_path / "home"
+    monkeypatch.setenv("CODEZOO_HOME", str(path))
+    return path
+
+
+def run_cli(*args, input=None):
+    return CliRunner().invoke(main, [str(a) for a in args], input=input)
+
+
+def test_profile_commands(home, program, tmp_path):
+    assert run_cli("profile", "add", "Ema", "--picture", "fox").exit_code == 0
+    assert "already a player" in run_cli("profile", "add", "ema").output
+    result = run_cli("check", "m01-l01", program("step(4)\ngrab()\n"), "--profile", "Ema")
+    assert result.exit_code == 0, result.output
+    listing = run_cli("profile", "list").output
+    assert "Ema" in listing and "1 levels solved, 3 stars" in listing
+
+    backup = tmp_path / "ema.json"
+    assert run_cli("profile", "export", "Ema", "-o", backup).exit_code == 0
+    assert run_cli("profile", "remove", "Ema", "--yes").exit_code == 0
+    assert "0 player(s)" in run_cli("profile", "list").output
+    assert "Imported Ema" in run_cli("profile", "import", backup).output
+    assert "3 stars" in run_cli("profile", "list").output
+
+
+def test_check_with_unknown_profile(home, program):
+    result = run_cli("check", "m01-l01", program("step(4)\ngrab()\n"), "--profile", "nobody")
+    assert result.exit_code == 1
+    assert "No player called 'nobody'" in result.output
+
+
+def test_parent_commands(home, program):
+    run_cli("profile", "add", "Ema")
+    run_cli("check", "m01-l03", program("step(2)\n"), "--profile", "Ema")
+    assert run_cli("parent", "set", "--daily-minutes", "30", "--private").exit_code == 0
+    shown = run_cli("parent", "show").output
+    assert (
+        "30 minutes" in shown and "Private mode: on" in shown and "PIN:          not set" in shown
+    )
+
+    assert run_cli("parent", "pin", input="2468\n2468\n").exit_code == 0
+    wrong = run_cli("parent", "set", "--daily-minutes", "0", input="1111\n")
+    assert wrong.exit_code == 1 and "not right" in wrong.output
+    right = run_cli("parent", "set", "--daily-minutes", "0", input="2468\n")
+    assert right.exit_code == 0
+    assert "Daily limit:  none" in run_cli("parent", "show").output
+
+    report = run_cli("parent", "report", "Ema", input="2468\n")
+    assert report.exit_code == 0, report.output
+    assert "Solved 0 levels, 0 stars" in report.output
+    assert "order" in report.output
+    assert "PIN removed" in run_cli("parent", "pin", "--clear", input="2468\n").output

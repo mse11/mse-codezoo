@@ -1,0 +1,150 @@
+// The stage: a 2D SVG grid world that animates the world events from a run.
+
+const CELL = 64;
+const TOP = 44; // room above the grid for speech bubbles
+const NS = "http://www.w3.org/2000/svg";
+const ANGLE = { north: -90, east: 0, south: 90, west: 180 };
+const EMOJI = {
+  monkey: "🐒", penguin: "🐧", beaver: "🦫", fox: "🦊", octopus: "🐙", bee: "🐝",
+  banana: "🍌", fish: "🐟", log: "🪵", shell: "🐚", flower: "🌼",
+};
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function svg(name, attrs = {}, text) {
+  const node = document.createElementNS(NS, name);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+export class Stage {
+  constructor(container) {
+    this.container = container;
+    this.duration = 250;
+  }
+
+  setSpeed(level) {
+    this.duration = [700, 450, 250, 140, 60][level - 1] ?? 250;
+    this.container.style.setProperty("--dur", `${this.duration}ms`);
+  }
+
+  load(level) {
+    this.level = level;
+    this.reset();
+  }
+
+  reset() {
+    const { world, pack } = this.level;
+    const [width, height] = world.size;
+    const root = svg("svg", {
+      viewBox: `0 ${-TOP} ${width * CELL} ${height * CELL + TOP}`,
+      class: "stage-svg",
+      role: "img",
+      "aria-label": `${pack.world}: ${width} by ${height} squares`,
+    });
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const alt = (x + y) % 2 ? " alt" : "";
+        root.append(svg("rect", { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: `tile${alt}` }));
+      }
+    }
+    for (const [x, y] of world.walls) {
+      root.append(svg("rect", { x: x * CELL + 2, y: y * CELL + 2, width: CELL - 4, height: CELL - 4, rx: 10, class: "wall" }));
+      root.append(svg("text", { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2, class: "emoji" }, "🪨"));
+    }
+
+    this.items = new Map();
+    for (const [x, y, tile] of world.items) {
+      const noun = pack.items[tile] || "item";
+      const item = svg("text", { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2, class: "emoji item" }, EMOJI[noun] || "⭐");
+      item.append(svg("title", {}, noun));
+      this.items.set(`${x},${y}`, item);
+      root.append(item);
+    }
+
+    this.animal = svg("g", { class: "animal" });
+    this.body = svg("g", { class: "body" });
+    this.facingGroup = svg("g", { class: "facing" });
+    this.facingGroup.append(svg("polygon", { points: "52,24 62,32 52,40", class: "arrow" }));
+    this.body.append(this.facingGroup);
+    this.body.append(svg("text", { x: CELL / 2, y: CELL / 2, class: "emoji" }, EMOJI[pack.animal] || "🐾"));
+    this.bubble = svg("g", { class: "bubble", visibility: "hidden" });
+    this.bubbleRect = svg("rect", { x: 0, y: -38, rx: 10, height: 30 });
+    this.bubbleText = svg("text", { x: CELL / 2, y: -23 });
+    this.bubble.append(this.bubbleRect, this.bubbleText);
+    this.animal.append(this.body, this.bubble);
+    root.append(this.animal);
+
+    this.container.replaceChildren(root);
+    this.position = [...world.position];
+    this.facing = world.facing;
+    this.angle = ANGLE[this.facing];
+    this.place();
+  }
+
+  place() {
+    const [x, y] = this.position;
+    this.animal.style.transform = `translate(${x * CELL}px, ${y * CELL}px)`;
+    this.facingGroup.style.transform = `rotate(${this.angle}deg)`;
+  }
+
+  say(text) {
+    const width = Math.max(44, text.length * 9 + 24);
+    this.bubbleRect.setAttribute("width", width);
+    this.bubbleRect.setAttribute("x", CELL / 2 - width / 2);
+    this.bubbleText.textContent = text;
+    this.bubble.setAttribute("visibility", "visible");
+  }
+
+  hideBubble() {
+    this.bubble.setAttribute("visibility", "hidden");
+  }
+
+  async play(event) {
+    const d = this.duration;
+    switch (event.type) {
+      case "move":
+        this.position = event.to;
+        this.place();
+        await wait(d);
+        break;
+      case "turn": {
+        const delta = ((ANGLE[event.facing] - ANGLE[this.facing] + 540) % 360) - 180;
+        this.angle += delta;
+        this.facing = event.facing;
+        this.place();
+        await wait(d * 0.8);
+        break;
+      }
+      case "grab": {
+        const key = event.at.join(",");
+        const item = this.items.get(key);
+        if (event.item && item) {
+          item.classList.add("grabbed");
+          await wait(d);
+          item.remove();
+          this.items.delete(key);
+        } else {
+          this.say("?");
+          await wait(d * 2);
+          this.hideBubble();
+        }
+        break;
+      }
+      case "say":
+        this.say(event.text);
+        await wait(d * 4);
+        this.hideBubble();
+        break;
+      case "bump":
+        this.body.classList.add("bump");
+        await wait(650);
+        this.body.classList.remove("bump");
+        break;
+      default:
+        await wait(d / 2);
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "id": "m02-l06",
+  "title": "Square walk",
+  "module": "loops-1",
+  "concepts": [
+    "for",
+    "range"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B.B",
+      "...",
+      "B.B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 4,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "One side of the square is: walk, turn, grab.",
+    "Do one side 4 times."
+  ],
+  "mode": "blocks_with_preview"
+}

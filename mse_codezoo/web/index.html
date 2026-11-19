@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeZoo</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Blockly 13.3.0, vendored for offline use (Apache-2.0, see vendor/blockly/README.md) -->
+  <script src="vendor/blockly/blockly.min.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <h1 class="logo">CodeZoo</h1>
+    <select id="level-select" aria-label="Choose a level"></select>
+    <div class="controls">
+      <button id="run" class="primary" type="button">▶ Run</button>
+      <button id="step" type="button">Step</button>
+      <button id="reset" type="button">Reset</button>
+      <label class="speed">Speed <input id="speed" type="range" min="1" max="5" value="3"></label>
+    </div>
+    <div class="who">
+      <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
+      <button id="grownups" type="button" class="grownups">Grown-ups</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Panes">
+    <button type="button" data-tab="stage" class="active">Stage</button>
+    <button type="button" data-tab="blocks">Blocks</button>
+    <button type="button" data-tab="code">Code</button>
+  </nav>
+
+  <main class="panes" id="panes">
+    <section class="pane stage-pane active" data-pane="stage" aria-label="Stage">
+      <div id="goal" class="goal"></div>
+      <div id="stage" class="stage"></div>
+      <div id="result" class="result" aria-live="polite"></div>
+    </section>
+
+    <div class="splitter horizontal" id="split-stage" role="separator" aria-orientation="horizontal"
+         aria-label="Resize the stage" tabindex="0"></div>
+
+    <section class="pane blocks-pane" data-pane="blocks" aria-label="Blocks">
+      <div class="pane-title">Blocks</div>
+      <div id="blockly" class="blockly"></div>
+    </section>
+
+    <div class="splitter vertical" id="split-panes" role="separator" aria-orientation="vertical"
+         aria-label="Resize blocks and code" tabindex="0"></div>
+
+    <section class="pane code-pane" data-pane="code" aria-label="Code">
+      <div class="pane-title">
+        Python
+        <label class="edit-toggle"><input type="checkbox" id="edit-code"> let me type</label>
+      </div>
+      <div class="code">
+        <pre id="gutter" class="gutter" aria-hidden="true">1</pre>
+        <div class="code-area">
+          <div id="line-mark" class="line-mark" hidden></div>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off"
+                    aria-label="Python code" readonly></textarea>
+        </div>
+      </div>
+      <ul id="diagnostics" class="diagnostics" aria-live="polite"></ul>
+    </section>
+  </main>
+
+  <dialog id="player-dialog" class="dialog" aria-labelledby="player-title">
+    <h2 id="player-title">Who's playing?</h2>
+    <div id="player-list" class="picture-grid"></div>
+    <form id="new-player" class="new-player" method="dialog">
+      <h3>New player</h3>
+      <label>Name <input id="new-name" maxlength="24" autocomplete="off" required></label>
+      <div id="new-picture" class="picture-grid small" role="radiogroup" aria-label="Picture"></div>
+      <p id="new-error" class="error" role="alert"></p>
+      <button type="submit" class="primary">Start playing</button>
+    </form>
+  </dialog>
+
+  <dialog id="grownup-dialog" class="dialog wide" aria-labelledby="grownup-title">
+    <h2 id="grownup-title">Grown-ups</h2>
+    <form id="gate" class="gate" method="dialog">
+      <p>This part is for parents and teachers.</p>
+      <label><span id="gate-question"></span> <input id="gate-answer" inputmode="numeric" autocomplete="off"></label>
+      <label id="gate-pin-row" hidden>PIN <input id="gate-pin" type="password" inputmode="numeric" autocomplete="off"></label>
+      <p id="gate-error" class="error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button type="submit" class="primary">Open</button>
+        <button type="button" data-close>Back to the zoo</button>
+      </div>
+    </form>
+    <div id="grownup-panel" class="grownup-panel" hidden>
+      <section>
+        <h3>Settings</h3>
+        <label>Daily play limit per player
+          <select id="limit">
+            <option value="">no limit</option>
+            <option value="15">15 minutes</option>
+            <option value="20">20 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="90">1.5 hours</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="private-mode"> Private mode: keep only stars and solved levels</label>
+        <label>New PIN (4–8 digits, optional) <input id="new-pin" type="password" inputmode="numeric" autocomplete="new-password"></label>
+        <label class="check" id="clear-pin-row" hidden><input type="checkbox" id="clear-pin"> Remove the PIN</label>
+        <p id="settings-msg" class="note" role="status"></p>
+        <button type="button" id="save-settings" class="primary">Save settings</button>
+      </section>
+      <section>
+        <h3>Players</h3>
+        <div id="reports"></div>
+      </section>
+      <div class="dialog-buttons"><button type="button" data-close>Back to the zoo</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="goodbye-dialog" class="dialog goodbye" aria-labelledby="goodbye-title">
+    <div class="goodbye-animal" aria-hidden="true">🐒💤</div>
+    <h2 id="goodbye-title">That's all for today!</h2>
+    <p>The monkey is tired and going to sleep. Great work today — see you tomorrow!</p>
+    <div class="dialog-buttons">
+      <button type="button" id="goodbye-grownups">Grown-ups</button>
+      <button type="button" id="goodbye-switch">Another player</button>
+    </div>
+  </dialog>
+</body>
+</html>

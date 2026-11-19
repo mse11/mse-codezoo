@@ -1,0 +1,41 @@
+{
+  "id": "m01-l06",
+  "title": "Down the vine",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".",
+      ".",
+      ".",
+      "B"
+    ],
+    "start": [
+      0,
+      0,
+      "south"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 2
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "The monkey is facing down this time.",
+    "step(3), then grab()."
+  ],
+  "mode": "blocks_only"
+}

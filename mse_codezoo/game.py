@@ -7,13 +7,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
-from mse_codezoo import interpreter
+from mse_codezoo import interpreter, ir
 from mse_codezoo.goals import CheckResult, check
 from mse_codezoo.interpreter import RunResult, Step
 from mse_codezoo.lang_python import ParseResult, parse
 from mse_codezoo.levels import Level, load_pack, solution_path
-from mse_codezoo.world import World
+from mse_codezoo.profiles import Attempt, classify_mistakes
+from mse_codezoo.world import NEUTRAL_ACTIONS, World
 
 OnStep = Callable[[Step, World, ParseResult], None]
 
@@ -75,3 +77,84 @@ def solution_errors(level: Level) -> list[str]:
             f"({run.check.message} Missing: {'; '.join(missing)})"
         )
     return errors
+
+
+# --- JSON for clients (CLI --json, web server) -----------------------------------
+
+
+def run_to_json(run: LevelRun) -> dict[str, Any]:
+    """Everything a client needs to replay a run: steps with lines, final world, stars."""
+    data: dict[str, Any] = {
+        "level": run.level.id,
+        "diagnostics": [vars(d) for d in run.parsed.diagnostics],
+        "program": ir.to_dict(run.parsed.program) if run.parsed.program else None,
+    }
+    if run.result is None or run.world is None or run.check is None:
+        data["ok"] = False
+        return data
+    error = run.result.error
+    data |= {
+        "ok": run.result.ok,
+        "error": (
+            {"message": error.message, "node_id": error.node_id, "line": run.line_of(error.node_id)}
+            if error
+            else None
+        ),
+        "output": run.result.output,
+        "steps": [{**vars(step), "line": run.line_of(step.node_id)} for step in run.result.steps],
+        "world": run.world.to_dict(),
+        "check": {
+            "solved": run.check.solved,
+            "message": run.check.message,
+            "stars": [vars(star) for star in run.check.stars],
+        },
+    }
+    return data
+
+
+def level_to_json(level: Level, animal: str | None = None) -> dict[str, Any]:
+    """A level as a client draws it: the starting world plus goal, limits, blocks and hints."""
+    pack = load_pack(animal or level.animal)
+    world = World.from_spec(level.world, pack)
+    return {
+        "id": level.id,
+        "title": level.title,
+        "module": level.module,
+        "concepts": level.concepts,
+        "mode": level.mode,
+        "goal": level.goal,
+        "constraints": level.constraints,
+        "hints": level.hints,
+        "unlockedBlocks": level.unlocked_blocks,
+        "starter": level.starter,
+        "pack": {
+            "id": pack.id,
+            "animal": pack.animal,
+            "world": pack.world,
+            "actions": {name: pack.action_name(name) for name in NEUTRAL_ACTIONS},
+            "items": pack.items,
+        },
+        "world": {
+            **world.to_dict(),
+            "walls": sorted([x, y] for x, y in world.walls),
+        },
+    }
+
+
+def attempt_from_run(run: LevelRun, source: str) -> Attempt:
+    """What a finished run adds to a learner's progress."""
+    if run.check is None:  # the code could not be parsed
+        message = run.parsed.errors[0].message if run.parsed.errors else None
+        return Attempt(
+            run.level.id, run.level.concepts, False, 0, classify_mistakes(False, [], message)
+        )
+    stars = [(star.earned, star.label) for star in run.check.stars]
+    error = run.result.error.message if run.result and run.result.error else None
+    return Attempt(
+        run.level.id,
+        run.level.concepts,
+        run.check.solved,
+        run.check.earned,
+        classify_mistakes(run.check.solved, stars, error),
+        source,
+    )

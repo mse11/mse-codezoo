@@ -344,8 +344,8 @@ Decision: a two-week spike in phase 1 builds the module 1–2 blocks in Blockly 
 | `codezoo schema [-o FILE]` | Prints the IR JSON Schema, the contract with the web client | 0 |
 | `codezoo play [--level ID] [--animal NAME] [--profile NAME]` | Terminal game: animated grid, opens the program in `$EDITOR`, reruns on save | 1 |
 | `codezoo profile add/list/remove/export/import` | On-device learner profiles | 1 |
-| `codezoo parent` | Grown-up area behind a gate: limits, report, settings, export | 1 |
-| `codezoo serve [--port 8765] [--open]` | Starts the local web UI | 2 |
+| `codezoo parent show/set/pin/report` | Grown-up settings behind the PIN: daily limit, private mode, learning report | 1 |
+| `codezoo serve [--port 8765] [--open]` | Starts the local web UI | 1 |
 | `codezoo story export RUN` | Turns a saved run into a printable HTML storybook | 3 |
 | `codezoo cards print --animal NAME` | Printable unplugged cards (HTML, print to PDF) with unlock codes | 3 |
 | `codezoo world new ANIMAL` | Scaffolds `SPEC.md`, `pack.json` and a first level for a new animal world | 3 |
@@ -414,7 +414,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | --- | --- | --- | --- | --- |
 | 0 Engine | 1–4 | uv package, IR, `ast` → IR, printer with source maps, interpreter (sequences, `for`, variables), grid world with core actions, `codezoo run --trace` as the developer's terminal view, `check`, `levels validate`, 5 levels, CI | 2 devs × 4 weeks | All reference solutions pass; round-trip and differential tests green |
 | 1 Kid prototype | 5–8 | `codezoo serve`, three panes, Blockly spike with IR mapper, simple 2D stage, monkey modules 1–2, first parent gate and profiles | 2 devs × 4 weeks | 5–8 children aged 8–12 play 30 minutes unaided; no lost code; Blockly and Cub mode decisions made |
-| 2 MVP | 9–14 | Monkey only, modules 1–5, three.js stage, progress, parent area with time limits, concept report, feelings, private mode, English and Slovak, `codezoo play` for adults; Cub mode modules 1–2 only if the phase 1 gate says so | 2 devs + designer × 6 weeks | Pilot metrics below met → **MVP** |
+| 2 MVP | 9–14 | Monkey only, modules 1–5, three.js stage, feelings, English and Slovak, `codezoo play` for adults; Cub mode modules 1–2 only if the phase 1 gate says so | 2 devs + designer × 6 weeks | Pilot metrics below met → **MVP** |
 | 3 Middle ladder | 15–24 | Modules 6–10; penguin, beaver and fox with their tricks; storybook, printable cards with unlocks, habitat stickers, adaptive suggestions, level editor prototype | 2 devs + designer + artist × 10 weeks | Learning-gain and drop-off targets still met |
 | 4 Advanced and offline | 25–36 | Modules 11–15 (13–15 optional); octopus and bee; concurrency lanes, release islands 3.12–3.15, offline browser build on Pyodide, full level editor | Same team × 12 weeks | Runs offline on the cheapest target tablet and Chromebook |
 | 5 Classes | Later | Teacher class view, optional sync, class-only sharing | To be estimated | Privacy review passed |
@@ -512,6 +512,24 @@ Parsing now uses CPython's own `ast`, so the biggest earlier risk shrinks to the
 - [x] Six sample levels with reference solutions: five sequence levels (module 1) and one loop level (module 2); `codezoo levels validate --all` runs every solution
 
 Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), three-pane layout with splitters and phone tabs, device testing on a laptop, an Android tablet and an iPad.
+
+**Phase 1 steps (weeks 5–8)**
+
+- [x] `codezoo serve`: stdlib HTTP server on localhost with a JSON API (`/api/levels`, `/api/levels/<id>`, `/api/parse`, `/api/print`, `/api/run`); request size limit; no files served outside `mse_codezoo/web/`
+- [x] Web client in plain ES modules, no framework: three panes (stage, blocks, code), phone tabs below 800 px, light and dark colours
+- [x] Simple 2D stage in SVG: grid, rocks, items, animal with a facing arrow; animates move, turn, grab, say and bump; speed slider
+- [x] Blockly spike (13.3.0, Zelos renderer): monkey blocks for modules 1–2 (`step`, turns, `grab`, `say`, `repeat … times`, `#` note) and a grey raw block that keeps unsupported code as IR
+- [x] Blocks ↔ IR mapper in `web/blocks.js`; block ids = IR statement ids, so run steps light up the code line and the block together
+- [x] Sync: blocks → engine prints code; typed code → engine parses → blocks rebuilt, or kept when the code doesn't parse; code read-only unless "let me type" is ticked or the level mode allows typing
+- [x] Blockly 13.3.0 vendored into `web/vendor/blockly/` (npm checksum verified, Apache-2.0 licence kept, icons local); the page loads nothing from the internet
+- [x] Draggable splitters between the stage, blocks and code (mouse, touch and arrow keys; double-click or Home resets; sizes remembered per browser); Blockly dark theme that follows the system setting
+- [x] Players with picture login (`profiles.py`): progress, best program, attempts and mistake kinds saved per player as JSON in the user-data folder (`CODEZOO_HOME` or `codezoo serve --data-dir` to change it); "Just try it" guest mode saves nothing
+- [x] First grown-up gate: a multiplication question in words plus an optional PIN (salted PBKDF2 hash); panel with daily limit, private mode, PIN, per-player concept report with a "try at home" tip, export and remove
+- [x] Daily limit: the page counts playing time per player; when the limit is reached the current run finishes, then a goodbye screen appears and Run is disabled until tomorrow
+- [x] CLI: `codezoo profile add/list/remove/export/import`, `codezoo parent show/set/pin/report`, `codezoo check --profile NAME`
+- [x] Levels: module 1 has 12 levels, module 2 has 11, including 4 debugging levels whose starter program has a bug to fix; level files take a `starter` program
+- [ ] Playtest with 5–8 children aged 8–12; record the Blockly and Cub mode decisions
+- [ ] Device testing: laptop, Android tablet, iPad
 
 ## Not yet covered
 
