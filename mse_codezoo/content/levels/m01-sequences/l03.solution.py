@@ -1,0 +1,7 @@
+turn_right()
+step(1)
+turn_left()
+step(2)
+turn_left()
+step(1)
+grab()

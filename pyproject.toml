@@ -14,6 +14,7 @@ codezoo = "mse_codezoo.cli:main"
 
 [dependency-groups]
 dev = [
+    "jsonschema>=4.26.0",
     "pytest>=9.2.0",
     "ruff>=0.17.5",
 ]
@@ -33,6 +34,8 @@ addopts = "-ra"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# level solutions are learner programs: world actions like step() are injected at run time
+extend-exclude = ["mse_codezoo/content"]
 
 [tool.ruff.format]
 exclude = ["*.md"]  # keep hand-aligned snippets in the plan

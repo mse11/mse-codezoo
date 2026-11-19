@@ -1,0 +1,16 @@
+{
+  "id": "m01-l02",
+  "title": "Turn the corner",
+  "module": "sequences",
+  "concepts": ["call", "order"],
+  "animal": "monkey",
+  "world": { "tiles": ["...", "...", "..B"], "start": [0, 0, "east"] },
+  "goal": { "type": "collect_all", "item": "B" },
+  "constraints": { "maxLines": 4 },
+  "unlockedBlocks": ["step", "turn_left", "turn_right", "grab"],
+  "hints": [
+    "The banana is to the right and then down.",
+    "turn_right() makes the monkey face down when it was facing right."
+  ],
+  "mode": "blocks_only"
+}

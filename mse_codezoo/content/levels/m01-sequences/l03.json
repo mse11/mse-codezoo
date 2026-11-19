@@ -1,0 +1,16 @@
+{
+  "id": "m01-l03",
+  "title": "Around the rock",
+  "module": "sequences",
+  "concepts": ["call", "order"],
+  "animal": "monkey",
+  "world": { "tiles": [".#B", "..."], "start": [0, 0, "east"] },
+  "goal": { "type": "collect_all", "item": "B" },
+  "constraints": { "maxLines": 7 },
+  "unlockedBlocks": ["step", "turn_left", "turn_right", "grab"],
+  "hints": [
+    "A rock blocks the way. Go down, along, and back up.",
+    "Turn right, step 1, turn left, step 2, turn left, step 1, grab."
+  ],
+  "mode": "blocks_only"
+}

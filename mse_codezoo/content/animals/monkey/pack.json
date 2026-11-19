@@ -1,0 +1,13 @@
+{
+  "id": "monkey",
+  "animal": "monkey",
+  "world": "jungle",
+  "actions": {
+    "step": "step",
+    "turn_left": "turn_left",
+    "turn_right": "turn_right",
+    "grab": "grab",
+    "say": "say"
+  },
+  "items": { "B": "banana" }
+}

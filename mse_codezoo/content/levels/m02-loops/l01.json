@@ -1,0 +1,16 @@
+{
+  "id": "m02-l01",
+  "title": "Banana row",
+  "module": "loops-1",
+  "concepts": ["for", "range"],
+  "animal": "monkey",
+  "world": { "tiles": [".BBBBB"], "start": [0, 0, "east"] },
+  "goal": { "type": "collect_all", "item": "B" },
+  "constraints": { "maxLines": 3, "mustUse": ["For"] },
+  "unlockedBlocks": ["step", "grab", "for_range"],
+  "hints": [
+    "Step, grab, step, grab... the same two blocks, five times.",
+    "for i in range(5): then step(1) and grab() inside the loop."
+  ],
+  "mode": "blocks_with_preview"
+}

@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mse-codezoo:ir:v1",
+  "title": "CodeZoo program (IR)",
+  "description": "IR version 1. Generated from mse_codezoo/ir.py by `codezoo schema`; do not edit by hand.",
+  "$ref": "#/$defs/Program",
+  "$defs": {
+    "Expr": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Const"
+        },
+        {
+          "$ref": "#/$defs/Name"
+        },
+        {
+          "$ref": "#/$defs/Call"
+        },
+        {
+          "$ref": "#/$defs/BinOp"
+        },
+        {
+          "$ref": "#/$defs/UnaryOp"
+        }
+      ]
+    },
+    "Stmt": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ExprStmt"
+        },
+        {
+          "$ref": "#/$defs/Assign"
+        },
+        {
+          "$ref": "#/$defs/AugAssign"
+        },
+        {
+          "$ref": "#/$defs/For"
+        },
+        {
+          "$ref": "#/$defs/Pass"
+        },
+        {
+          "$ref": "#/$defs/Comment"
+        },
+        {
+          "$ref": "#/$defs/RawCode"
+        }
+      ]
+    },
+    "Const": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Const"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "Name": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Name"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Call": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "func": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "func"
+      ],
+      "additionalProperties": false
+    },
+    "BinOp": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "BinOp"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "op": {
+          "type": "string"
+        },
+        "left": {
+          "$ref": "#/$defs/Expr"
+        },
+        "right": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "op",
+        "left",
+        "right"
+      ],
+      "additionalProperties": false
+    },
+    "UnaryOp": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "UnaryOp"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "op": {
+          "type": "string"
+        },
+        "operand": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "op",
+        "operand"
+      ],
+      "additionalProperties": false
+    },
+    "ExprStmt": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ExprStmt"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "Assign": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Assign"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/Name"
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "target",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "AugAssign": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "AugAssign"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/Name"
+        },
+        "op": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "target",
+        "op",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "For": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "For"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/Name"
+        },
+        "iter": {
+          "$ref": "#/$defs/Expr"
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "target",
+        "iter"
+      ],
+      "additionalProperties": false
+    },
+    "Pass": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Pass"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Comment": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Comment"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "RawCode": {
+      "description": "Code CodeZoo cannot show as blocks yet. Kept verbatim, never dropped.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "RawCode"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "text",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "Program": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Program"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

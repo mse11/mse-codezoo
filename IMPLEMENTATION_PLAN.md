@@ -66,24 +66,25 @@ Competitor details are from general knowledge as of late 2026; check each produc
 
 ## Learning curriculum
 
-The course is 14 modules of about 12 levels each, ordered so every concept is needed by the next; each module ends in a "boss level" that combines everything so far. Example levels use the monkey unless another animal suits the concept better; core levels are re-skinned for every animal, signature levels belong to one. Modules 13–14 are optional advanced modules, recommended from age 13.
+The course is 14 modules of about 12 levels each, ordered so every concept is needed by the next; each module ends in a "boss level" that combines everything so far. Example levels use the monkey unless another animal suits the concept better; core levels are re-skinned for every animal, signature levels belong to one. Modules 13–14 are optional advanced modules, recommended from age 13. Module 15 is an optional graduation project that runs in real Python. Coverage was checked against the "Learn X in Y minutes" Python 3 reference and notes on generators, decorators and data classes (dataclass, NamedTuple, attrs, pydantic): every topic there has a home in one of the 15 modules.
 
 | # | Module | Concepts | Example game level |
 | --- | --- | --- | --- |
 | 1 | Sequences | Commands, order, comments, `say()` / `print()` | Monkey: `step(3)`, `turn_left()`, `grab()` to reach one banana, then `say("Yum!")` |
 | 2 | Loops I | `for` with `range`, repetition | Collect 10 bananas in a row with a 3-line loop instead of 30 lines |
 | 3 | Variables | Naming, assignment, updating | Penguin: `fish = fish + 1`; keep score while sliding |
-| 4 | Types and text | `int`, `float`, `str`, `bool`, `type()`, conversion, string methods, f-strings | Beaver: logs labelled `"oak"`, `2.5` m, `True` (wet); sort by type and print a label `f"{kind}: {length} m"` |
-| 5 | Conditions | `if`/`elif`/`else`, comparison, `and`/`or`/`not` | Penguin: slide only `if ice_ahead`; avoid cracked ice |
+| 4 | Types and text | `int`, `float`, `str`, `bool`, `type()`, conversion, powers `**`, string methods, indexing and slicing text, f-strings, `.format()` (old `%` formatting shown, not practised), `print(..., end="")` | Beaver: logs labelled `"oak"`, `2.5` m, `True` (wet); sort by type and print a label `f"{kind}: {length} m"` |
+| 5 | Conditions | `if`/`elif`/`else`, comparison, chained `1 < x < 3`, `and`/`or`/`not`, truthiness (`0`, `""`, `None` count as false), `is` vs `==`, `is None`, `x if c else y` | Penguin: slide only `if ice_ahead`; avoid cracked ice |
 | 6 | Loops II | `while`, `break`, `continue`, nested loops | Monkey: `while not at_tree(): step(1)`; spiral jungle maze |
-| 7 | Functions | `def`, parameters, return values, scope, importing your own helper file | Teach the monkey `climb_tree(height)`, keep it in `tricks.py` and `import` it in 5 levels |
+| 7 | Functions | `def`, parameters, default and keyword arguments, return values (several at once), scope, `global`, importing your own helper file | Teach the monkey `climb_tree(height)`, keep it in `tricks.py` and `import` it in 5 levels |
 | 8 | Errors and debugging | Reading tracebacks, `try` / `except` / `else` / `finally`, `raise`, `assert` | Penguin: thin ice raises `CrackError`; catch it and slide around. Bug-hunt levels start from a broken program |
-| 9 | Collections | `list`, `dict`, `tuple`, `set`, indexing, iteration | Beaver: inventory `{"oak": 3, "pine": 2}`; build a dam needing exact counts |
+| 9 | Collections | `list` (`append`, `pop`, `insert`, `remove`, `index`, `extend`, `del`), slicing, `tuple`, unpacking and swapping `a, b = b, a`, `a, *rest = ...`, `dict` (`get`, `setdefault`, `update`, `**` merge), `set` and `& \| - ^`, `in`, iteration | Beaver: inventory `{"oak": 3, "pine": 2}`; build a dam needing exact counts |
 | 10 | Recursion | Base case, recursive case, the call stack | Fox: `explore(tunnel)` calls itself for each side tunnel and stops at dead ends; the stage draws the call stack as nested burrows |
-| 11 | Comprehensions | list/dict/set comprehensions, filtering | Beaver: `[log for log in river if log.length > 2]` replaces a 5-line loop |
-| 12 | Objects (OOP) | classes, `__init__`, methods, inheritance, polymorphism | Bee: `class Worker(Bee)`; queen sends any bee `.work()` and each does its job |
-| 13 | Decorators (advanced, optional) | functions as values, closures, `@decorator` | Fox: `@sneaky` wraps any move so guards don't hear it; `@times(3)` repeats |
+| 11 | Comprehensions and generators | list/dict/set comprehensions, filtering, `lambda`, `map`, `filter`, iterators (`iter`, `next`, `StopIteration`), generators with `yield` (paused and resumed on each `next()`), generator expressions `( )` vs. list comprehensions `[ ]` (memory vs. speed), infinite generators, generator pipelines | Beaver: `[log for log in river if log.length > 2]` replaces a 5-line loop. Bee: `def honey():` `yield`s one drop each time the jar asks, so a huge field never fills memory; a pipeline `flowers()` → `nectar()` → `honey()` passes one drop at a time, and the stage shows each stage pausing until asked |
+| 12 | Objects (OOP) | classes, class and instance attributes, `__init__`, methods, `@property`, `@classmethod`, `@staticmethod`, inheritance, `super()`, polymorphism; data classes with type hints (`@dataclass`, defaults and `field()`, `frozen=True`, `order=True`, `__post_init__`, `slots=True`, `asdict`), `NamedTuple`; multiple inheritance and the MRO as an advanced level | Bee: `class Worker(Bee)`; queen sends any bee `.work()` and each does its job |
+| 13 | Decorators (advanced, optional) | functions as values and references, closures, `*args` / `**kwargs`, hand-made decorators then `@decorator`, stacking decorators (order matters), decorators with arguments (`@times(3)`), decorating methods, class-based decorators (`__call__`), `functools.wraps`, everyday uses: timing, logging, caching with `functools.cache` | Fox: `@sneaky` wraps any move so guards don't hear it; `@times(3)` repeats |
 | 14 | Parallelism and concurrency (advanced, optional) | threads vs async, `async`/`await`, races, locks, queues | Octopus: 8 arms gather shells at once; two arms grab one shell = race, fix with a lock |
+| 15 | First real project (graduation, optional) | `input()`, files with `with open(...)`, standard modules (`math`, `random`), `if __name__ == "__main__":`, running a `.py` file in normal Python, adding a third-party package with uv (for example `pydantic` to validate the quiz's saved data, compared with a `@dataclass`; `attrs` mentioned as the older alternative) | Zoo keeper's quiz: a program that asks questions with `input()`, keeps a high-score file and uses `random`; exported as a real `.py` and run in CPython |
 
 **How each level teaches**
 
@@ -340,6 +341,7 @@ Decision: a two-week spike in phase 1 builds the module 1–2 blocks in Blockly 
 | `codezoo check LEVEL PROGRAM.py` | Goal and structure checks, prints stars and hints | 0 |
 | `codezoo levels list` / `validate [--all]` | Lists levels; validates JSON and runs every reference solution (the CI gate) | 0 |
 | `codezoo blocks PROGRAM.py` | Prints the block outline and source map, for debugging sync | 0 |
+| `codezoo schema [-o FILE]` | Prints the IR JSON Schema, the contract with the web client | 0 |
 | `codezoo play [--level ID] [--animal NAME] [--profile NAME]` | Terminal game: animated grid, opens the program in `$EDITOR`, reruns on save | 1 |
 | `codezoo profile add/list/remove/export/import` | On-device learner profiles | 1 |
 | `codezoo parent` | Grown-up area behind a gate: limits, report, settings, export | 1 |
@@ -414,7 +416,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | 1 Kid prototype | 5–8 | `codezoo serve`, three panes, Blockly spike with IR mapper, simple 2D stage, monkey modules 1–2, first parent gate and profiles | 2 devs × 4 weeks | 5–8 children aged 8–12 play 30 minutes unaided; no lost code; Blockly and Cub mode decisions made |
 | 2 MVP | 9–14 | Monkey only, modules 1–5, three.js stage, progress, parent area with time limits, concept report, feelings, private mode, English and Slovak, `codezoo play` for adults; Cub mode modules 1–2 only if the phase 1 gate says so | 2 devs + designer × 6 weeks | Pilot metrics below met → **MVP** |
 | 3 Middle ladder | 15–24 | Modules 6–10; penguin, beaver and fox with their tricks; storybook, printable cards with unlocks, habitat stickers, adaptive suggestions, level editor prototype | 2 devs + designer + artist × 10 weeks | Learning-gain and drop-off targets still met |
-| 4 Advanced and offline | 25–36 | Modules 11–14 (13–14 optional); octopus and bee; concurrency lanes, release islands 3.12–3.15, offline browser build on Pyodide, full level editor | Same team × 12 weeks | Runs offline on the cheapest target tablet and Chromebook |
+| 4 Advanced and offline | 25–36 | Modules 11–15 (13–15 optional); octopus and bee; concurrency lanes, release islands 3.12–3.15, offline browser build on Pyodide, full level editor | Same team × 12 weeks | Runs offline on the cheapest target tablet and Chromebook |
 | 5 Classes | Later | Teacher class view, optional sync, class-only sharing | To be estimated | Privacy review passed |
 
 **The interpreter grows module by module.** Each phase adds only the constructs its modules need, each with its own differential tests: phase 0 calls, `for` and assignment; phase 2 `if`, `while` and strings; phase 3 functions, imports, exceptions, collections, recursion and comprehensions; phase 4 classes, decorators and `async`.
@@ -499,14 +501,15 @@ Parsing now uses CPython's own `ast`, so the biggest earlier risk shrinks to the
 
 - [x] `uv init --package`, switch to flat layout (`mse_codezoo/`, `tests/`, `module-root = ""`), `uv add click`, `uv add --dev pytest ruff`, pin Python (3.14 for now: uv 0.11.14 only offers 3.15.0b1; move to 3.15 after `uv self update`)
 - [x] `codezoo` click group with `--version` and stubs for `run`, `check`, `levels`, `blocks`; `test_cli.py` with `CliRunner`
-- [x] CI (GitHub Actions): `uv sync --locked`, `uv run ruff check`, `uv run pytest`, `uv run codezoo levels validate --all` on Python 3.11 and 3.15
-- [ ] Define the IR dataclasses and JSON schema for Python modules 1–5 (the MVP)
-- [ ] `ast` → IR converter with kid-friendly errors and `RawCode` fallback
-- [ ] Python printer with source maps; round-trip tests
-- [ ] Generator-based interpreter for sequences, `for`, variables; step and recursion limits
-- [ ] Differential test harness against CPython
-- [ ] Grid world with the monkey (`step`, `turn_left`, `turn_right`, `grab`) and a plain-text renderer for `run --trace`
-- [ ] Five sample levels in JSON with reference solutions
+- [x] CI (GitHub Actions): `uv sync --locked`, `uv run ruff check`, `uv run pytest`, `uv run codezoo levels validate --all` on Python 3.11 and 3.14
+- [x] IR dataclasses with JSON round trip for the phase 0 subset: calls, variables, `+=`, `for`, arithmetic, comments, `pass`, `RawCode` (`mse_codezoo/ir.py`)
+- [x] JSON schema for the IR (draft 2020-12), generated from `ir.py` by `codezoo schema`, bundled as `mse_codezoo/ir.schema.json`; tests keep the copy in sync and check valid and invalid programs
+- [x] `ast` → IR converter with kid-friendly errors and `RawCode` fallback that keeps the learner's text (`lang_python.py`)
+- [x] Python printer with source maps (statement level; expression spans later); round-trip and stability tests
+- [x] Generator-based interpreter for sequences, `for`, variables; step limit, number and text size limits, builtins whitelist (recursion limit comes with functions in phase 3)
+- [x] Differential test harness against CPython (`tests/test_differential.py`)
+- [x] Grid world with the monkey (`step`, `turn_left`, `turn_right`, `grab`, `say`), animal pack, plain-text renderer for `run --trace`, goal checks and stars
+- [x] Six sample levels with reference solutions: five sequence levels (module 1) and one loop level (module 2); `codezoo levels validate --all` runs every solution
 
 Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), three-pane layout with splitters and phone tabs, device testing on a laptop, an Android tablet and an iPad.
 
@@ -522,7 +525,7 @@ Eleven topics still need a decision; none blocks phase 0, but each should be set
 | Low-end devices | Performance budget for three.js (frame rate, bundle size) and for Pyodide start-up, a low-detail graphics setting, testing on the cheapest target tablet and Chromebook | Phase 2 |
 | Installing for families | Pilot install path (`uvx`, a small installer, or a hosted page) for parents who have never used a terminal | Phase 2 |
 | AI helper | No AI at launch, or a tightly limited hint-only helper; weigh child safety, cost and offline use | Phase 2 |
-| Graduation path | Export as a real `.py` file, run it in normal Python, a final "first real project" module | Phase 3 |
+| Graduation path | Export as a real `.py` file and run it in normal Python; module 15 is the "first real project" and needs the real-Python mode (CPython subprocess locally, Pyodide in the browser) | Phase 3 |
 | Team and budget | Confirm the roadmap's team assumption (2 developers, a content designer, a part-time artist, an education specialist); add a sound designer; cost per phase | Before phase 0 |
 | Accessibility | Screen-reader support for blocks (Blockly's keyboard navigation is a start), a dyslexia-friendly font option, reduced motion and adjustable animation speed, a large-target mode for motor difficulties | Phase 2 |
 | Narration cost | Speech synthesis first; record voices only for English and Slovak; budget per extra language | Phase 2 |
