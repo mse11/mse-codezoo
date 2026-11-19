@@ -1,0 +1,73 @@
+{
+  "id": "m04-l12",
+  "title": "Banana report (boss)",
+  "module": "text",
+  "concepts": [
+    "text",
+    "fstring",
+    "method",
+    "variable"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "MOMO has 3 bananas"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "FString",
+      "MethodCall"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "Count the bananas, then build the sentence with an f-string.",
+    "name = \"Momo\"; ...; say(f\"{name.upper()} has {count} bananas\")"
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Banánová správa (boss)",
+      "hints": [
+        "Spočítaj banány a vetu poskladaj f-reťazcom.",
+        "name = \"Momo\"; ...; say(f\"{name.upper()} has {count} bananas\")"
+      ]
+    }
+  }
+}

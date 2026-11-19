@@ -1,0 +1,70 @@
+{
+  "id": "m04-l04",
+  "title": "f-strings",
+  "module": "text",
+  "concepts": [
+    "text",
+    "fstring"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "I have 4 bananas"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "FString"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "An f-string fills in values: f\"I have {count} bananas\".",
+    "Put an f before the quotes and the variable's name in { }."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "f-reťazce",
+      "hints": [
+        "f-reťazec dosadí hodnoty: f\"I have {count} bananas\".",
+        "Pred úvodzovky daj f a meno premennej do { }."
+      ]
+    }
+  }
+}

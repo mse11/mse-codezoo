@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from dataclasses import MISSING, dataclass, field, fields
 from typing import Any
 
-IR_VERSION = 1  # bump when the JSON shape changes in a way old clients can't read
+IR_VERSION = 2  # bump when the JSON shape changes in a way old clients can't read
 
 
 @dataclass(kw_only=True)
@@ -48,9 +48,86 @@ class Name(Expr):
 
 
 @dataclass(kw_only=True)
+class Keyword(Node):
+    """A named argument, like ``end=""`` in ``print(x, end="")``."""
+
+    name: str
+    value: Expr
+
+
+@dataclass(kw_only=True)
 class Call(Expr):
     func: str
     args: list[Expr] = field(default_factory=list)
+    keywords: list[Keyword] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class MethodCall(Expr):
+    """A method on a value, like ``name.upper()``."""
+
+    obj: Expr
+    method: str
+    args: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Compare(Expr):
+    """``a < b``, also chained: ``1 < x < 3`` has two ops and two comparators."""
+
+    left: Expr
+    ops: list[str]
+    comparators: list[Expr]
+
+
+@dataclass(kw_only=True)
+class BoolOp(Expr):
+    """``and`` / ``or`` over two or more values."""
+
+    op: str
+    values: list[Expr]
+
+
+@dataclass(kw_only=True)
+class IfExp(Expr):
+    """``body if test else orelse``"""
+
+    test: Expr
+    body: Expr
+    orelse: Expr
+
+
+@dataclass(kw_only=True)
+class FormattedValue(Expr):
+    """One ``{value!r:>5}`` part of an f-string."""
+
+    value: Expr
+    conversion: str | None = None  # "r", "s" or "a"
+    spec: str | None = None
+
+
+@dataclass(kw_only=True)
+class FString(Expr):
+    """An f-string: text parts (``Const``) and ``FormattedValue`` parts."""
+
+    parts: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Slice(Expr):
+    """``lower:upper:step`` inside ``[...]``; any part may be missing."""
+
+    lower: Expr | None = None
+    upper: Expr | None = None
+    step: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class Subscript(Expr):
+    """Indexing or slicing: ``text[0]``, ``text[1:3]``."""
+
+    value: Expr
+    index: Expr
 
 
 @dataclass(kw_only=True)
@@ -95,6 +172,21 @@ class For(Stmt):
 
 
 @dataclass(kw_only=True)
+class If(Stmt):
+    """``if`` / ``else``. An ``elif`` is an ``If`` that is the only statement in ``orelse``."""
+
+    test: Expr
+    body: list[Stmt] = field(default_factory=list)
+    orelse: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class While(Stmt):
+    test: Expr
+    body: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
 class Pass(Stmt):
     pass
 
@@ -123,12 +215,23 @@ NODE_TYPES: dict[str, type[Node]] = {
         Const,
         Name,
         Call,
+        Keyword,
+        MethodCall,
         BinOp,
         UnaryOp,
+        Compare,
+        BoolOp,
+        IfExp,
+        FormattedValue,
+        FString,
+        Slice,
+        Subscript,
         ExprStmt,
         Assign,
         AugAssign,
         For,
+        If,
+        While,
         Pass,
         Comment,
         RawCode,

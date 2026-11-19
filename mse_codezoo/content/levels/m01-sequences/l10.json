@@ -35,5 +35,14 @@
     "The monkey is already standing on a banana.",
     "Grab, walk, grab, turn, walk, grab."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Desiata v rohu",
+      "hints": [
+        "Opička už stojí na banáne.",
+        "Chyť, choď, chyť, otoč sa, choď, chyť."
+      ]
+    }
+  }
 }

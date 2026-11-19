@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from mse_codezoo import ir
-from mse_codezoo.goals import GOAL_TYPES
+from mse_codezoo.goals import goal_errors
+from mse_codezoo.i18n import LANGS, current
 from mse_codezoo.lang_python import parse
 from mse_codezoo.world import Pack, World
 
@@ -41,7 +42,29 @@ class Level:
     mode: str = "blocks_only"
     animal: str = DEFAULT_ANIMAL
     starter: str = ""  # program the level opens with (e.g. a broken one to fix)
+    variants: list[dict[str, Any]] = field(default_factory=list)  # more worlds to solve
+    i18n: dict[str, dict[str, Any]] = field(default_factory=dict)  # lang -> title, hints
     path: Path | None = None
+
+    def _text(self, key: str, default: Any) -> Any:
+        return self.i18n.get(current(), {}).get(key) or default
+
+    @property
+    def shown_title(self) -> str:
+        """The title in the current language."""
+        return self._text("title", self.title)
+
+    @property
+    def shown_hints(self) -> list[str]:
+        return list(self._text("hints", self.hints))
+
+    def worlds(self) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+        """(world spec, goal) for the main world and every variant."""
+        out = [(self.world, self.goal)]
+        for variant in self.variants:
+            spec = {key: value for key, value in variant.items() if key != "goal"}
+            out.append((spec, variant.get("goal", self.goal)))
+        return out
 
     @classmethod
     def from_dict(cls, data: dict[str, Any], path: Path | None = None) -> Level:
@@ -58,6 +81,8 @@ class Level:
             mode=data.get("mode", "blocks_only"),
             animal=data.get("animal", DEFAULT_ANIMAL),
             starter=data.get("starter", ""),
+            variants=list(data.get("variants", [])),
+            i18n=dict(data.get("i18n", {})),
             path=path,
         )
 
@@ -149,17 +174,33 @@ def validate_level(path: Path) -> LevelReport:
     except (ValueError, TypeError) as exc:
         report.errors.append(f"world: {exc}")
         world = None
+    report.errors += goal_errors(data["goal"], world)
 
-    goal = data["goal"]
-    if not isinstance(goal, dict) or goal.get("type") not in GOAL_TYPES:
-        report.errors.append(f"goal.type must be one of {', '.join(GOAL_TYPES)}")
-    elif goal["type"] == "collect_all":
-        if world is not None and world.remaining(goal.get("item")) == 0:
-            report.errors.append(f"goal item {goal.get('item')!r} does not appear in the world")
-    elif goal["type"] == "reach" and not (
-        isinstance(goal.get("at"), list) and len(goal["at"]) == 2
-    ):
-        report.errors.append("goal.at must be [x, y]")
+    variants = data.get("variants", [])
+    if not isinstance(variants, list):
+        report.errors.append("variants must be a list of worlds")
+        variants = []
+    for number, variant in enumerate(variants, 2):
+        if not isinstance(variant, dict):
+            report.errors.append(f"variant {number}: must be a world object")
+            continue
+        try:
+            other = World.from_spec(variant)
+        except (ValueError, TypeError) as exc:
+            report.errors.append(f"variant {number}: {exc}")
+            other = None
+        errors = goal_errors(variant.get("goal", data["goal"]), other)
+        report.errors += [f"variant {number}: {error}" for error in errors]
+
+    translations = data.get("i18n", {})
+    hints = data.get("hints", [])
+    for lang, text in translations.items() if isinstance(translations, dict) else []:
+        if lang not in LANGS:
+            report.errors.append(f"i18n: unknown language {lang!r}")
+        elif not isinstance(text, dict):
+            report.errors.append(f"i18n.{lang} must be an object")
+        elif "hints" in text and len(text["hints"]) != len(hints):
+            report.errors.append(f"i18n.{lang}.hints must have {len(hints)} hint(s)")
 
     constraints = data.get("constraints", {})
     max_lines = constraints.get("maxLines")

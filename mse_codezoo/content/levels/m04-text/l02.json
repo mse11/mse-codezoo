@@ -1,0 +1,62 @@
+{
+  "id": "m04-l02",
+  "title": "Glue words together",
+  "module": "text",
+  "concepts": [
+    "text",
+    "variable"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "I am Momo"
+  },
+  "constraints": {
+    "maxLines": 2,
+    "mustUse": [
+      "Assign",
+      "BinOp"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "+ glues two texts together: \"ba\" + \"na\" is \"bana\".",
+    "name = \"Momo\", then say(\"I am \" + name). Mind the space after am."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Lepíme slová",
+      "hints": [
+        "+ zlepí dva texty: \"ba\" + \"na\" je \"bana\".",
+        "name = \"Momo\" a potom say(\"I am \" + name). Pozor na medzeru za am."
+      ]
+    }
+  }
+}

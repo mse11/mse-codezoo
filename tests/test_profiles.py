@@ -208,9 +208,12 @@ def test_report(store):
 @pytest.mark.parametrize(
     ("solved", "stars", "error", "kinds"),
     [
-        (False, [], "Bump! The monkey walked into a wall.", ["bump"]),
-        (False, [], "I don't know `stpe`.", ["unknown_name"]),
-        (False, [], "Python can't read line 1: ...", ["syntax"]),
+        (False, [], "bump", ["bump"]),
+        (False, [], "unknown_name", ["unknown_name"]),
+        (False, [], "syntax", ["syntax"]),
+        (False, [], "too_many_steps", ["endless_loop"]),
+        (False, [], "type", ["type_mixup"]),
+        (False, [], "other", []),
         (False, [(False, "")] * 3, None, ["not_finished"]),
         (True, [(True, ""), (False, ""), (False, "")], None, ["too_long", "missing_concept"]),
         (True, [(True, "")] * 3, None, []),

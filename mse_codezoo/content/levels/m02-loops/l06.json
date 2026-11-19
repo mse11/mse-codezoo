@@ -40,5 +40,14 @@
     "One side of the square is: walk, turn, grab.",
     "Do one side 4 times."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Prechádzka po štvorci",
+      "hints": [
+        "Jedna strana štvorca je: choď, otoč sa, chyť.",
+        "Urob jednu stranu 4-krát."
+      ]
+    }
+  }
 }

@@ -1,0 +1,91 @@
+{
+  "id": "m05-l03",
+  "title": "Row of surprises",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "compare",
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BRBRB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B",
+    "avoid": "R"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".RRBBR"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    },
+    {
+      "tiles": [
+        ".BBBRB"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 4,
+    "mustUse": [
+      "For",
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "Every world has a different row. Check each square before you grab.",
+    "repeat 5 times: step(1), then if item_here() == \"banana\": grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Rad prekvapení",
+      "hints": [
+        "Každý svet má iný rad. Pred chytaním skontroluj každé políčko.",
+        "5-krát: step(1) a potom if item_here() == \"banana\": grab()."
+      ]
+    }
+  }
+}

@@ -23,8 +23,27 @@ ROUND_TRIP = [
     "# note\nstep(1)  # inline\n",
     "for i in range(2):\n    # inside\n    step(1)\n    # trailing inside\n# after\n",
     "for i in range(2):\n    pass\n",
-    "while True:\n    pass\n",
+    "def jump():\n    pass\n",
     "step(1)\nif x:\n    grab()\nstep(2)\n",
+    "if x:\n    grab()\nelse:\n    step(1)\n",
+    "if a:\n    step(1)\nelif b:\n    step(2)\nelif c:\n    step(3)\nelse:\n    pass\n",
+    "if a:\n    pass\nelse:\n    # note\n    if b:\n        grab()\n",
+    "while not is_blocked():\n    step(1)\n",
+    "x = 1 < y <= 3 and not z or w\n",
+    "x = (a or b) and c\n",
+    "x = not (a and b)\n",
+    "x = a is None\nx = a is not None\nx = 'a' not in b\n",
+    "x = (a < b) == c\n",
+    "x = 'big' if n > 3 else 'small'\n",
+    "x = (a if b else c) if d else e\n",
+    "x = 2 ** 3 ** 2\nx = (2 ** 3) ** 2\nx = -2 ** 2\nx = (-2) ** 2\nx = 2 ** -1\n",
+    "x = f'{n} bananas'\n",
+    'x = f"{name!r:>10} {{literal}} {n:.2f}"\n',
+    "x = f\"{'a' + b}\"\n",
+    "x = f'a\\nb {c}'\n",
+    "x = name.upper()\nx = 'abc'.replace('a', 'b').title()\nx = (5).bit_length()\n",
+    "x = name[0]\nx = name[1:3]\nx = name[::-1]\nx = name[:2]\nx = (a + b)[0]\n",
+    "print(1, 2, sep='-', end='')\n",
 ]
 
 
@@ -41,6 +60,28 @@ def test_print_then_parse_gives_the_same_program(source):
 def test_printing_is_stable(source):
     once = print_program(parse(source).program).text
     assert print_program(parse(once).program).text == once
+
+
+def test_elif_prints_as_elif_and_maps_its_own_lines():
+    program = parse("if a:\n    step(1)\nelif b:\n    step(2)\nelse:\n    grab()\n").program
+    printed = print_program(program)
+    assert printed.text.splitlines()[2] == "elif b:"
+    inner = program.body[0].orelse[0]
+    assert isinstance(inner, ir.If)
+    assert (printed.source_map[inner.id].line, printed.source_map[inner.id].end_line) == (3, 6)
+
+
+def test_comment_on_else_line_is_kept():
+    program = parse("if a:\n    step(1)\nelse:  # other way\n    grab()\n").program
+    orelse = program.body[0].orelse
+    assert isinstance(orelse[0], ir.Comment) and orelse[0].text == "other way"
+
+
+def test_parse_positions_cover_conditions():
+    result = parse("if is_blocked():\n    turn_left()\n")
+    test = result.program.body[0].test
+    span = result.positions[test.id]
+    assert (span.line, span.col, span.end_col) == (1, 3, 15)
 
 
 def test_printer_normalises_formatting():
@@ -66,12 +107,12 @@ def test_positions_point_at_the_input_text():
 
 
 def test_unsupported_code_is_kept_as_raw_code_with_a_note():
-    result = parse("step(1)\nwhile True:\n    # spin\n    turn_left()\nstep(2)\n")
+    result = parse("step(1)\ndef spin():\n    # spin\n    turn_left()\nstep(2)\n")
     assert result.ok
     raw = result.program.body[1]
     assert isinstance(raw, ir.RawCode)
-    assert raw.text == "while True:\n    # spin\n    turn_left()"
-    assert "`while` loops" in result.diagnostics[0].message
+    assert raw.text == "def spin():\n    # spin\n    turn_left()"
+    assert "functions (`def`)" in result.diagnostics[0].message
     assert result.diagnostics[0].severity == "warning"
     # the comment inside the raw block is not duplicated outside it
     assert [type(s).__name__ for s in result.program.body] == ["ExprStmt", "RawCode", "ExprStmt"]
@@ -81,10 +122,10 @@ def test_unsupported_code_is_kept_as_raw_code_with_a_note():
     ("source", "reason"),
     [
         ("x = [1, 2]\n", "lists"),
-        ("x = 2 ** 8\n", "powers"),
-        ("monkey.step()\n", "this kind of call"),
-        ("print('a', end='')\n", "this kind of call"),
-        ("x = a < b\n", "comparisons"),
+        ("x = [1, 2]\n", "lists"),
+        ("monkey.legs\n", "dots like `a.b`"),
+        ("'a,b'.split(sep=',')\n", "this kind of call"),
+        ("x = lambda: 1\n", "`lambda`"),
     ],
 )
 def test_unsupported_expressions_name_the_construct(source, reason):

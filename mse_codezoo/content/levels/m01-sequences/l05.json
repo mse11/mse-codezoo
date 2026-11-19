@@ -2,15 +2,49 @@
   "id": "m01-l05",
   "title": "Leave a note",
   "module": "sequences",
-  "concepts": ["call", "comment"],
+  "concepts": [
+    "call",
+    "comment"
+  ],
   "animal": "monkey",
-  "world": { "tiles": ["...B"], "start": [0, 0, "east"] },
-  "goal": { "type": "collect_all", "item": "B" },
-  "constraints": { "maxLines": 3, "mustUse": ["Comment"] },
-  "unlockedBlocks": ["step", "grab", "say", "comment"],
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "Comment"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "grab",
+    "say",
+    "comment"
+  ],
   "hints": [
     "A line starting with # is a note for people; the monkey ignores it.",
     "# walk to the banana, then step(3), grab() and say(\"Yum!\")."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Nechaj odkaz",
+      "hints": [
+        "Riadok, ktorý začína #, je poznámka pre ľudí; opička ju ignoruje.",
+        "# choď k banánu, potom step(3), grab() a say(\"Yum!\")."
+      ]
+    }
+  }
 }

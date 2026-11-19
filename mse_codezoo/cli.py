@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import functools
 import json
+import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -13,10 +15,12 @@ from mse_codezoo import __version__, ir
 from mse_codezoo.game import (
     LevelRun,
     attempt_from_run,
+    level_to_json,
     run_level,
     run_to_json,
     solution_errors,
 )
+from mse_codezoo.i18n import LANGS, use_lang
 from mse_codezoo.interpreter import Step
 from mse_codezoo.lang_python import ParseResult, block_label, outline, parse, print_program
 from mse_codezoo.levels import (
@@ -38,8 +42,23 @@ ProgramPath = click.Path(exists=True, dir_okay=False, path_type=Path)
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(__version__, prog_name="codezoo")
-def main() -> None:
+@click.option(
+    "--lang",
+    type=click.Choice(LANGS),
+    envvar="CODEZOO_LANG",
+    help="Language for messages, titles and hints (or set CODEZOO_LANG).",
+)
+@click.pass_context
+def main(ctx: click.Context, lang: str | None) -> None:
     """CodeZoo: learn real Python through animal coding games."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(errors="replace")  # a console that can't show "č" shows "?"
+            except (ValueError, OSError):
+                pass
+    ctx.with_resource(use_lang(lang))
 
 
 # --- helpers -------------------------------------------------------------------
@@ -73,6 +92,8 @@ def describe_event(event: dict[str, Any], world: World) -> str:
             return f'says "{event["text"]}"'
         case "bump":
             return "bump!"
+        case "sense":
+            return f"asks {event['what']}() -> {event['result']!r}"
     return event["type"]
 
 
@@ -89,7 +110,7 @@ def _short_path(path: Path) -> str:
 
 
 def _level_header(level: Level, animal: str | None) -> str:
-    return f"Level {level.id}: {level.title} ({animal or level.animal})"
+    return f"Level {level.id}: {level.shown_title} ({animal or level.animal})"
 
 
 # --- run / check / blocks ----------------------------------------------------------
@@ -175,8 +196,10 @@ def check(level: str, program: Path, animal: str | None, player: str | None) -> 
     click.echo(f"Stars: {outcome.earned}/{len(outcome.stars)}")
     for star in outcome.stars:
         click.echo(f"  [{'x' if star.earned else ' '}] {star.label}")
-    if not outcome.solved and lvl.hints:
-        click.echo(f"Hint: {lvl.hints[0]}")
+    if result.feeling is not None:
+        click.echo(result.feeling.text)
+    if not outcome.solved and lvl.shown_hints:
+        click.echo(f"Hint: {lvl.shown_hints[0]}")
     if not outcome.solved:
         raise SystemExit(1)
 
@@ -225,6 +248,211 @@ def serve(host: str, port: int, open_browser: bool, verbose: bool, data_dir: Pat
         click.echo("\nBye!")
     finally:
         server.server_close()
+
+
+PLAY_KEYS = {
+    "r": "run",
+    "e": "edit",
+    "w": "watch",
+    "h": "hint",
+    "n": "next",
+    "p": "previous",
+    "l": "levels",
+    "q": "quit",
+}
+
+
+def _can_show(text: str) -> bool:
+    """Whether the terminal's encoding can show ``text`` (old Windows consoles can't)."""
+    try:
+        text.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
+    except (UnicodeEncodeError, LookupError):
+        return False
+    return True
+
+
+def _program_file(level: Level, folder: Path) -> Path:
+    """The file the player edits for ``level``; created with the goal and starter."""
+    path = folder / f"{level.id}.py"
+    if not path.exists():
+        folder.mkdir(parents=True, exist_ok=True)
+        world = World.from_spec(level.world, load_pack(level.animal))
+        header = [
+            f"# Level {level.id}: {level.shown_title}",
+            f"# Goal: {describe_goal(level.goal, world)}",
+        ]
+        if len(level.worlds()) > 1:
+            header.append(f"# This level has {len(level.worlds())} worlds; solve them all.")
+        header.append("# Save this file, then go back to CodeZoo and press r (or w to watch it).")
+        path.write_text("\n".join(header) + "\n\n" + level.starter, encoding="utf-8")
+    return path
+
+
+def _play_levels(lang_levels: list[Level], player: str | None, store: ProfileStore) -> int:
+    """Index of the first level the player hasn't solved yet."""
+    if player is None:
+        return 0
+    solved = {k for k, v in store.progress(player)["levels"].items() if v.get("solved")}
+    for index, level in enumerate(lang_levels):
+        if level.id not in solved:
+            return index
+    return 0
+
+
+def _show_level(level: Level, path: Path, color: bool, variant: int) -> None:
+    from mse_codezoo.term import StageState, legend, render
+
+    data = level_to_json(level)
+    world = data["worlds"][variant]
+    click.echo("")
+    click.secho(f"Level {level.id}: {level.shown_title}", bold=True)
+    goal_world = World.from_spec(level.worlds()[variant][0], load_pack(level.animal))
+    click.echo(f"Goal: {describe_goal(level.worlds()[variant][1], goal_world)}")
+    if len(data["worlds"]) > 1:
+        click.echo(f"World {variant + 1} of {len(data['worlds'])} (the program must solve all)")
+    click.echo(render(StageState.from_json(world), color=color))
+    click.echo(legend(goal_world.pack, [tile for _x, _y, tile in world["items"]]))
+    click.echo(f"Your program: {path}")
+
+
+@main.command()
+@click.option("--level", "level_ref", help="Start at this level (default: the first unsolved).")
+@click.option("--profile", "player", help="Save stars and progress for this player.")
+@click.option(
+    "--dir",
+    "folder",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Folder for your program files (default: <data folder>/play).",
+)
+@click.option("--speed", type=click.IntRange(1, 5), default=3, show_default=True)
+@click.option("--no-color", is_flag=True, help="Plain text, no colours.")
+def play(
+    level_ref: str | None, player: str | None, folder: Path | None, speed: int, no_color: bool
+) -> None:
+    """Play in the terminal: edit a .py file, run it, watch the animal on the grid.
+
+    Each level gets its own program file. Press e to open it in your editor ($EDITOR),
+    r to run it, or w to rerun it every time you save.
+    """
+    from mse_codezoo.term import replay
+
+    store = _store()
+    color = not no_color and sys.stdout.isatty()
+    animate = sys.stdout.isatty()
+    all_levels = [load_level(path) for path in level_files()]
+    try:
+        if player is not None:
+            player = store.find(player).id
+        index = _play_levels(all_levels, player, store)
+        if level_ref is not None:
+            wanted = find_level(level_ref).id
+            index = next(i for i, lvl in enumerate(all_levels) if lvl.id == wanted)
+    except (LevelError, ProfileError) as exc:
+        raise click.ClickException(str(exc)) from None
+    if player is not None and store.today_status(player)["over"]:
+        click.echo("That's all for today! The animal is asleep. See you tomorrow.")
+        return
+    folder = folder or store.root / "play"
+    hints_shown = 0
+    variant = 0
+    last_tick = time.monotonic()
+
+    def run_once(level: Level, path: Path) -> bool:
+        nonlocal last_tick
+        source = path.read_text(encoding="utf-8")
+        result = run_level(level, source, variant=variant, seed=int(time.time()))
+        data = run_to_json(result)
+        _echo_diagnostics(result.parsed)
+        if data.get("steps") is not None:
+            replay(
+                level_to_json(level)["worlds"][variant],
+                data["steps"],
+                source.splitlines(),
+                echo=click.echo,
+                color=color,
+                animate=animate,
+                speed=speed,
+                header=f"Level {level.id}: {level.shown_title}",
+            )
+            for line in result.result.output if result.result else []:
+                click.echo(f"printed: {line}")
+        if result.check is not None:
+            outcome = result.check
+            line = result.line_of(result.result.error.node_id) if result.result.error else None
+            click.echo(f"line {line}: {outcome.message}" if line else outcome.message)
+            fancy = _can_show("★☆✓–")
+            full, empty, yes, no = ("★", "☆", "✓", "–") if fancy else ("*", ".", "x", "-")
+            stars = full * outcome.earned + empty * (len(outcome.stars) - outcome.earned)
+            labels = "; ".join(f"{yes if s.earned else no} {s.label}" for s in outcome.stars)
+            click.echo(f"{stars}  {labels}")
+        if result.feeling is not None:
+            face = result.feeling.face if _can_show(result.feeling.face) else ""
+            click.echo(f"{face} {result.feeling.text}".strip())
+        if player is not None:
+            store.record(player, attempt_from_run(result, source))
+            now = time.monotonic()
+            status = store.add_time(player, now - last_tick)
+            last_tick = now
+            if status["over"]:
+                click.echo("That's all for today! The animal is going to sleep. See you tomorrow.")
+                return False
+        return True
+
+    while True:
+        level = all_levels[index]
+        path = _program_file(level, folder)
+        _show_level(level, path, color, variant)
+        keys = "  ".join(f"[{key}]{name[1:]}" for key, name in PLAY_KEYS.items())
+        if len(level.worlds()) > 1:
+            keys += "  [1-9] world"
+        choice = click.prompt(keys, default="r", show_default=False).strip().lower()[:1]
+        if choice.isdigit() and 1 <= int(choice) <= len(level.worlds()):
+            variant = int(choice) - 1
+        elif choice == "r":
+            if not run_once(level, path):
+                return
+        elif choice == "e":
+            try:
+                click.edit(filename=str(path))
+            except click.ClickException as exc:
+                click.echo(f"Can't open an editor ({exc.message}). Open {path} yourself.")
+                continue
+            if not run_once(level, path):
+                return
+        elif choice == "w":
+            click.echo(f"Watching {path}. Save it to run again; press Ctrl+C to stop.")
+            seen = path.stat().st_mtime
+            try:
+                while True:
+                    time.sleep(0.4)
+                    mtime = path.stat().st_mtime
+                    if mtime != seen:
+                        seen = mtime
+                        if not run_once(level, path):
+                            return
+            except KeyboardInterrupt:
+                click.echo("")
+        elif choice == "h":
+            hints = level.shown_hints
+            if hints:
+                hints_shown = min(hints_shown + 1, len(hints))
+                click.echo(f"Hint {hints_shown}: {hints[hints_shown - 1]}")
+            else:
+                click.echo("No hints for this level.")
+        elif choice in ("n", "p"):
+            index = (index + (1 if choice == "n" else -1)) % len(all_levels)
+            hints_shown = 0
+            variant = 0
+        elif choice == "l":
+            for number, lvl in enumerate(all_levels, 1):
+                click.echo(f"{number:>3}  {lvl.id:<9} {lvl.shown_title}")
+            picked = click.prompt("Level number", type=click.IntRange(1, len(all_levels)))
+            index = picked - 1
+            hints_shown = 0
+            variant = 0
+        elif choice == "q":
+            click.echo("Bye!")
+            return
 
 
 @main.command()
@@ -435,7 +663,7 @@ def levels_list() -> None:
     for path in files:
         try:
             level = load_level(path)
-            click.echo(f"{level.id:<10} {level.title}")
+            click.echo(f"{level.id:<10} {level.shown_title}")
         except LevelError as exc:
             click.echo(f"{path.relative_to(LEVELS_DIR).as_posix():<10} (invalid: {exc})")
     click.echo(f"{len(files)} level(s)")
@@ -444,10 +672,21 @@ def levels_list() -> None:
 def describe_goal(goal: dict[str, Any], world: World) -> str:
     match goal.get("type"):
         case "collect_all":
-            return f"collect every {world.pack.item_name(goal['item'])}"
+            text = f"collect every {world.pack.noun(goal['item'])}"
+            if goal.get("avoid"):
+                text += f", but no {world.pack.noun(goal['avoid'])}"
+            return text
         case "reach":
             x, y = goal["at"]
             return f"reach square ({x}, {y})"
+        case "say" if "texts" in goal:
+            return "say " + ", then ".join(f'"{text}"' for text in goal["texts"])
+        case "say":
+            return f'say "{goal["text"]}"'
+        case "avoid":
+            return f"leave every {world.pack.noun(goal['item'])} alone"
+        case "all":
+            return " and ".join(describe_goal(part, world) for part in goal["goals"])
     return str(goal.get("type"))
 
 
@@ -478,7 +717,13 @@ def levels_show(level: str, animal: str | None, solution: bool) -> None:
     click.echo("")
     click.echo(_indent(world.render(), "    "))
     click.echo("")
-    for number, hint in enumerate(lvl.hints, 1):
+    pack = world.pack
+    for number, (spec, goal) in enumerate(lvl.worlds()[1:], 2):
+        other = World.from_spec(spec, pack)
+        click.echo(f"World {number}: {describe_goal(goal, other)}")
+        click.echo(_indent(other.render(), "    "))
+        click.echo("")
+    for number, hint in enumerate(lvl.shown_hints, 1):
         click.echo(f"Hint {number}: {hint}")
     if solution and lvl.path is not None:
         click.echo("")

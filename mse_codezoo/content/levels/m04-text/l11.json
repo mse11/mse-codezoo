@@ -1,0 +1,61 @@
+{
+  "id": "m04-l11",
+  "title": "The very last letter",
+  "module": "text",
+  "concepts": [
+    "text",
+    "index"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "e"
+  },
+  "constraints": {
+    "maxLines": 2,
+    "mustUse": [
+      "Subscript"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "Negative positions count from the end: word[-1] is the last letter.",
+    "word = \"jungle\", then say(word[-1])."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Úplne posledné písmeno",
+      "hints": [
+        "Záporné pozície sa počítajú od konca: word[-1] je posledné písmeno.",
+        "word = \"jungle\" a potom say(word[-1])."
+      ]
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "id": "m04-l10",
+  "title": "Spelling bee",
+  "module": "text",
+  "concepts": [
+    "method",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "MOMO"
+  },
+  "constraints": {
+    "maxLines": 2,
+    "mustUse": [
+      "MethodCall"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "starter": "name = \"momo\"\nsay(name.uper())\n",
+  "hints": [
+    "Run it and read what CodeZoo suggests.",
+    "upper has two p's: name.upper()."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Pravopis",
+      "hints": [
+        "Spusti to a prečítaj si, čo CodeZoo navrhuje.",
+        "upper má dve p: name.upper()."
+      ]
+    }
+  }
+}

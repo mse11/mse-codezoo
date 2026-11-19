@@ -1,4 +1,5 @@
-// The stage: a 2D SVG grid world that animates the world events from a run.
+// The 2D stage: an SVG grid world that animates the world events from a run.
+// Used when 3D is off or WebGL is missing; same interface as Stage3D in stage3d.js.
 
 const CELL = 64;
 const TOP = 44; // room above the grid for speech bubbles
@@ -6,8 +7,16 @@ const NS = "http://www.w3.org/2000/svg";
 const ANGLE = { north: -90, east: 0, south: 90, west: 180 };
 const EMOJI = {
   monkey: "🐒", penguin: "🐧", beaver: "🦫", fox: "🦊", octopus: "🐙", bee: "🐝",
-  banana: "🍌", fish: "🐟", log: "🪵", shell: "🐚", flower: "🌼",
+  banana: "🍌", coconut: "🥥", rotten: "🤢", fish: "🐟", log: "🪵", shell: "🐚", flower: "🌼",
 };
+
+// Squares the animal must reach, for a goal flag.
+function reachTargets(goal) {
+  if (!goal) return [];
+  if (goal.type === "reach") return [goal.at];
+  if (goal.type === "all") return goal.goals.flatMap(reachTargets);
+  return [];
+}
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,24 +33,31 @@ export class Stage {
     this.duration = 250;
   }
 
+  attach() {}
+
+  detach() {}
+
   setSpeed(level) {
     this.duration = [700, 450, 250, 140, 60][level - 1] ?? 250;
     this.container.style.setProperty("--dur", `${this.duration}ms`);
   }
 
-  load(level) {
+  load(level, world, goal) {
     this.level = level;
+    this.world = world || level.world;
+    this.targets = reachTargets(goal || level.goal);
     this.reset();
   }
 
   reset() {
-    const { world, pack } = this.level;
+    const { pack } = this.level;
+    const world = this.world;
     const [width, height] = world.size;
     const root = svg("svg", {
       viewBox: `0 ${-TOP} ${width * CELL} ${height * CELL + TOP}`,
       class: "stage-svg",
       role: "img",
-      "aria-label": `${pack.world}: ${width} by ${height} squares`,
+      "aria-label": `${pack.worldName || pack.world}: ${width} × ${height}`,
     });
 
     for (let y = 0; y < height; y++) {
@@ -55,11 +71,16 @@ export class Stage {
       root.append(svg("text", { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2, class: "emoji" }, "🪨"));
     }
 
+    for (const [x, y] of this.targets) {
+      root.append(svg("rect", { x: x * CELL + 3, y: y * CELL + 3, width: CELL - 6, height: CELL - 6, rx: 12, class: "target" }));
+      root.append(svg("text", { x: x * CELL + CELL - 14, y: y * CELL + 16, class: "emoji flag" }, "🏁"));
+    }
+
     this.items = new Map();
     for (const [x, y, tile] of world.items) {
       const noun = pack.items[tile] || "item";
       const item = svg("text", { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2, class: "emoji item" }, EMOJI[noun] || "⭐");
-      item.append(svg("title", {}, noun));
+      item.append(svg("title", {}, pack.itemNames?.[tile]?.one || noun));
       this.items.set(`${x},${y}`, item);
       root.append(item);
     }
@@ -102,6 +123,16 @@ export class Stage {
     this.bubble.setAttribute("visibility", "hidden");
   }
 
+  showFeeling(feeling) {
+    if (!feeling) return;
+    this.say(feeling.face);
+    this.body.classList.add(`mood-${feeling.mood}`);
+    setTimeout(() => {
+      this.body.classList.remove(`mood-${feeling.mood}`);
+      this.hideBubble();
+    }, 2500);
+  }
+
   async play(event) {
     const d = this.duration;
     switch (event.type) {
@@ -142,6 +173,11 @@ export class Stage {
         this.body.classList.add("bump");
         await wait(650);
         this.body.classList.remove("bump");
+        break;
+      case "sense":
+        this.body.classList.add("sense");
+        await wait(d * 0.8);
+        this.body.classList.remove("sense");
         break;
       default:
         await wait(d / 2);

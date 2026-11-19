@@ -1,0 +1,68 @@
+{
+  "id": "m03-l08",
+  "title": "Counted only once",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "update",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "3"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "starter": "count = 0\nfor i in range(3):\n    step(1)\n    grab()\ncount += 1\nsay(count)\n",
+  "hints": [
+    "Run it: the monkey grabs 3 bananas but says 1. Where is count += 1?",
+    "Move count += 1 into the loop, under grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Narátal len raz",
+      "hints": [
+        "Spusti to: opička chytí 3 banány, ale povie 1. Kde je count += 1?",
+        "Presuň count += 1 do cyklu, pod grab()."
+      ]
+    }
+  }
+}

@@ -41,5 +41,14 @@
     "Loops work in every direction.",
     "repeat 3 times: step 1, grab."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Dole stĺpcom",
+      "hints": [
+        "Cykly fungujú v každom smere.",
+        "opakuj 3-krát: krok 1, chyť."
+      ]
+    }
+  }
 }

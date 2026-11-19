@@ -1,0 +1,71 @@
+{
+  "id": "m04-l03",
+  "title": "Number to text",
+  "module": "text",
+  "concepts": [
+    "text",
+    "type",
+    "variable"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "3 bananas"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "A number and a text can't be glued with +. str(3) turns 3 into the text \"3\".",
+    "say(str(count) + \" bananas\")"
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Z čísla text",
+      "hints": [
+        "Číslo a text sa nedajú zlepiť cez +. str(3) urobí z čísla 3 text \"3\".",
+        "say(str(count) + \" bananas\")"
+      ]
+    }
+  }
+}

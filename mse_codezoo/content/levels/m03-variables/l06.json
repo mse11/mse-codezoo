@@ -1,0 +1,69 @@
+{
+  "id": "m03-l06",
+  "title": "How far?",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "update"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "......"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "reach",
+        "at": [
+          5,
+          0
+        ]
+      },
+      {
+        "type": "say",
+        "text": "5"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "hints": [
+    "Walk one square at a time and count the squares in a variable.",
+    "walked = 0; in the loop step(1) and walked += 1; at the end say(walked)."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Ako ďaleko?",
+      "hints": [
+        "Kráčaj po jednom políčku a počítaj ich v premennej.",
+        "walked = 0; v cykle step(1) a walked += 1; na konci say(walked)."
+      ]
+    }
+  }
+}

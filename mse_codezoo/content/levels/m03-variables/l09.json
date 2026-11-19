@@ -1,0 +1,58 @@
+{
+  "id": "m03-l09",
+  "title": "Almost the same name",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "Assign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "starter": "steps = 3\nstep(step)\ngrab()\n",
+  "hints": [
+    "Read the message: step needs a number, but it got something else.",
+    "The variable is called steps, with an s at the end."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Skoro rovnaké meno",
+      "hints": [
+        "Prečítaj si správu: step potrebuje číslo, ale dostal niečo iné.",
+        "Premenná sa volá steps, s písmenom s na konci."
+      ]
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "m05-l01",
+  "title": "Look before you grab",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "sensor"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "reach",
+        "at": [
+          1,
+          0
+        ]
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "This level has two worlds. Try both with the buttons above the stage.",
+    "step(1), then if item_here(): grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Najprv sa pozri",
+      "hints": [
+        "Tento level má dva svety. Vyskúšaj oba tlačidlami nad scénou.",
+        "step(1) a potom if item_here(): grab()."
+      ]
+    }
+  }
+}

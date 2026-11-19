@@ -36,5 +36,14 @@
     "Run it and watch which way the monkey turns.",
     "Down is to the monkey's right."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Zlé otočenie",
+      "hints": [
+        "Spusti to a sleduj, kam sa opička otočí.",
+        "Dole je po opičkinej pravej ruke."
+      ]
+    }
+  }
 }

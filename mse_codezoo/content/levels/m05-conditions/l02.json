@@ -1,0 +1,96 @@
+{
+  "id": "m05-l02",
+  "title": "Ripe or rotten",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "compare",
+    "sensor"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".R"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "all",
+        "goals": [
+          {
+            "type": "reach",
+            "at": [
+              1,
+              0
+            ]
+          },
+          {
+            "type": "avoid",
+            "item": "R"
+          }
+        ]
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "If",
+      "Compare"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "item_here() tells you what is on the square: \"banana\" or \"rotten\".",
+    "if item_here() == \"banana\": grab(). Two = signs compare."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Zrelý alebo zhnitý",
+      "hints": [
+        "item_here() povie, čo leží na políčku: \"banana\" alebo \"rotten\".",
+        "if item_here() == \"banana\": grab(). Dve = porovnávajú."
+      ]
+    }
+  }
+}

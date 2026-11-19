@@ -224,3 +224,4 @@ __marimo__/
 
 # Claude Code preview config (local only)
 .claude/launch.json
+node_modules/

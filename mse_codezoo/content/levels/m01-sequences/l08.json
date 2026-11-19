@@ -34,5 +34,14 @@
     "The banana is behind the monkey.",
     "Two left turns face the other way."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Otoč sa",
+      "hints": [
+        "Banán je za opičkou.",
+        "Dve otočenia doľava ju otočia opačne."
+      ]
+    }
+  }
 }

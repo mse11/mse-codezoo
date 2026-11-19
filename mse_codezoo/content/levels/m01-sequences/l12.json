@@ -35,5 +35,14 @@
     "Three bananas and a rock. Plan the path on the grid first.",
     "Grab the first banana, go under the rock, then up to the last one."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Cesta džungľou (boss)",
+      "hints": [
+        "Tri banány a skala. Najprv si cestu naplánuj na mriežke.",
+        "Chyť prvý banán, prejdi popod skalu a potom hore k poslednému."
+      ]
+    }
+  }
 }

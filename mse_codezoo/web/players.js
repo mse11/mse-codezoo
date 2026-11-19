@@ -2,12 +2,16 @@
 // Everything is stored by the local server in the user's data folder; nothing leaves the device.
 
 import { api } from "./api.js";
+import { concept, lang, t } from "./i18n.js";
 
 export const FACES = {
   monkey: "🐒", penguin: "🐧", beaver: "🦫", fox: "🦊", octopus: "🐙", bee: "🐝", turtle: "🐢", owl: "🦉",
 };
 
-const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const NUMBER_WORDS = {
+  en: ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"],
+  sk: ["nula", "jeden", "dva", "tri", "štyri", "päť", "šesť", "sedem", "osem", "deväť"],
+};
 
 const AT_HOME = {
   bump: "Play “robot” on the floor: one of you gives step and turn commands, the other walks them.",
@@ -16,6 +20,8 @@ const AT_HOME = {
   not_finished: "Before pressing Run, ask: where will the animal stop?",
   too_long: "Ask: can we do the same with fewer blocks?",
   missing_concept: "Ask: which blocks repeat? Could a loop do that for us?",
+  endless_loop: "Play “Simon says, but only if”: act only when a rule is true, like “jump if I hold up a banana”.",
+  type_mixup: "Sort objects at home into boxes and label them: is this a number, a word, or yes/no?",
 };
 
 const PLAYER_KEY = "codezoo.player";
@@ -49,7 +55,7 @@ function el(tag, attrs = {}, ...children) {
 }
 
 const $ = (id) => document.getElementById(id);
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const plural = (n, word) => `${n} ${t(n === 1 ? word : `${word}s`)}`;
 
 export class Players {
   constructor({ onChoose, onSettingsChanged }) {
@@ -111,8 +117,14 @@ export class Players {
     this.current = profile;
     this.guest = !profile;
     remember(profile?.id);
-    $("player").textContent = profile ? `${FACES[profile.picture] || "🐾"} ${profile.name}` : "🐾 Guest";
+    this.relabel();
     this.onChoose(profile);
+  }
+
+  relabel() {
+    const profile = this.current;
+    if (profile) $("player").textContent = `${FACES[profile.picture] || "🐾"} ${profile.name}`;
+    else $("player").textContent = `🐾 ${t(this.guest ? "Guest" : "Who's playing?")}`;
   }
 
   async choose() {
@@ -131,8 +143,8 @@ export class Players {
         "button",
         { type: "button", class: "picture-tile", onclick: () => { this.playerDialog.close(); this.select(null); } },
         el("span", { class: "face", "aria-hidden": "true" }, "👀"),
-        el("span", { class: "name" }, "Just try it"),
-        el("span", { class: "stars" }, "nothing is saved"),
+        el("span", { class: "name" }, t("Just try it")),
+        el("span", { class: "stars" }, t("nothing is saved")),
       ),
     );
     $("player-list").replaceChildren(...tiles);
@@ -178,7 +190,8 @@ export class Players {
     const a = 3 + Math.floor(Math.random() * 7);
     const b = 3 + Math.floor(Math.random() * 7);
     this.answer = a * b;
-    $("gate-question").textContent = `What is ${NUMBER_WORDS[a]} times ${NUMBER_WORDS[b]}?`;
+    const words = NUMBER_WORDS[lang()] || NUMBER_WORDS.en;
+    $("gate-question").textContent = t("What is {a} times {b}?", { a: words[a], b: words[b] });
     $("gate-answer").value = "";
     $("gate-pin").value = "";
     $("gate-pin-row").hidden = !this.hasPin;
@@ -196,7 +209,7 @@ export class Players {
 
   async openGate() {
     if (Number($("gate-answer").value.trim()) !== this.answer) {
-      $("gate-error").textContent = "Not quite. This part is for grown-ups.";
+      $("gate-error").textContent = t("Not quite. This part is for grown-ups.");
       return;
     }
     const pin = this.hasPin ? $("gate-pin").value : null;
@@ -215,7 +228,7 @@ export class Players {
   renderSettings(settings) {
     $("limit").value = settings.dailyMinutes ? String(settings.dailyMinutes) : "";
     if (settings.dailyMinutes && !$("limit").value) {
-      $("limit").append(el("option", { value: String(settings.dailyMinutes) }, `${settings.dailyMinutes} minutes`));
+      $("limit").append(el("option", { value: String(settings.dailyMinutes) }, t("{n} minutes", { n: settings.dailyMinutes })));
       $("limit").value = String(settings.dailyMinutes);
     }
     $("private-mode").checked = settings.privateMode;
@@ -239,7 +252,7 @@ export class Players {
       if (newPin) this.pin = newPin;
       if (body.clearPin) this.pin = null;
       this.renderSettings(settings);
-      $("settings-msg").textContent = "Saved.";
+      $("settings-msg").textContent = t("Saved.");
     } catch (error) {
       $("settings-msg").textContent = "";
       $("settings-msg").append(el("span", { class: "error" }, error.message));
@@ -249,7 +262,7 @@ export class Players {
   async renderReports() {
     const data = await api.profiles();
     if (!data.profiles.length) {
-      $("reports").replaceChildren(el("p", {}, "No players yet."));
+      $("reports").replaceChildren(el("p", {}, t("No players yet.")));
       return;
     }
     const cards = [];
@@ -265,9 +278,9 @@ export class Players {
       el(
         "tr",
         {},
-        el("td", {}, row.concept),
-        el("td", { class: `status-${row.status.replace(" ", "-")}` }, row.status),
-        el("td", {}, `${row.solved} of ${row.levels} levels`),
+        el("td", {}, concept(row.concept)),
+        el("td", { class: `status-${row.status.replace(" ", "-")}` }, t(row.status)),
+        el("td", {}, t("{solved} of {levels} levels", row)),
       ),
     );
     const top = report.mistakes[0];
@@ -275,18 +288,22 @@ export class Players {
       "div",
       { class: "report" },
       el("h4", {}, `${FACES[profile.picture] || "🐾"} ${profile.name}`),
-      el("p", {}, `${plural(report.levelsSolved, "level")} solved · ${plural(report.stars, "star")} · ${plural(report.minutesThisWeek, "minute")} in the last 7 days`),
-      el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "Idea"), el("th", {}, "Status"), el("th", {}, "Progress"))), el("tbody", {}, ...rows)),
+      el("p", {}, t("{levels} solved · {stars} · {minutes} in the last 7 days", {
+        levels: plural(report.levelsSolved, "level"),
+        stars: plural(report.stars, "star"),
+        minutes: plural(report.minutesThisWeek, "minute"),
+      })),
+      el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, t("Idea")), el("th", {}, t("Status")), el("th", {}, t("Progress")))), el("tbody", {}, ...rows)),
       report.mistakes.length
-        ? el("p", {}, `Often: ${report.mistakes.map((m) => m.text).join("; ")}.`)
+        ? el("p", {}, t("Often: {list}.", { list: report.mistakes.map((m) => m.text).join("; ") }))
         : null,
-      top && AT_HOME[top.kind] ? el("p", {}, `Try at home: ${AT_HOME[top.kind]}`) : null,
+      top && AT_HOME[top.kind] ? el("p", {}, t("Try at home: {tip}", { tip: t(AT_HOME[top.kind]) })) : null,
     );
     const actions = el(
       "div",
       { class: "actions" },
-      el("button", { type: "button", onclick: () => this.exportPlayer(profile) }, "Save progress to a file"),
-      el("button", { type: "button", onclick: () => this.removePlayer(profile) }, "Remove player"),
+      el("button", { type: "button", onclick: () => this.exportPlayer(profile) }, t("Save progress to a file")),
+      el("button", { type: "button", onclick: () => this.removePlayer(profile) }, t("Remove player")),
     );
     card.append(actions);
     return card;
@@ -303,7 +320,7 @@ export class Players {
   }
 
   async removePlayer(profile) {
-    if (!window.confirm(`Remove ${profile.name} and all their progress? This can't be undone.`)) return;
+    if (!window.confirm(t("Remove {name} and all their progress? This can't be undone.", profile))) return;
     await api.parent("remove", { pin: this.pin, profile: profile.id });
     if (this.current?.id === profile.id) {
       this.current = null;
@@ -314,7 +331,9 @@ export class Players {
 
   // --- goodbye ------------------------------------------------------------------------
 
-  showGoodbye() {
+  showGoodbye(pack) {
+    const animal = pack?.animalName || "monkey";
+    $("goodbye-text").textContent = t("The {animal} is tired and going to sleep. Great work today — see you tomorrow!", { animal });
     if (!this.goodbyeDialog.open) this.goodbyeDialog.showModal();
   }
 }

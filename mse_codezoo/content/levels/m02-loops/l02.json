@@ -38,5 +38,14 @@
     "Nine bananas: the same two blocks nine times.",
     "repeat 9 times: step 1, grab."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Dlhý rad",
+      "hints": [
+        "Deväť banánov: tie isté dva bloky deväťkrát.",
+        "opakuj 9-krát: krok 1, chyť."
+      ]
+    }
+  }
 }

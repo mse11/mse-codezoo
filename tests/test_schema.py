@@ -22,7 +22,13 @@ SOURCES = [
     "for i in range(5):\n    step(1)\n    grab()\n",
     "for i in range(2):\n    pass\n",
     "say('hi')\nx = None\ny = True\nz = 2.5\n",
-    "while True:\n    turn_left()\n",  # RawCode
+    "def spin():\n    turn_left()\n",  # RawCode
+    (
+        "if is_blocked():\n    turn_left()\nelif item_here() == 'banana' and not x:\n"
+        "    grab()\nelse:\n    step()\n"
+    ),
+    "while n < 3 or -n ** 2 >= 1:\n    n += 1\n",
+    "say(f'{n!r:>3} bananas')\nprint(name.upper()[1:3], name[0], end='')\ny = 'a' if n else 'b'\n",
     "",
 ]
 
@@ -53,12 +59,28 @@ def test_every_node_type_has_a_definition():
     assert set(ir.NODE_TYPES) <= set(defs)
     expr_members = {ref["$ref"].rsplit("/", 1)[1] for ref in defs["Expr"]["oneOf"]}
     stmt_members = {ref["$ref"].rsplit("/", 1)[1] for ref in defs["Stmt"]["oneOf"]}
-    assert expr_members == {"Const", "Name", "Call", "BinOp", "UnaryOp"}
+    assert expr_members == {
+        "Const",
+        "Name",
+        "Call",
+        "MethodCall",
+        "BinOp",
+        "UnaryOp",
+        "Compare",
+        "BoolOp",
+        "IfExp",
+        "FormattedValue",
+        "FString",
+        "Slice",
+        "Subscript",
+    }
     assert stmt_members == {
         "ExprStmt",
         "Assign",
         "AugAssign",
         "For",
+        "If",
+        "While",
         "Pass",
         "Comment",
         "RawCode",
@@ -136,4 +158,4 @@ def test_schema_command_writes_a_file(tmp_path):
     target = tmp_path / "ir.schema.json"
     result = CliRunner().invoke(main, ["schema", "-o", str(target)])
     assert result.exit_code == 0, result.output
-    assert json.loads(target.read_text(encoding="utf-8"))["$id"] == "urn:mse-codezoo:ir:v1"
+    assert json.loads(target.read_text(encoding="utf-8"))["$id"] == "urn:mse-codezoo:ir:v2"

@@ -1,0 +1,90 @@
+{
+  "id": "m05-l07",
+  "title": "Careful steps",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "not",
+    "sensor"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B#."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".B#..."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    },
+    {
+      "tiles": [
+        ".....B"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 4,
+    "mustUse": [
+      "If",
+      "UnaryOp"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "Step only when the way is free. The banana is always right before the stop.",
+    "repeat 6 times: if not is_blocked(): step(1). After the loop, grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Opatrné kroky",
+      "hints": [
+        "Kroč len vtedy, keď je cesta voľná. Banán je vždy tesne pred zastávkou.",
+        "6-krát: if not is_blocked(): step(1). Za cyklom grab()."
+      ]
+    }
+  }
+}

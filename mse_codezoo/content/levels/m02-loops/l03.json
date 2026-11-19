@@ -38,5 +38,14 @@
     "The bananas are two squares apart.",
     "repeat 4 times: step 2, grab."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Každý druhý",
+      "hints": [
+        "Banány sú dve políčka od seba.",
+        "opakuj 4-krát: krok 2, chyť."
+      ]
+    }
+  }
 }

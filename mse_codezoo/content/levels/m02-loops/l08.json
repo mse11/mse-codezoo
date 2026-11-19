@@ -41,5 +41,14 @@
     "Each stair is: right one, down one, grab.",
     "Put one stair inside a loop of 3."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Banánové schody",
+      "hints": [
+        "Každý schod je: doprava jedno, dole jedno, chyť.",
+        "Jeden schod daj do cyklu, ktorý sa zopakuje 3-krát."
+      ]
+    }
+  }
 }

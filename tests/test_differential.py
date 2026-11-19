@@ -24,6 +24,46 @@ PROGRAMS = {
     "loop_var_after": "for i in range(3):\n    pass\nprint(i)\n",
     "comments": "# a note\nx = 1  # inline\nprint(x)\n",
     "empty_print": "print()\nprint('')\n",
+    "if_elif_else": (
+        "for n in range(-2, 5):\n    if n < 0:\n        print(n, 'neg')\n"
+        "    elif n == 0:\n        print('zero')\n    elif n % 2 == 0:\n        print(n, 'even')\n"
+        "    else:\n        print(n, 'odd')\n"
+    ),
+    "while": "n = 1\nwhile n < 100:\n    n = n * 3\nprint(n)\n",
+    "while_false": "while False:\n    print('never')\nprint('done')\n",
+    "compare_chain": (
+        "x = 2\nprint(1 < x < 3, 1 < x > 5, x == 2.0, 'a' < 'b', x != 2, 3 >= x >= 2)\n"
+    ),
+    "bool_ops": "print(0 or 'x', '' and 1, 3 and 4, not 0, not 'a', None or 0, 1 or 1 / 0)\n",
+    "truthiness": "for v in range(3):\n    print(v if v else 'zero', 'yes' if '' else 'no')\n",
+    "is_none": "x = None\nprint(x is None, x is not None, 5 is not None, x == None)\n",
+    "in_text": "print('an' in 'banana', 'x' not in 'banana', 3 in range(5))\n",
+    "powers": "print(2 ** 10, 2 ** -1, -2 ** 2, (-2) ** 2, 2 ** 3 ** 2, 2.5 ** 2, 0 ** 0)\n",
+    "fstrings": (
+        "name = 'Momo'\nn = 3\nprint(f'{name} has {n} bananas', f'{n * 2.5:.1f}', f'{name!r}',"
+        " f'{n:>4}|', f'{name:<6}|', f'{{x}}', f'{n:03d}', f'{0.5:.0%}')\n"
+    ),
+    "string_methods": (
+        "s = '  Hello Jungle  '\nprint(s.strip(), s.upper(), s.lower(), s.strip().title(),"
+        " s.count('l'), s.find('J'), s.replace('l', 'L'), s.strip().startswith('He'),"
+        " 'abc'.endswith('c'), '42'.isdigit(), 'ab'.isalpha(), 'x'.center(5, '*'),"
+        " '7'.zfill(3), 'ab'.capitalize(), 'aB'.swapcase(), (2.0).is_integer())\n"
+    ),
+    "format_method": (
+        "print('{} and {}'.format('a', 2), '{1}{0}'.format('x', 'y'), '{:>3}'.format(7))\n"
+    ),
+    "indexing": (
+        "s = 'banana'\nprint(s[0], s[-1], s[1:4], s[:2], s[3:], s[::2], s[::-1], s[10:], len(s))\n"
+        "for i in range(len(s)):\n    print(s[i], end='')\nprint()\n"
+    ),
+    "type_and_conversion": (
+        "print(type(5), type(2.5), type('a'), type(True), type(None), type(5) == int,"
+        " int('7') + 1, float(3), str(4) + '!', int(3.9), round(2.5), bool(''))\n"
+    ),
+    "print_keywords": (
+        "print(1, 2, 3, sep=', ')\nprint('a', end='')\nprint('b')\nprint('x', 'y', sep='')\n"
+        "print('no newline at the end', end='')\n"
+    ),
 }
 
 ERRORS = {
@@ -31,6 +71,11 @@ ERRORS = {
     "type_mix": "print('a' + 1)\n",
     "undefined": "print(banana)\n",
     "bad_int": "print(int('x'))\n",
+    "compare_types": "print('a' < 1)\n",
+    "index_out_of_range": "print('abc'[5])\n",
+    "index_with_text": "print('abc'['a'])\n",
+    "unknown_method": "print('abc'.shout())\n",
+    "zero_in_power": "print(0 ** -1)\n",
 }
 
 

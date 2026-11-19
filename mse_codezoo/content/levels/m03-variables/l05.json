@@ -1,0 +1,63 @@
+{
+  "id": "m03-l05",
+  "title": "Spiral",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "update",
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B....",
+      ".....",
+      "...B.",
+      ".....",
+      "B..B."
+    ],
+    "start": [
+      2,
+      2,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "For",
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "hints": [
+    "Walk 1, turn right, walk 2, turn right, walk 3... grab at every corner.",
+    "n = 1; repeat 4 times: step(n), grab(), turn_right(), n += 1."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Špirála",
+      "hints": [
+        "Choď 1, otoč sa doprava, choď 2, otoč sa, choď 3... a v každom rohu chyť banán.",
+        "n = 1; 4-krát: step(n), grab(), turn_right(), n += 1."
+      ]
+    }
+  }
+}

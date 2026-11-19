@@ -1,0 +1,61 @@
+{
+  "id": "m04-l06",
+  "title": "Nickname",
+  "module": "text",
+  "concepts": [
+    "text",
+    "index"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "Mom"
+  },
+  "constraints": {
+    "maxLines": 2,
+    "mustUse": [
+      "Subscript"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "Letters are numbered from 0: in \"Momoko\", M is 0, o is 1, m is 2.",
+    "name[:3] takes the letters 0, 1 and 2: say(name[:3])."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Prezývka",
+      "hints": [
+        "Písmená sa číslujú od 0: v \"Momoko\" je M 0, o je 1, m je 2.",
+        "name[:3] vezme písmená 0, 1 a 2: say(name[:3])."
+      ]
+    }
+  }
+}

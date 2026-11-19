@@ -1,0 +1,61 @@
+{
+  "id": "m04-l05",
+  "title": "Shout it",
+  "module": "text",
+  "concepts": [
+    "text",
+    "method"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "YUM"
+  },
+  "constraints": {
+    "maxLines": 2,
+    "mustUse": [
+      "MethodCall"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "Text has its own commands after a dot: word.upper() gives big letters.",
+    "word = \"yum\", then say(word.upper())."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Zakrič to",
+      "hints": [
+        "Text má vlastné príkazy za bodkou: word.upper() dá veľké písmená.",
+        "word = \"yum\" a potom say(word.upper())."
+      ]
+    }
+  }
+}

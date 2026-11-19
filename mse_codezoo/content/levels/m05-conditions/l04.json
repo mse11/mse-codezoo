@@ -1,0 +1,84 @@
+{
+  "id": "m05-l04",
+  "title": "Rock ahead?",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "else",
+    "sensor"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".#.",
+      "..."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      2,
+      0
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        "...",
+        ".#."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 9,
+    "mustUse": [
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "In one world the rock is in front, in the other it is below. is_blocked() tells you.",
+    "if is_blocked(): go round underneath. else: just step(2)."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Je vpredu skala?",
+      "hints": [
+        "V jednom svete je skala vpredu, v druhom dole. is_blocked() ti to povie.",
+        "if is_blocked(): obíď ju zdola. else: len step(2)."
+      ]
+    }
+  }
+}

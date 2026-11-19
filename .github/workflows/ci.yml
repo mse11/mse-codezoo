@@ -22,3 +22,17 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run pytest
       - run: uv run codezoo levels validate --all
+
+  pyodide:
+    # The engine must stay standard-library only so the phase 4 offline build can load it
+    # in the browser: build the wheel, import it in Pyodide and solve every level there.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: uv build --wheel
+      - run: npm install --no-save pyodide@0.29.5
+      - run: node scripts/pyodide_smoke.mjs dist/

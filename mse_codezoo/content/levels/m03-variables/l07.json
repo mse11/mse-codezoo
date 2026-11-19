@@ -1,0 +1,58 @@
+{
+  "id": "m03-l07",
+  "title": "Double jump",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "update",
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B.B...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "hints": [
+    "Every jump is twice as long as the one before: 1, 2, 4.",
+    "size = 1; in the loop step(size), grab(), then size = size * 2."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Dvojitý skok",
+      "hints": [
+        "Každý skok je dvakrát dlhší ako predchádzajúci: 1, 2, 4.",
+        "size = 1; v cykle step(size), grab() a potom size = size * 2."
+      ]
+    }
+  }
+}

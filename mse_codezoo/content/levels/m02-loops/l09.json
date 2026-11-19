@@ -40,5 +40,14 @@
     "Run it: the monkey bumps into the edge.",
     "The loop runs one time too many."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Krokov priveľa",
+      "hints": [
+        "Spusti to: opička narazí na okraj.",
+        "Cyklus sa zopakuje o raz viac, ako treba."
+      ]
+    }
+  }
 }

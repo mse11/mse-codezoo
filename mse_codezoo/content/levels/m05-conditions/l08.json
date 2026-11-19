@@ -1,0 +1,110 @@
+{
+  "id": "m05-l08",
+  "title": "Fruit talk",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "elif",
+    "else",
+    "compare"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BC."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "yum",
+      "crack",
+      "hmm"
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".C.B"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "texts": [
+          "crack",
+          "hmm",
+          "yum"
+        ]
+      }
+    },
+    {
+      "tiles": [
+        "..BB"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "texts": [
+          "hmm",
+          "yum",
+          "yum"
+        ]
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 8,
+    "mustUse": [
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "On a banana say \"yum\", on a coconut \"crack\", on an empty square \"hmm\".",
+    "if ... elif item_here() == \"coconut\": ... else: say(\"hmm\")"
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Ovocná reč",
+      "hints": [
+        "Na banáne povedz \"yum\", na kokose \"crack\", na prázdnom políčku \"hmm\".",
+        "if ... elif item_here() == \"coconut\": ... else: say(\"hmm\")"
+      ]
+    }
+  }
+}

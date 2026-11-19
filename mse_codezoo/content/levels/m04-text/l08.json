@@ -1,0 +1,60 @@
+{
+  "id": "m04-l08",
+  "title": "Banana song",
+  "module": "text",
+  "concepts": [
+    "text"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "banana"
+  },
+  "constraints": {
+    "maxLines": 1,
+    "mustUse": [
+      "BinOp"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "\"na\" * 2 is \"nana\": * repeats text.",
+    "say(\"ba\" + \"na\" * 2)"
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Banánová pieseň",
+      "hints": [
+        "\"na\" * 2 je \"nana\": * text zopakuje.",
+        "say(\"ba\" + \"na\" * 2)"
+      ]
+    }
+  }
+}

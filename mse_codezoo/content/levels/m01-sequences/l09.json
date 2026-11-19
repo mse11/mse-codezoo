@@ -36,5 +36,14 @@
     "Down one, right one, down one, right one.",
     "When facing down, turn_left() makes the monkey face right."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Schody",
+      "hints": [
+        "Dole jedno, doprava jedno, dole jedno, doprava jedno.",
+        "Keď sa pozerá dole, turn_left() ju otočí doprava."
+      ]
+    }
+  }
 }

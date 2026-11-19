@@ -1,0 +1,59 @@
+{
+  "id": "m03-l04",
+  "title": "Countdown",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "update",
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "....B..B.BB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "For",
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "hints": [
+    "This time the gaps shrink: 4, 3, 2, 1.",
+    "Start with gap = 4 and use gap -= 1 to make it smaller."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Odpočítavanie",
+      "hints": [
+        "Teraz sa medzery zmenšujú: 4, 3, 2, 1.",
+        "Začni s gap = 4 a zmenšuj ju cez gap -= 1."
+      ]
+    }
+  }
+}

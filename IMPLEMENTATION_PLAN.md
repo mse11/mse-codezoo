@@ -531,6 +531,25 @@ Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), t
 - [ ] Playtest with 5–8 children aged 8–12; record the Blockly and Cub mode decisions
 - [ ] Device testing: laptop, Android tablet, iPad
 
+**Phase 2 steps (weeks 9–14)**
+
+- [x] Interpreter: `if` / `elif` / `else`, `while`, comparisons (chained, `is`, `in`), `and` / `or` / `not`, `x if c else y`, `**`; text: f-strings with `!r` and format specs, indexing and slicing, a whitelist of text methods, `.format()` limited to `{}` and `{0}`, `print(sep=, end=)`, `type()`; size guards on powers, padding and format widths; IR version 2 with the new nodes, schema regenerated
+- [x] Python adapter: parse and print the new nodes (precedence, right-associative `**`, `elif` with its own source-map span, comments on `else:` kept, f-string quoting that 3.11 can read); round-trip and CPython differential tests for all of it
+- [x] World sensors `is_blocked()`, `item_here()`, `item_ahead()` (item names stay English in programs: `"banana"`), with `sense` events the stages animate; friendly error for `if is_blocked:` without brackets
+- [x] Goals `say` (one text or an exact sequence), `avoid`, `all`, and `collect_all` with `avoid`; levels can have several worlds (`variants`): the run shows one, and the level counts as solved only when the program solves every world
+- [x] Monkey modules 3–5: Variables (11 levels), Types and text (12), Conditions (11, most with 2–3 worlds), each with debugging levels whose starter must still need fixing; 57 levels in all, every reference solution earns 3 stars in every world
+- [x] Feelings: proud, happy, puzzled, oops, confused or dizzy after each run, with growth-mindset messages; debugging levels frame a bug as "help the puzzled monkey"; shown on both stages and in the terminal
+- [x] English and Slovak: engine messages through `t()` with `mse_codezoo/locale/sk.json` (tests require every message translated with the same placeholders), Slovak noun forms in the animal pack, level titles and hints per language, web interface and block labels in `web/i18n.js`, language menu, `?lang=` / `Accept-Language` on the server, `codezoo --lang sk`
+- [x] three.js r170 vendored (npm checksum verified, MIT licence kept): low-poly 3D stage built in code (monkey, rocks, bananas, coconuts, plants, goal flag), camera fitted to the board and window, `prefers-reduced-motion` respected; the 2D SVG stage stays as the low-detail option and the fallback without WebGL
+- [x] Blocks with value sockets: variables (set, change, get), numbers, text, maths, comparisons, `and` / `or`, `not`, sensors, `str()`, text methods, `if`, `if … else` (`elif` nests in `else`), `while`; plain values are shadow blocks; any other expression becomes a grey raw value block that keeps its IR
+- [x] `codezoo play`: terminal client with a coloured, animated grid, one program file per level, run / edit in `$EDITOR` / watch for saves / hints / worlds / level list, progress and daily limit per player; ASCII fallback on consoles that can't show ★
+- [x] Grown-up report: new mistake kinds (endless loops, mixing up types) with try-at-home tips; concept names and statuses translated
+- [x] CI job imports the engine wheel in Pyodide 0.29.5 (Python 3.13) and solves every level there (`scripts/pyodide_smoke.mjs`)
+- [ ] Cub mode for modules 1–2: waits for the phase 1 gate decision (no pilot yet), so not built
+- [ ] Slovak texts reviewed by a native speaker who teaches children; recorded narration (open point, does not block finishing phase 2)
+- [ ] Pilot against the MVP metrics; device and performance testing of the 3D stage on the cheapest target tablet and Chromebook
+- [ ] Decide free or paid, open or closed before the pilot (see [Future improvements](#3-free-or-paid-open-or-closed))
+
 ## Not yet covered
 
 Eleven topics still need a decision; none blocks phase 0, but each should be settled by the phase shown.

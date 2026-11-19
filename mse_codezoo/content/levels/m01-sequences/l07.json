@@ -35,5 +35,14 @@
     "Run it first and watch where the monkey stops.",
     "The banana is 4 squares away, not 3."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Oprav cestu",
+      "hints": [
+        "Najprv to spusti a sleduj, kde opička zastane.",
+        "Banán je 4 políčka ďaleko, nie 3."
+      ]
+    }
+  }
 }

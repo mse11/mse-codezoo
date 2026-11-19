@@ -37,5 +37,14 @@
     "The monkey is facing down this time.",
     "step(3), then grab()."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Dole po liane",
+      "hints": [
+        "Tentoraz sa opička pozerá dole.",
+        "step(3) a potom grab()."
+      ]
+    }
+  }
 }

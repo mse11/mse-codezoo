@@ -17,6 +17,9 @@ STARS = {
     "m01-l05.py": 3,
     "m02-l01.py": 3,
     "m02-l01-no-loop.py": 1,
+    "m03-l02.py": 3,
+    "m04-l04.py": 3,
+    "m05-l03.py": 3,
 }
 
 OOPS = {
@@ -24,7 +27,9 @@ OOPS = {
     "typo.py": ("m01-l01", "Did you mean `step`?"),
     "syntax.py": ("m01-l01", "Python can't read line"),
     "too-short.py": ("m01-l01", "1 banana still to collect."),
-    "while.py": ("m01-l01", "CodeZoo can't run `while` loops yet."),
+    "def.py": ("m01-l01", "CodeZoo can't run functions (`def`) yet."),
+    "no-brackets.py": ("m05-l01", "Add brackets to ask it: `is_blocked()`."),
+    "one-world.py": ("m05-l02", "It works here, but not in world 2"),
 }
 
 

@@ -1,0 +1,68 @@
+{
+  "id": "m03-l10",
+  "title": "Empty box",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "update",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "3"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "starter": "for i in range(3):\n    step(1)\n    grab()\n    total += 1\nsay(total)\n",
+  "hints": [
+    "total += 1 adds one to total, but total has no value yet.",
+    "Put total = 0 before the loop."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Prázdna škatuľka",
+      "hints": [
+        "total += 1 pridá k total jednotku, ale total ešte nemá hodnotu.",
+        "Pred cyklus daj total = 0."
+      ]
+    }
+  }
+}

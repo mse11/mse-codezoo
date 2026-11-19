@@ -1,0 +1,69 @@
+{
+  "id": "m04-l09",
+  "title": "Text plus number",
+  "module": "text",
+  "concepts": [
+    "type",
+    "fstring",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "I have 3 bananas"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 6
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "starter": "count = 0\nfor i in range(3):\n    step(1)\n    grab()\n    count += 1\nsay(\"I have \" + count + \" bananas\")\n",
+  "hints": [
+    "Read the message: + can't combine text and a whole number.",
+    "Use an f-string: f\"I have {count} bananas\", or str(count)."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Text plus číslo",
+      "hints": [
+        "Prečítaj si správu: + nevie spojiť text a celé číslo.",
+        "Použi f-reťazec: f\"I have {count} bananas\" alebo str(count)."
+      ]
+    }
+  }
+}

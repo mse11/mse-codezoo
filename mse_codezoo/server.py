@@ -8,8 +8,12 @@ API (all JSON):
     GET  /api/levels/<id>        one level, ready to draw
     POST /api/parse   {source}   -> {ok, diagnostics, program, positions}
     POST /api/print   {program}  -> {text, sourceMap}
-    POST /api/run     {level, source, animal?, profile?} -> run (as `codezoo run --json`);
-                      with a profile, the result is saved to that player's progress
+    POST /api/run     {level, source, animal?, variant?, profile?} -> run (as
+                      `codezoo run --json`); with a profile, the result is saved to that
+                      player's progress
+
+Every request may pick a language with ``?lang=sk`` (or ``"lang"`` in a POST body);
+otherwise the browser's ``Accept-Language`` decides. Titles, hints and messages follow it.
     GET  /api/profiles                 players, pictures, public grown-up settings
     POST /api/profiles {name, picture} -> new player
     GET  /api/profiles/<id>/progress   stars per level, today's minutes and limit
@@ -27,10 +31,11 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from mse_codezoo import __version__, ir
 from mse_codezoo.game import attempt_from_run, level_to_json, run_level, run_to_json
+from mse_codezoo.i18n import from_accept_language, normalize, use_lang
 from mse_codezoo.lang_python import parse, print_program
 from mse_codezoo.levels import Level, LevelError, find_level, level_files, load_level
 from mse_codezoo.profiles import PICTURES, PinError, ProfileError, ProfileStore
@@ -59,7 +64,13 @@ def list_levels() -> list[dict[str, Any]]:
         except LevelError:
             continue
         levels.append(
-            {"id": level.id, "title": level.title, "module": level.module, "animal": level.animal}
+            {
+                "id": level.id,
+                "title": level.shown_title,
+                "module": level.module,
+                "animal": level.animal,
+                "worlds": len(level.worlds()),
+            }
         )
     return levels
 
@@ -103,9 +114,12 @@ def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
     source = _text(body, "source")
     animal = body.get("animal")
     player = body.get("profile")
+    variant = body.get("variant", 0)
+    if isinstance(variant, bool) or not isinstance(variant, int):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "`variant` must be a whole number")
     try:
         level = find_level(_text(body, "level"))
-        run = run_level(level, source, animal=animal)
+        run = run_level(level, source, animal=animal, variant=variant)
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
     data = run_to_json(run)
@@ -211,7 +225,19 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- routing ---------------------------------------------------------------
 
+    def _lang(self, body: dict[str, Any] | None = None) -> str:
+        query = parse_qs(urlsplit(self.path).query).get("lang")
+        if query:
+            return normalize(query[0])
+        if body and isinstance(body.get("lang"), str):
+            return normalize(body["lang"])
+        return from_accept_language(self.headers.get("Accept-Language"))
+
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
+        with use_lang(self._lang()):
+            self._get()
+
+    def _get(self) -> None:
         path = urlsplit(self.path).path
         try:
             store = self.server.store  # type: ignore[attr-defined]
@@ -239,7 +265,9 @@ class Handler(BaseHTTPRequestHandler):
         store = self.server.store  # type: ignore[attr-defined]
         try:
             raw = self._read_body()  # always read first: replying early resets the connection
-            self._json(self._post(path, self._parse_body(raw), store))
+            body = self._parse_body(raw)
+            with use_lang(self._lang(body)):
+                self._json(self._post(path, body, store))
         except ApiError as exc:
             self._json({"error": exc.message}, exc.status)
         except PinError as exc:

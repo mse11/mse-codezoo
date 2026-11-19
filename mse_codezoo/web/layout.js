@@ -21,7 +21,9 @@ function save(sizes) {
 export function setupSplitters({ panes, stageSplit, paneSplit, onResize }) {
   const sizes = load();
   const apply = () => {
-    if (sizes.left) panes.style.setProperty("--left", `${sizes.left}px`);
+    // a width saved in a wider window must not make the page wider than this one
+    const room = document.documentElement.clientWidth - 32 - 12 - 220;
+    if (sizes.left) panes.style.setProperty("--left", `${Math.max(220, Math.min(sizes.left, room))}px`);
     else panes.style.removeProperty("--left");
     if (sizes.stage) panes.style.setProperty("--stage-h", `${sizes.stage}px`);
     else panes.style.removeProperty("--stage-h");
@@ -84,5 +86,6 @@ export function setupSplitters({ panes, stageSplit, paneSplit, onResize }) {
   paneSplit.addEventListener("dblclick", () => { delete sizes.left; apply(); save(sizes); });
   stageSplit.addEventListener("dblclick", () => { delete sizes.stage; apply(); save(sizes); });
 
+  window.addEventListener("resize", apply);
   apply();
 }

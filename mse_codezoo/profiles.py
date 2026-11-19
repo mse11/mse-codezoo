@@ -19,6 +19,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from mse_codezoo.i18n import t
+
 PICTURES = ("monkey", "penguin", "beaver", "fox", "octopus", "bee", "turtle", "owl")
 MAX_NAME = 24
 MAX_SECONDS_PER_TICK = 120
@@ -33,6 +35,15 @@ MISTAKE_KINDS = {
     "not_finished": "stops before the goal",
     "too_long": "solves it, but with extra lines",
     "missing_concept": "solves it without the new idea",
+    "endless_loop": "loops that never stop",
+    "type_mixup": "mixes up numbers, text and yes/no values",
+}
+ERROR_KINDS = {  # LearnerError.kind (or "syntax") -> mistake kind
+    "bump": "bump",
+    "unknown_name": "unknown_name",
+    "syntax": "syntax",
+    "too_many_steps": "endless_loop",
+    "type": "type_mixup",
 }
 
 
@@ -104,16 +115,18 @@ def _hash_pin(pin: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", pin.encode(), bytes.fromhex(salt), PBKDF2_ROUNDS).hex()
 
 
-def classify_mistakes(solved: bool, stars: list[tuple[bool, str]], error: str | None) -> list[str]:
-    """Turn a run's outcome into mistake kinds for the grown-up report."""
+def classify_mistakes(
+    solved: bool, stars: list[tuple[bool, str]], error_kind: str | None
+) -> list[str]:
+    """Turn a run's outcome into mistake kinds for the grown-up report.
+
+    ``error_kind`` is the run's ``LearnerError.kind``, or ``"syntax"`` when Python could
+    not read the program, or ``None`` when it ran to the end.
+    """
     kinds = []
-    if error:
-        if error.startswith("Bump!"):
-            kinds.append("bump")
-        elif error.startswith("I don't know"):
-            kinds.append("unknown_name")
-        elif error.startswith("Python can't read"):
-            kinds.append("syntax")
+    if error_kind:
+        if error_kind in ERROR_KINDS:
+            kinds.append(ERROR_KINDS[error_kind])
     elif not solved:
         kinds.append("not_finished")
     if solved and len(stars) >= 3:
@@ -136,7 +149,7 @@ class ProfileStore:
         except FileNotFoundError:
             return default
         except (OSError, json.JSONDecodeError) as exc:
-            raise ProfileError(f"Can't read {path.name}: {exc}") from None
+            raise ProfileError(t("Can't read {name}: {why}", name=path.name, why=exc)) from None
 
     def _write(self, path: Path, data: Any) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -154,7 +167,7 @@ class ProfileStore:
 
     def _progress_path(self, profile_id: str) -> Path:
         if not ID_PATTERN.match(profile_id):
-            raise ProfileError("That player doesn't exist.")
+            raise ProfileError(t("That player doesn't exist."))
         return self.root / "progress" / f"{profile_id}.json"
 
     # --- profiles --------------------------------------------------------------
@@ -169,14 +182,14 @@ class ProfileStore:
     def add(self, name: str, picture: str) -> Profile:
         name = " ".join(str(name).split())
         if not name:
-            raise ProfileError("Please type a name.")
+            raise ProfileError(t("Please type a name."))
         if len(name) > MAX_NAME:
-            raise ProfileError(f"Names can be at most {MAX_NAME} letters long.")
+            raise ProfileError(t("Names can be at most {count} letters long.", count=MAX_NAME))
         if picture not in PICTURES:
-            raise ProfileError(f"Pick one of these pictures: {', '.join(PICTURES)}.")
+            raise ProfileError(t("Pick one of these pictures: {names}.", names=", ".join(PICTURES)))
         profiles = self.profiles()
         if any(p.name.casefold() == name.casefold() for p in profiles):
-            raise ProfileError(f"There is already a player called {name}.")
+            raise ProfileError(t("There is already a player called {name}.", name=name))
         profile = Profile(f"p{secrets.token_hex(4)}", name, picture, today())
         self._save_profiles([*profiles, profile])
         return profile
@@ -186,7 +199,7 @@ class ProfileStore:
         for profile in self.profiles():
             if profile.id == ref or profile.name.casefold() == str(ref).casefold():
                 return profile
-        raise ProfileError(f"No player called {ref!r}.")
+        raise ProfileError(t("No player called {name}.", name=repr(ref)))
 
     def remove(self, ref: str) -> Profile:
         profile = self.find(ref)
@@ -259,7 +272,7 @@ class ProfileStore:
 
     def import_(self, data: dict[str, Any]) -> Profile:
         if not isinstance(data, dict) or data.get("format") != "codezoo-profile":
-            raise ProfileError("This is not a CodeZoo profile file.")
+            raise ProfileError(t("This is not a CodeZoo profile file."))
         info = data.get("profile") or {}
         progress = data.get("progress") or {}
         name = str(info.get("name", ""))
@@ -270,7 +283,7 @@ class ProfileStore:
         clean = {key: progress.get(key, {}) for key in ("levels", "mistakes", "time")}
         if not all(isinstance(value, dict) for value in clean.values()):
             self.remove(profile.id)
-            raise ProfileError("The progress in this file is damaged.")
+            raise ProfileError(t("The progress in this file is damaged."))
         self._save_progress(profile.id, clean)
         return profile
 
@@ -290,9 +303,9 @@ class ProfileStore:
         if not settings.has_pin:
             return
         if pin is None or settings.pin_salt is None or settings.pin_hash is None:
-            raise PinError("This needs the grown-up PIN.")
+            raise PinError(t("This needs the grown-up PIN."))
         if not hmac.compare_digest(_hash_pin(str(pin), settings.pin_salt), settings.pin_hash):
-            raise PinError("That PIN is not right.")
+            raise PinError(t("That PIN is not right."))
 
     def update_parent(
         self,
@@ -312,7 +325,7 @@ class ProfileStore:
                 or not isinstance(daily_minutes, int)
                 or not 1 <= daily_minutes <= 600
             ):
-                raise ProfileError("The daily limit must be between 1 and 600 minutes, or none.")
+                raise ProfileError(t("The daily limit must be between 1 and 600 minutes, or none."))
             settings.daily_minutes = daily_minutes
         if private_mode is not None:
             settings.private_mode = bool(private_mode)
@@ -320,7 +333,7 @@ class ProfileStore:
             settings.pin_salt = settings.pin_hash = None
         if new_pin is not None:
             if not PIN_PATTERN.match(str(new_pin)):
-                raise ProfileError("A PIN is 4 to 8 digits.")
+                raise ProfileError(t("A PIN is 4 to 8 digits."))
             settings.pin_salt = secrets.token_hex(16)
             settings.pin_hash = _hash_pin(str(new_pin), settings.pin_salt)
         self._write(self._parent_path, asdict(settings))
@@ -359,7 +372,7 @@ class ProfileStore:
             "profile": asdict(profile),
             "concepts": rows,
             "mistakes": [
-                {"kind": k, "text": MISTAKE_KINDS.get(k, k), "count": n} for k, n in mistakes[:3]
+                {"kind": k, "text": t(MISTAKE_KINDS.get(k, k)), "count": n} for k, n in mistakes[:3]
             ],
             "levelsSolved": sum(1 for e in data["levels"].values() if e.get("solved")),
             "stars": sum(e.get("stars", 0) for e in data["levels"].values()),

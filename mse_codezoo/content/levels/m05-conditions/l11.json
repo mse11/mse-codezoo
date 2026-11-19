@@ -1,0 +1,151 @@
+{
+  "id": "m05-l11",
+  "title": "Jungle sorter (boss)",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "elif",
+    "compare",
+    "variable",
+    "fstring"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BCRBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "collect_all",
+        "item": "C"
+      },
+      {
+        "type": "avoid",
+        "item": "R"
+      },
+      {
+        "type": "say",
+        "text": "3 bananas"
+      }
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".CBRCB"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "all",
+        "goals": [
+          {
+            "type": "collect_all",
+            "item": "B"
+          },
+          {
+            "type": "collect_all",
+            "item": "C"
+          },
+          {
+            "type": "avoid",
+            "item": "R"
+          },
+          {
+            "type": "say",
+            "text": "2 bananas"
+          }
+        ]
+      }
+    },
+    {
+      "tiles": [
+        ".BBBBC"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "all",
+        "goals": [
+          {
+            "type": "collect_all",
+            "item": "B"
+          },
+          {
+            "type": "collect_all",
+            "item": "C"
+          },
+          {
+            "type": "avoid",
+            "item": "R"
+          },
+          {
+            "type": "say",
+            "text": "4 bananas"
+          }
+        ]
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 10,
+    "mustUse": [
+      "If",
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "Grab bananas and coconuts, leave rotten ones, count only the bananas.",
+    "if banana: grab() and bananas += 1. elif coconut: grab(). At the end say(f\"{bananas} bananas\")."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Triedička v džungli (boss)",
+      "hints": [
+        "Chytaj banány a kokosy, zhnité nechaj tak, počítaj len banány.",
+        "if banán: grab() a bananas += 1. elif kokos: grab(). Na konci say(f\"{bananas} bananas\")."
+      ]
+    }
+  }
+}

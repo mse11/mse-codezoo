@@ -40,5 +40,14 @@
     "Eight bananas around the edge, and the monkey stands on one.",
     "One side: step, grab, step, grab, turn. Repeat it 4 times."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Banánový štvorec (boss)",
+      "hints": [
+        "Osem banánov po okraji a opička stojí na jednom.",
+        "Jedna strana: krok, chyť, krok, chyť, otoč sa. Zopakuj 4-krát."
+      ]
+    }
+  }
 }

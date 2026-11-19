@@ -81,6 +81,19 @@ def test_page_needs_no_internet():
     vendor = web / "vendor" / "blockly"
     assert (vendor / "LICENSE").read_text(encoding="utf-8").lstrip().startswith("Apache License")
     assert (vendor / "media" / "sprites.svg").is_file()
+    three = web / "vendor" / "three"
+    assert (three / "LICENSE").read_text(encoding="utf-8").startswith("The MIT License")
+    stage = (web / "stage3d.js").read_text(encoding="utf-8")
+    assert 'from "./vendor/three/three.module.min.js"' in stage
+    for script in web.glob("*.js"):  # no module is fetched from a CDN
+        assert not re.findall(r"""from ["']https?://""", script.read_text(encoding="utf-8"))
+
+
+def test_vendored_three_is_served_as_a_module(base_url):
+    status, headers, payload = request(base_url, "/vendor/three/three.module.min.js")
+    assert status == 200
+    assert headers["Content-Type"].startswith("text/javascript")
+    assert b'const t="170"' in payload[:400]
 
 
 @pytest.mark.parametrize(
@@ -94,7 +107,13 @@ def test_files_outside_the_web_folder_are_not_served(base_url, path):
 def test_levels_list(base_url):
     status, levels = get_json(base_url, "/api/levels")
     assert status == 200
-    first = {"id": "m01-l01", "title": "One banana", "module": "sequences", "animal": "monkey"}
+    first = {
+        "id": "m01-l01",
+        "title": "One banana",
+        "module": "sequences",
+        "animal": "monkey",
+        "worlds": 1,
+    }
     assert first in levels
 
 
@@ -115,7 +134,7 @@ def test_unknown_level_is_404(base_url):
 
 
 def test_parse(base_url):
-    status, data = get_json(base_url, "/api/parse", {"source": "step(1)\nwhile True:\n    pass\n"})
+    status, data = get_json(base_url, "/api/parse", {"source": "step(1)\ndef jump():\n    pass\n"})
     assert status == 200
     assert data["ok"] is True
     assert PROGRAM_SCHEMA.is_valid(data["program"])
@@ -288,3 +307,27 @@ def test_unknown_profile_progress_is_404_shaped(base_url):
     assert status == 404
     status, data = get_json(base_url, "/api/profiles/p00000000/progress")
     assert status == 400 and "No player" in data["error"]
+
+
+def test_language_from_query_and_body(base_url):
+    status, level = get_json(base_url, "/api/levels/m05-l02?lang=sk")
+    assert status == 200
+    assert level["title"] == "Zrelý alebo zhnitý"
+    assert level["pack"]["animalName"] == "opička"
+    status, data = get_json(
+        base_url, "/api/run", {"level": "m01-l03", "source": "step(5)\n", "lang": "sk"}
+    )
+    assert data["check"]["message"] == "Bum! Tu stojí skala, ďalej sa nedá."
+    _, english = get_json(base_url, "/api/levels/m05-l02")
+    assert english["title"] == "Ripe or rotten"
+
+
+def test_run_in_another_world(base_url):
+    body = {"level": "m05-l02", "source": "step(1)\ngrab()\n", "variant": 1}
+    status, data = get_json(base_url, "/api/run", body)
+    assert status == 200
+    assert data["variant"] == 1
+    assert data["world"]["collected"] == {"R": 1}
+    assert data["feeling"]["mood"] == "puzzled"
+    status, data = get_json(base_url, "/api/run", {**body, "variant": "2"})
+    assert status == 400

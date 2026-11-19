@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:mse-codezoo:ir:v1",
+  "$id": "urn:mse-codezoo:ir:v2",
   "title": "CodeZoo program (IR)",
-  "description": "IR version 1. Generated from mse_codezoo/ir.py by `codezoo schema`; do not edit by hand.",
+  "description": "IR version 2. Generated from mse_codezoo/ir.py by `codezoo schema`; do not edit by hand.",
   "$ref": "#/$defs/Program",
   "$defs": {
     "Expr": {
@@ -17,10 +17,34 @@
           "$ref": "#/$defs/Call"
         },
         {
+          "$ref": "#/$defs/MethodCall"
+        },
+        {
           "$ref": "#/$defs/BinOp"
         },
         {
           "$ref": "#/$defs/UnaryOp"
+        },
+        {
+          "$ref": "#/$defs/Compare"
+        },
+        {
+          "$ref": "#/$defs/BoolOp"
+        },
+        {
+          "$ref": "#/$defs/IfExp"
+        },
+        {
+          "$ref": "#/$defs/FormattedValue"
+        },
+        {
+          "$ref": "#/$defs/FString"
+        },
+        {
+          "$ref": "#/$defs/Slice"
+        },
+        {
+          "$ref": "#/$defs/Subscript"
         }
       ]
     },
@@ -37,6 +61,12 @@
         },
         {
           "$ref": "#/$defs/For"
+        },
+        {
+          "$ref": "#/$defs/If"
+        },
+        {
+          "$ref": "#/$defs/While"
         },
         {
           "$ref": "#/$defs/Pass"
@@ -114,12 +144,76 @@
           "items": {
             "$ref": "#/$defs/Expr"
           }
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Keyword"
+          }
         }
       },
       "required": [
         "type",
         "id",
         "func"
+      ],
+      "additionalProperties": false
+    },
+    "Keyword": {
+      "description": "A named argument, like ``end=\"\"`` in ``print(x, end=\"\")``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Keyword"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "name",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "MethodCall": {
+      "description": "A method on a value, like ``name.upper()``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "MethodCall"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "obj": {
+          "$ref": "#/$defs/Expr"
+        },
+        "method": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "obj",
+        "method"
       ],
       "additionalProperties": false
     },
@@ -174,6 +268,233 @@
         "id",
         "op",
         "operand"
+      ],
+      "additionalProperties": false
+    },
+    "Compare": {
+      "description": "``a < b``, also chained: ``1 < x < 3`` has two ops and two comparators.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Compare"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "left": {
+          "$ref": "#/$defs/Expr"
+        },
+        "ops": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "comparators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "left",
+        "ops",
+        "comparators"
+      ],
+      "additionalProperties": false
+    },
+    "BoolOp": {
+      "description": "``and`` / ``or`` over two or more values.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "BoolOp"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "op": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "op",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "IfExp": {
+      "description": "``body if test else orelse``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "IfExp"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test": {
+          "$ref": "#/$defs/Expr"
+        },
+        "body": {
+          "$ref": "#/$defs/Expr"
+        },
+        "orelse": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "test",
+        "body",
+        "orelse"
+      ],
+      "additionalProperties": false
+    },
+    "FormattedValue": {
+      "description": "One ``{value!r:>5}`` part of an f-string.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "FormattedValue"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        },
+        "conversion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "spec": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "FString": {
+      "description": "An f-string: text parts (``Const``) and ``FormattedValue`` parts.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "FString"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Slice": {
+      "description": "``lower:upper:step`` inside ``[...]``; any part may be missing.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Slice"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Subscript": {
+      "description": "Indexing or slicing: ``text[0]``, ``text[1:3]``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Subscript"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        },
+        "index": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value",
+        "index"
       ],
       "additionalProperties": false
     },
@@ -304,6 +625,79 @@
         "id",
         "target",
         "iter"
+      ],
+      "additionalProperties": false
+    },
+    "If": {
+      "description": "``if`` / ``else``. An ``elif`` is an ``If`` that is the only statement in ``orelse``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "If"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "test": {
+          "$ref": "#/$defs/Expr"
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        },
+        "orelse": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "test"
+      ],
+      "additionalProperties": false
+    },
+    "While": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "While"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "test": {
+          "$ref": "#/$defs/Expr"
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "test"
       ],
       "additionalProperties": false
     },

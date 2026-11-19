@@ -40,5 +40,14 @@
     "Run it: one banana is left over.",
     "Count the bananas and change the number in the loop."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Oprav cyklus",
+      "hints": [
+        "Spusti to: jeden banán zostane.",
+        "Spočítaj banány a zmeň číslo v cykle."
+      ]
+    }
+  }
 }

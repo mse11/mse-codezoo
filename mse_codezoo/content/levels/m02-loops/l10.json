@@ -38,5 +38,14 @@
     "Bananas at both ends.",
     "To turn around, repeat turn_left() 2 times."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Tam a späť",
+      "hints": [
+        "Banány sú na oboch koncoch.",
+        "Na otočenie zopakuj turn_left() 2-krát."
+      ]
+    }
+  }
 }

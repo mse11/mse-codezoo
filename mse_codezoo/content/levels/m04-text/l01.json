@@ -1,0 +1,57 @@
+{
+  "id": "m04-l01",
+  "title": "Hello, jungle",
+  "module": "text",
+  "concepts": [
+    "text"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "Hello, jungle!"
+  },
+  "constraints": {
+    "maxLines": 1
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "hints": [
+    "Text goes between quotes: \"like this\".",
+    "say(\"Hello, jungle!\") with the comma and the !"
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Ahoj, džungľa",
+      "hints": [
+        "Text píšeme medzi úvodzovky: \"takto\".",
+        "say(\"Hello, jungle!\") aj s čiarkou a výkričníkom. Text píš po anglicky."
+      ]
+    }
+  }
+}

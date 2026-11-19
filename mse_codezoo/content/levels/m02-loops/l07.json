@@ -40,5 +40,14 @@
     "Two loops: one along the top, one down the side.",
     "Turn between the loops."
   ],
-  "mode": "blocks_with_preview"
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Riadok a stĺpec",
+      "hints": [
+        "Dva cykly: jeden hore po riadku, druhý dole po stĺpci.",
+        "Medzi cyklami sa otoč."
+      ]
+    }
+  }
 }

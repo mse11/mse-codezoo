@@ -1,0 +1,81 @@
+{
+  "id": "m05-l09",
+  "title": "Big B, small b",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "compare",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BRB."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B",
+    "avoid": "R"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".RBRB"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 4,
+    "mustUse": [
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "starter": "for i in range(4):\n    step(1)\n    if item_here() == \"Banana\":\n        grab()\n",
+  "hints": [
+    "Run it: the monkey walks past every banana. Why is the test never true?",
+    "\"Banana\" and \"banana\" are different texts to Python."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Veľké B, malé b",
+      "hints": [
+        "Spusti to: opička prejde okolo všetkých banánov. Prečo podmienka nikdy neplatí?",
+        "\"Banana\" a \"banana\" sú pre Python rôzne texty."
+      ]
+    }
+  }
+}

@@ -1,8 +1,10 @@
 """Grid world: the animal, walls and items, and the neutral actions that change them.
 
-Actions append events (``move``, ``turn``, ``grab``, ``say``, ``bump``) that clients
-animate. Animal packs rename actions and items; the world itself stays neutral.
-Standard library only.
+Actions append events (``move``, ``turn``, ``grab``, ``say``, ``bump``, ``sense``) that
+clients animate. Sensors (``is_blocked()``, ``item_here()``, ``item_ahead()``) answer
+questions about the world, so programs can make decisions. Animal packs rename actions
+and give the animal, its world and its items names in each language; the world itself
+stays neutral. Standard library only.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from mse_codezoo.i18n import current, plural, t
 from mse_codezoo.interpreter import LearnerError
 
 DIRECTIONS = {"north": (0, -1), "east": (1, 0), "south": (0, 1), "west": (-1, 0)}
@@ -18,19 +21,28 @@ CLOCKWISE = ["north", "east", "south", "west"]
 ARROWS = {"north": "^", "east": ">", "south": "v", "west": "<"}
 EMPTY = "."
 WALL = "#"
-NEUTRAL_ACTIONS = ("step", "turn_left", "turn_right", "grab", "say")
+MOVES = ("step", "turn_left", "turn_right", "grab", "say")
+SENSORS = ("is_blocked", "item_here", "item_ahead")
+NEUTRAL_ACTIONS = MOVES + SENSORS
 MAX_SAY = 200
 
 
 @dataclass
 class Pack:
-    """Theme for one animal: names of the animal, its world, its actions and items."""
+    """Theme for one animal: names of the animal, its world, its actions and items.
+
+    ``items`` maps a tile letter to the item's id, which is also what ``item_here()``
+    returns to programs (``"banana"``), so programs read the same in every language.
+    ``names`` holds what people see, per language: ``animal``, ``world`` and per tile
+    noun forms ``{"one": ..., "few": ..., "many": ...}``.
+    """
 
     id: str
     animal: str
     world: str
     actions: dict[str, str] = field(default_factory=dict)  # neutral -> themed name
-    items: dict[str, str] = field(default_factory=dict)  # tile letter -> noun
+    items: dict[str, str] = field(default_factory=dict)  # tile letter -> item id
+    names: dict[str, dict[str, Any]] = field(default_factory=dict)  # lang -> names
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Pack:
@@ -40,13 +52,51 @@ class Pack:
             world=data.get("world", "world"),
             actions=dict(data.get("actions", {})),
             items=dict(data.get("items", {})),
+            names=dict(data.get("names", {})),
         )
 
     def action_name(self, neutral: str) -> str:
         return self.actions.get(neutral, neutral)
 
-    def item_name(self, tile: str) -> str:
-        return self.items.get(tile, "item")
+    def item_name(self, tile: str | None) -> str:
+        """The item's id, as programs see it (``"banana"``)."""
+        return self.items.get(tile or "", "item")
+
+    def _names(self) -> dict[str, Any]:
+        return self.names.get(current()) or self.names.get("en") or {}
+
+    def animal_name(self) -> str:
+        return self._names().get("animal", self.animal)
+
+    def world_name(self) -> str:
+        return self._names().get("world", self.world)
+
+    def noun(self, tile: str | None, count: int = 1) -> str:
+        """The item's name for people, in the right form for ``count``."""
+        forms = self._names().get("items", {}).get(tile or "")
+        if forms is None:
+            name = self.item_name(tile)
+            forms = {"one": name, "many": name if name.endswith("s") else name + "s"}
+        return plural(count, forms)
+
+    def nouns(self, tile: str | None) -> str:
+        """Plural for "all the ...": ``bananas``, ``banány``."""
+        return self.noun(tile, 3 if current() == "sk" else 2)
+
+    def public(self) -> dict[str, Any]:
+        """What clients need to draw and describe the pack, in the current language."""
+        return {
+            "id": self.id,
+            "animal": self.animal,
+            "world": self.world,
+            "animalName": self.animal_name(),
+            "worldName": self.world_name(),
+            "actions": {name: self.action_name(name) for name in NEUTRAL_ACTIONS},
+            "items": self.items,
+            "itemNames": {
+                tile: {"one": self.noun(tile, 1), "many": self.nouns(tile)} for tile in self.items
+            },
+        }
 
 
 DEFAULT_PACK = Pack("monkey", "monkey", "jungle", items={"B": "banana"})
@@ -69,6 +119,7 @@ class World:
         self.x, self.y, self.facing = start
         self.pack = pack
         self.collected: dict[str, int] = {}
+        self.said: list[str] = []
         self.events: list[dict[str, Any]] = []
 
     @classmethod
@@ -104,26 +155,40 @@ class World:
     # --- actions (called by learner programs) ----------------------------------
 
     def actions(self) -> dict[str, Callable[..., Any]]:
-        """Callable actions under the pack's names."""
+        """Callable actions and sensors under the pack's names."""
         return {self.pack.action_name(n): getattr(self, n) for n in NEUTRAL_ACTIONS}
 
     def step(self, n: int = 1) -> None:
         if isinstance(n, bool) or not isinstance(n, int) or n < 1:
             name = self.pack.action_name("step")
-            raise LearnerError(f"`{name}` needs a whole number of steps, like `{name}(3)`.")
+            raise LearnerError(
+                t("`{name}` needs a whole number of steps, like `{name}(3)`.", name=name),
+                kind="type",
+            )
         dx, dy = DIRECTIONS[self.facing]
         for _ in range(n):
             nx, ny = self.x + dx, self.y + dy
-            if not (0 <= nx < self.width and 0 <= ny < self.height):
-                self._bump(f"reached the edge of the {self.pack.world}")
+            if not self._inside(nx, ny):
+                self._bump(
+                    t(
+                        "Bump! The {animal} reached the edge of the {world}.",
+                        animal=self.pack.animal_name(),
+                        world=self.pack.world_name(),
+                    )
+                )
             if (nx, ny) in self.walls:
-                self._bump("walked into a wall")
+                self._bump(
+                    t("Bump! The {animal} walked into a wall.", animal=self.pack.animal_name())
+                )
             self.events.append({"type": "move", "from": [self.x, self.y], "to": [nx, ny]})
             self.x, self.y = nx, ny
 
-    def _bump(self, what: str) -> None:
+    def _inside(self, x: int, y: int) -> bool:
+        return 0 <= x < self.width and 0 <= y < self.height
+
+    def _bump(self, message: str) -> None:
         self.events.append({"type": "bump", "at": [self.x, self.y], "facing": self.facing})
-        raise LearnerError(f"Bump! The {self.pack.animal} {what}.")
+        raise LearnerError(message, kind="bump")
 
     def turn_left(self) -> None:
         self._turn(-1)
@@ -142,7 +207,34 @@ class World:
         self.events.append({"type": "grab", "at": [self.x, self.y], "item": tile})
 
     def say(self, text: Any = "") -> None:
-        self.events.append({"type": "say", "text": str(text)[:MAX_SAY]})
+        said = str(text)[:MAX_SAY]
+        self.said.append(said)
+        self.events.append({"type": "say", "text": said})
+
+    # --- sensors -------------------------------------------------------------------
+
+    def _ahead(self) -> tuple[int, int]:
+        dx, dy = DIRECTIONS[self.facing]
+        return self.x + dx, self.y + dy
+
+    def _sense(self, what: str, result: Any) -> Any:
+        self.events.append({"type": "sense", "what": what, "result": result})
+        return result
+
+    def is_blocked(self) -> bool:
+        """True when a wall or the edge of the world is right ahead."""
+        x, y = self._ahead()
+        return self._sense("is_blocked", not self._inside(x, y) or (x, y) in self.walls)
+
+    def item_here(self) -> str:
+        """The item on this square (``"banana"``), or ``""`` when there is none."""
+        tile = self.items.get((self.x, self.y))
+        return self._sense("item_here", self.pack.item_name(tile) if tile else "")
+
+    def item_ahead(self) -> str:
+        """The item on the square ahead, or ``""``."""
+        tile = self.items.get(self._ahead())
+        return self._sense("item_ahead", self.pack.item_name(tile) if tile else "")
 
     # --- reading the world -------------------------------------------------------
 
@@ -174,4 +266,5 @@ class World:
             "facing": self.facing,
             "items": [[x, y, tile] for (x, y), tile in sorted(self.items.items())],
             "collected": dict(self.collected),
+            "said": list(self.said),
         }

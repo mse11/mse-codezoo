@@ -1,0 +1,83 @@
+{
+  "id": "m05-l05",
+  "title": "Up or down",
+  "module": "conditions",
+  "concepts": [
+    "if",
+    "else",
+    "sensor"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B",
+      ".",
+      "."
+    ],
+    "start": [
+      0,
+      1,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".",
+        ".",
+        "B"
+      ],
+      "start": [
+        0,
+        1,
+        "north"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "hints": [
+    "item_ahead() looks at the square in front of the monkey.",
+    "if item_ahead(): step(1). else: turn around and step(1). Then grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Hore alebo dole",
+      "hints": [
+        "item_ahead() sa pozrie na políčko pred opičkou.",
+        "if item_ahead(): step(1). else: otoč sa a step(1). Potom grab()."
+      ]
+    }
+  }
+}

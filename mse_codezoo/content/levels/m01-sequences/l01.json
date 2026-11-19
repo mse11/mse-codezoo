@@ -2,15 +2,43 @@
   "id": "m01-l01",
   "title": "One banana",
   "module": "sequences",
-  "concepts": ["call"],
+  "concepts": [
+    "call"
+  ],
   "animal": "monkey",
-  "world": { "tiles": ["....B"], "start": [0, 0, "east"] },
-  "goal": { "type": "collect_all", "item": "B" },
-  "constraints": { "maxLines": 2 },
-  "unlockedBlocks": ["step", "grab"],
+  "world": {
+    "tiles": [
+      "....B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 2
+  },
+  "unlockedBlocks": [
+    "step",
+    "grab"
+  ],
   "hints": [
     "Count the squares between the monkey and the banana.",
     "step(4) walks four squares; grab() picks up what is under the monkey."
   ],
-  "mode": "blocks_only"
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Jeden banán",
+      "hints": [
+        "Spočítaj políčka medzi opičkou a banánom.",
+        "step(4) prejde štyri políčka; grab() zdvihne, čo je pod opičkou."
+      ]
+    }
+  }
 }

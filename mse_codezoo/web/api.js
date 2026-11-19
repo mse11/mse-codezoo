@@ -1,12 +1,17 @@
 // Thin client for the JSON API served by `codezoo serve` (see mse_codezoo/server.py).
+// Every request carries the interface language, so titles, hints and messages match it.
+
+import { lang } from "./i18n.js";
 
 async function call(method, path, body) {
   const options = { method, headers: {} };
+  const separator = path.includes("?") ? "&" : "?";
+  const url = `${path}${separator}lang=${encodeURIComponent(lang())}`;
   if (body !== undefined) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(body);
   }
-  const response = await fetch(path, options);
+  const response = await fetch(url, options);
   const data = await response.json();
   if (!response.ok) {
     const error = new Error(data.error || response.statusText);
@@ -21,7 +26,7 @@ export const api = {
   level: (id) => call("GET", `/api/levels/${encodeURIComponent(id)}`),
   parse: (source) => call("POST", "/api/parse", { source }),
   print: (program) => call("POST", "/api/print", { program }),
-  run: (level, source, profile) => call("POST", "/api/run", { level, source, profile }),
+  run: (level, source, profile, variant = 0) => call("POST", "/api/run", { level, source, profile, variant }),
 
   profiles: () => call("GET", "/api/profiles"),
   addProfile: (name, picture) => call("POST", "/api/profiles", { name, picture }),
