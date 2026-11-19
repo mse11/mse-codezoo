@@ -26,18 +26,18 @@ uv run codezoo --help
 
 ## Try it
 
-Write a program for the first level and check it:
+Look at a level, then check a program for it. [playground/](playground/README.md) has an example for every level, plus `oops/` programs that show the error messages.
 
 ```bash
-uv run codezoo levels list
+uv run codezoo levels show m01-l01
 ```
 
 ```bash
-uv run codezoo check m01-l01 my_solution.py
+uv run codezoo check m01-l01 playground/m01-l01.py
 ```
 
 ```bash
-uv run codezoo run m01-l03 mse_codezoo/content/levels/m01-sequences/l03.solution.py --trace
+uv run codezoo run m01-l03 playground/m01-l03.py --trace
 ```
 
 ## Layout
@@ -67,6 +67,7 @@ tests/              includes test_differential.py: our interpreter vs CPython
 | `codezoo blocks PROGRAM.py` | Block outline with each block's lines and node id |
 | `codezoo schema [-o FILE]` | JSON Schema of the program model (IR), the contract with the web client |
 | `codezoo levels list` | Bundled levels |
+| `codezoo levels show LEVEL [--solution]` | One level: goal, star rules, blocks, grid and hints; `--solution` adds the reference solution |
 | `codezoo levels validate [--all] [PATHS...]` | Checks level files and that each reference solution earns every star |
 
 `LEVEL` is a level id (`m01-l01`) or a path to a level `.json` file.

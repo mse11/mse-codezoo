@@ -19,6 +19,8 @@ from mse_codezoo.levels import (
     find_level,
     level_files,
     load_level,
+    load_pack,
+    solution_path,
     validate_level,
 )
 from mse_codezoo.world import World
@@ -251,6 +253,53 @@ def levels_list() -> None:
         except LevelError as exc:
             click.echo(f"{path.relative_to(LEVELS_DIR).as_posix():<10} (invalid: {exc})")
     click.echo(f"{len(files)} level(s)")
+
+
+def describe_goal(goal: dict[str, Any], world: World) -> str:
+    match goal.get("type"):
+        case "collect_all":
+            return f"collect every {world.pack.item_name(goal['item'])}"
+        case "reach":
+            x, y = goal["at"]
+            return f"reach square ({x}, {y})"
+    return str(goal.get("type"))
+
+
+@levels.command("show")
+@click.argument("level")
+@click.option("--animal", help="Show it for another animal (default: the level's animal).")
+@click.option("--solution", is_flag=True, help="Also print the reference solution (spoiler!).")
+def levels_show(level: str, animal: str | None, solution: bool) -> None:
+    """Show one level: goal, limits, blocks, the grid and hints."""
+    try:
+        lvl = find_level(level)
+        world = World.from_spec(lvl.world, load_pack(animal or lvl.animal))
+    except LevelError as exc:
+        raise click.ClickException(str(exc)) from None
+
+    click.echo(_level_header(lvl, animal))
+    click.echo(f"Module: {lvl.module}   Mode: {lvl.mode}   Concepts: {', '.join(lvl.concepts)}")
+    click.echo(f"Goal: {describe_goal(lvl.goal, world)}")
+    limits = []
+    if "maxLines" in lvl.constraints:
+        limits.append(f"{lvl.constraints['maxLines']} lines or fewer")
+    if lvl.constraints.get("mustUse"):
+        limits.append("use " + ", ".join(lvl.constraints["mustUse"]))
+    click.echo(f"Stars for: {'; '.join(limits) if limits else 'just solving it'}")
+    if lvl.unlocked_blocks:
+        click.echo(f"Blocks: {', '.join(lvl.unlocked_blocks)}")
+    click.echo(f"Start: ({world.x}, {world.y}) facing {world.facing}")
+    click.echo("")
+    click.echo(_indent(world.render(), "    "))
+    click.echo("")
+    for number, hint in enumerate(lvl.hints, 1):
+        click.echo(f"Hint {number}: {hint}")
+    if solution and lvl.path is not None:
+        click.echo("")
+        click.echo("Reference solution:")
+        click.echo(_indent(solution_path(lvl.path).read_text(encoding="utf-8"), "    "))
+    click.echo("")
+    click.echo(f"Try it: codezoo check {lvl.id} your_program.py")
 
 
 @levels.command("validate")

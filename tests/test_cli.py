@@ -117,6 +117,30 @@ def test_levels_list():
     assert "m01-l01    One banana" in result.output
 
 
+def test_levels_show():
+    result = invoke("levels", "show", "m01-l03")
+    assert result.exit_code == 0, result.output
+    assert "Level m01-l03: Around the rock (monkey)" in result.output
+    assert "Goal: collect every banana" in result.output
+    assert "Stars for: 7 lines or fewer" in result.output
+    assert "    >#B\n    ...\n" in result.output
+    assert "Hint 1:" in result.output
+    assert "Reference solution" not in result.output
+
+
+def test_levels_show_solution():
+    result = invoke("levels", "show", "m02-l01", "--solution")
+    assert result.exit_code == 0, result.output
+    assert "Stars for: 3 lines or fewer; use For" in result.output
+    assert "Reference solution:\n    for i in range(5):" in result.output
+
+
+def test_levels_show_unknown_level():
+    result = invoke("levels", "show", "nope")
+    assert result.exit_code == 1
+    assert "No level called 'nope'" in result.output
+
+
 def test_levels_validate_all_passes_for_bundled_levels():
     result = invoke("levels", "validate", "--all")
     assert result.exit_code == 0, result.output

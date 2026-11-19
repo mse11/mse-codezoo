@@ -1,0 +1,12 @@
+# m02-l01 without a loop: solves the level, but only 1 of 3 stars
+# (too many lines, and no `for` loop)
+step(1)
+grab()
+step(1)
+grab()
+step(1)
+grab()
+step(1)
+grab()
+step(1)
+grab()

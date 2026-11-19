@@ -34,8 +34,8 @@ addopts = "-ra"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-# level solutions are learner programs: world actions like step() are injected at run time
-extend-exclude = ["mse_codezoo/content"]
+# level solutions and playground examples are learner programs: step() etc. come from the world
+extend-exclude = ["mse_codezoo/content", "playground"]
 
 [tool.ruff.format]
 exclude = ["*.md"]  # keep hand-aligned snippets in the plan
