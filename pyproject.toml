@@ -1,0 +1,41 @@
+[project]
+name = "mse-codezoo"
+version = "0.1.0"
+description = "Learn real Python through animal coding games"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.5.1",
+]
+
+[project.scripts]
+codezoo = "mse_codezoo.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mse_codezoo"
+module-root = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.format]
+exclude = ["*.md"]  # keep hand-aligned snippets in the plan
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
