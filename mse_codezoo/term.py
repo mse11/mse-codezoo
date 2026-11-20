@@ -1,7 +1,9 @@
 """Terminal stage for ``codezoo play``: a coloured character grid that replays a run.
 
-The replay works from the run's events (``move``, ``turn``, ``grab``, ``say``, ``bump``),
-exactly like the web stage, so both show the same thing. Standard library only.
+The replay works from the run's events (``move``, ``turn``, ``grab``, ``say``, ``bump``
+and the tricks' ``swing``, ``climb``, ``build``, ``crack``, ``hide``), exactly like the web
+stage, so both show the same thing. ``codezoo replay`` uses it for saved runs and the
+storybook uses ``StageState`` to draw its pictures. Standard library only.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
+from mse_codezoo.i18n import t
 from mse_codezoo.world import ARROWS, Pack
 
 RESET = "\x1b[0m"
@@ -24,6 +27,11 @@ STYLES = {
     "R": "\x1b[32m",
     "item": "\x1b[96m",
     "bump": "\x1b[1;31m",
+    "~": "\x1b[34m",
+    "t": "\x1b[32m",
+    "-": "\x1b[37m",
+    "o": "\x1b[31m",
+    "=": "\x1b[33m",
     "say": "\x1b[1;35m",
     "line": "\x1b[1;36m",
 }
@@ -43,6 +51,8 @@ class StageState:
     bubble: str | None = None
     bumped: bool = False
     said: list[str] = field(default_factory=list)
+    terrain: dict[tuple[int, int], str] = field(default_factory=dict)
+    collected: list[str] = field(default_factory=list)
 
     @classmethod
     def from_json(cls, world: dict[str, Any]) -> StageState:
@@ -54,21 +64,27 @@ class StageState:
             {(x, y): tile for x, y, tile in world["items"]},
             (world["position"][0], world["position"][1]),
             world["facing"],
+            terrain={(x, y): kind for x, y, kind in world.get("terrain", [])},
         )
 
     def apply(self, event: dict[str, Any]) -> None:
         self.bubble = None
         self.bumped = False
         match event["type"]:
-            case "move":
+            case "move" | "swing":
                 self.position = (event["to"][0], event["to"][1])
             case "turn":
                 self.facing = event["facing"]
-            case "grab":
+            case "grab" | "climb":
                 if event.get("item"):
                     self.items.pop((event["at"][0], event["at"][1]), None)
+                    self.collected.append(event["item"])
                 else:
                     self.bubble = "?"
+            case "build":
+                self.terrain[(event["at"][0], event["at"][1])] = "="
+            case "crack":
+                self.bumped = True
             case "say":
                 self.bubble = event["text"]
                 self.said.append(event["text"])
@@ -98,6 +114,9 @@ def render(state: StageState, *, color: bool = True) -> str:
             elif (x, y) in state.items:
                 tile = state.items[(x, y)]
                 cells.append(paint(tile, tile if tile in STYLES else "item", color))
+            elif (x, y) in state.terrain:
+                kind = state.terrain[(x, y)]
+                cells.append(paint(kind, kind, color))
             else:
                 cells.append(paint(".", "empty", color))
         lines.append("| " + " ".join(cells) + " |")
@@ -105,10 +124,22 @@ def render(state: StageState, *, color: bool = True) -> str:
     return "\n".join(lines)
 
 
-def legend(pack: Pack, items: Iterable[str]) -> str:
+def terrain_name(kind: str) -> str:
+    names = {
+        "~": t("water"),
+        "t": t("tree"),
+        "-": t("thin ice"),
+        "o": t("guard"),
+        "=": t("bridge"),
+    }
+    return names.get(kind, kind)
+
+
+def legend(pack: Pack, items: Iterable[str], terrain: Iterable[str] = ()) -> str:
     """``> monkey   # rock   B banana`` for the tiles that appear in a level."""
     parts = [f"> {pack.animal_name()}", "# rock"]
     parts += [f"{tile} {pack.noun(tile)}" for tile in sorted(set(items))]
+    parts += [f"{kind} {terrain_name(kind)}" for kind in sorted(set(terrain))]
     return "   ".join(parts)
 
 
@@ -134,7 +165,7 @@ def replay(
         echo(CLEAR + header + "\n" + render(state, color=color) + "\n" + code)
 
     for step in steps:
-        events = [e for e in step.get("events", []) if e["type"] != "sense"]
+        events = [e for e in step.get("events", []) if e["type"] not in ("sense", "call", "return")]
         if not events and animate:
             frame(step.get("line"))
             time.sleep(delay / 2)
@@ -142,7 +173,7 @@ def replay(
             state.apply(event)
             if animate:
                 frame(step.get("line"))
-                time.sleep(delay * (3 if event["type"] in ("say", "bump") else 1))
+                time.sleep(delay * (3 if event["type"] in ("say", "bump", "crack") else 1))
     if not animate:
         echo(render(state, color=color))
     return state

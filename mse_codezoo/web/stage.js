@@ -5,10 +5,14 @@ const CELL = 64;
 const TOP = 44; // room above the grid for speech bubbles
 const NS = "http://www.w3.org/2000/svg";
 const ANGLE = { north: -90, east: 0, south: 90, west: 180 };
-const EMOJI = {
+export const EMOJI = {
   monkey: "🐒", penguin: "🐧", beaver: "🦫", fox: "🦊", octopus: "🐙", bee: "🐝",
   banana: "🍌", coconut: "🥥", rotten: "🤢", fish: "🐟", log: "🪵", shell: "🐚", flower: "🌼",
+  pebble: "🪨", crab: "🦀", stick: "🥢", leaf: "🍃", thorn: "🌵", oak: "🪵", pine: "🌲",
+  birch: "🌳", berry: "🫐", mushroom: "🍄", trap: "🪤", egg: "🥚",
 };
+// terrain: ~ water or a gap, t tree, - thin ice, o a guard's watch, = a log bridge
+const TERRAIN = { "~": ["water", ""], t: ["tree", "🌴"], "-": ["thin-ice", ""], o: ["watched", "👁️"], "=": ["bridge", ""] };
 
 // Squares the animal must reach, for a goal flag.
 function reachTargets(goal) {
@@ -66,6 +70,8 @@ export class Stage {
         root.append(svg("rect", { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: `tile${alt}` }));
       }
     }
+    this.terrain = new Map();
+    for (const [x, y, kind] of world.terrain || []) this.drawTerrain(root, x, y, kind);
     for (const [x, y] of world.walls) {
       root.append(svg("rect", { x: x * CELL + 2, y: y * CELL + 2, width: CELL - 4, height: CELL - 4, rx: 10, class: "wall" }));
       root.append(svg("text", { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2, class: "emoji" }, "🪨"));
@@ -90,7 +96,9 @@ export class Stage {
     this.facingGroup = svg("g", { class: "facing" });
     this.facingGroup.append(svg("polygon", { points: "52,24 62,32 52,40", class: "arrow" }));
     this.body.append(this.facingGroup);
-    this.body.append(svg("text", { x: CELL / 2, y: CELL / 2, class: "emoji" }, EMOJI[pack.animal] || "🐾"));
+    this.body.append(svg("text", { x: CELL / 2, y: CELL / 2, class: "emoji" }, pack.emoji || EMOJI[pack.animal] || "🐾"));
+    this.outfitText = svg("text", { x: CELL / 2, y: 6, class: "emoji outfit" }, this.outfit || "");
+    this.body.append(this.outfitText);
     this.bubble = svg("g", { class: "bubble", visibility: "hidden" });
     this.bubbleRect = svg("rect", { x: 0, y: -38, rx: 10, height: 30 });
     this.bubbleText = svg("text", { x: CELL / 2, y: -23 });
@@ -103,6 +111,23 @@ export class Stage {
     this.facing = world.facing;
     this.angle = ANGLE[this.facing];
     this.place();
+  }
+
+  drawTerrain(root, x, y, kind) {
+    const [name, mark] = TERRAIN[kind] || ["tile", ""];
+    const group = svg("g", { class: `terrain ${name}` });
+    group.append(svg("rect", { x: x * CELL + 1, y: y * CELL + 1, width: CELL - 2, height: CELL - 2, rx: 8 }));
+    if (mark) group.append(svg("text", { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2, class: "emoji" }, mark));
+    this.terrain.get(`${x},${y}`)?.remove();
+    this.terrain.set(`${x},${y}`, group);
+    const firstItem = [...root.children].find((node) => node.classList?.contains("wall") || node.classList?.contains("item"));
+    root.insertBefore(group, firstItem || null);
+  }
+
+  // What the animal wears (from the habitat): an emoji above its head.
+  setOutfit(emoji) {
+    this.outfit = emoji || "";
+    if (this.outfitText) this.outfitText.textContent = this.outfit;
   }
 
   place() {
@@ -139,9 +164,49 @@ export class Stage {
       case "move":
         this.position = event.to;
         this.place();
+        await wait(event.slide ? d * 0.6 : d);
+        break;
+      case "swing":
+        this.body.classList.add("swing");
+        this.position = event.to;
+        this.place();
+        await wait(d * 1.6);
+        this.body.classList.remove("swing");
+        break;
+      case "climb": {
+        const key = event.at.join(",");
+        const item = this.items.get(key);
+        this.body.classList.add("sense");
+        await wait(d);
+        if (item) {
+          item.classList.add("grabbed");
+          await wait(d);
+          item.remove();
+          this.items.delete(key);
+        }
+        this.body.classList.remove("sense");
+        break;
+      }
+      case "build": {
+        const root = this.container.querySelector("svg");
+        this.drawTerrain(root, event.at[0], event.at[1], "=");
+        await wait(d * 1.2);
+        break;
+      }
+      case "crack": {
+        const tile = this.terrain.get(event.at.join(","));
+        tile?.classList.add("cracked");
+        this.body.classList.add("bump");
+        await wait(700);
+        this.body.classList.remove("bump");
+        break;
+      }
+      case "hide":
+        this.body.classList.add("hidden-animal");
         await wait(d);
         break;
       case "turn": {
+        this.body.classList.remove("hidden-animal");
         const delta = ((ANGLE[event.facing] - ANGLE[this.facing] + 540) % 360) - 180;
         this.angle += delta;
         this.facing = event.facing;

@@ -1,0 +1,85 @@
+{
+  "id": "m10-l02",
+  "title": "Walk by calling yourself",
+  "module": "recursion",
+  "concepts": [
+    "recursion"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "walk(n): step, grab, then walk(n - 1).",
+    "Stop when n == 0."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Kráčaj tak, že voláš seba",
+      "hints": [
+        "walk(n): krok, chyť, potom walk(n - 1).",
+        "Zastav, keď n == 0."
+      ]
+    }
+  }
+}

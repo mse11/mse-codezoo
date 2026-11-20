@@ -1,0 +1,98 @@
+{
+  "id": "beaver",
+  "animal": "beaver",
+  "world": "river",
+  "emoji": "🦫",
+  "tricks": [
+    "build",
+    "inventory"
+  ],
+  "actions": {
+    "step": "step",
+    "turn_left": "turn_left",
+    "turn_right": "turn_right",
+    "grab": "grab",
+    "say": "say",
+    "is_blocked": "is_blocked",
+    "item_here": "item_here",
+    "item_ahead": "item_ahead",
+    "build": "build",
+    "inventory": "inventory"
+  },
+  "items": {
+    "B": "stick",
+    "C": "leaf",
+    "R": "thorn",
+    "O": "oak",
+    "P": "pine",
+    "L": "birch"
+  },
+  "names": {
+    "en": {
+      "animal": "beaver",
+      "world": "river",
+      "items": {
+        "B": {
+          "one": "stick",
+          "many": "sticks"
+        },
+        "C": {
+          "one": "leaf",
+          "many": "leaves"
+        },
+        "R": {
+          "one": "thorn",
+          "many": "thorns"
+        },
+        "O": {
+          "one": "oak log",
+          "many": "oak logs"
+        },
+        "P": {
+          "one": "pine log",
+          "many": "pine logs"
+        },
+        "L": {
+          "one": "birch log",
+          "many": "birch logs"
+        }
+      }
+    },
+    "sk": {
+      "animal": "bobor",
+      "world": "rieka",
+      "items": {
+        "B": {
+          "one": "palička",
+          "few": "paličky",
+          "many": "paličiek"
+        },
+        "C": {
+          "one": "list",
+          "few": "listy",
+          "many": "listov"
+        },
+        "R": {
+          "one": "tŕň",
+          "few": "tŕne",
+          "many": "tŕňov"
+        },
+        "O": {
+          "one": "dubové poleno",
+          "few": "dubové polená",
+          "many": "dubových polien"
+        },
+        "P": {
+          "one": "borovicové poleno",
+          "few": "borovicové polená",
+          "many": "borovicových polien"
+        },
+        "L": {
+          "one": "brezové poleno",
+          "few": "brezové polená",
+          "many": "brezových polien"
+        }
+      }
+    }
+  }
+}

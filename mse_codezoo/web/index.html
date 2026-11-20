@@ -13,6 +13,7 @@
   <header class="bar">
     <h1 class="logo">CodeZoo</h1>
     <select id="level-select" data-i18n-label="Choose a level"></select>
+    <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
     <div class="controls">
       <button id="run" class="primary" type="button">▶ Run</button>
       <button id="step" type="button" data-i18n>Step</button>
@@ -22,6 +23,8 @@
     <div class="who">
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
       <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
+      <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
+      <a class="editor-link" href="editor.html" data-i18n>Level editor</a>
       <button id="grownups" type="button" class="grownups" data-i18n>Grown-ups</button>
     </div>
   </header>
@@ -40,6 +43,7 @@
         <label class="view-toggle" data-i18n-title="Show the stage in 3D"><input type="checkbox" id="view-3d"> 3D</label>
       </div>
       <div id="stage" class="stage"></div>
+      <div id="callstack" class="callstack" aria-live="polite" data-i18n-label="Call stack"></div>
       <div id="feeling" class="feeling" aria-live="polite"></div>
       <div id="result" class="result" aria-live="polite"></div>
     </section>
@@ -69,6 +73,7 @@
         </div>
       </div>
       <ul id="diagnostics" class="diagnostics" aria-live="polite"></ul>
+      <div id="files" class="files"></div>
     </section>
   </main>
 
@@ -122,6 +127,26 @@
       </section>
       <div class="dialog-buttons"><button type="button" data-close data-i18n>Back to the zoo</button></div>
     </div>
+  </dialog>
+
+  <dialog id="zoo-dialog" class="dialog wide" aria-labelledby="zoo-title">
+    <h2 id="zoo-title" data-i18n>My zoo</h2>
+    <p class="note" data-i18n>Drag your stickers around the habitat. Tap a sticker below to put it in.</p>
+    <div id="habitat" class="habitat" aria-label="Habitat" data-i18n-label="Habitat"></div>
+    <div id="sticker-tray" class="sticker-tray"></div>
+    <h3 data-i18n>Dress up</h3>
+    <div id="outfits" class="outfits"></div>
+    <h3 data-i18n>Played a card away from the screen?</h3>
+    <form id="card-form" class="card-code">
+      <input id="card-code" autocomplete="off" placeholder="MANGO-TIGER-42" aria-label="Card code" data-i18n-label="Card code">
+      <button type="submit" class="primary" data-i18n>Unlock</button>
+      <button type="button" id="scan-card" hidden data-i18n>Scan the card</button>
+      <a id="cards-link" href="cards.html" target="_blank" data-i18n>Print cards</a>
+    </form>
+    <video id="scan-video" class="scan-video" hidden muted playsinline></video>
+    <p id="card-result" role="status"></p>
+    <p id="zoo-error" class="error" role="alert"></p>
+    <div class="dialog-buttons"><button type="button" id="zoo-close" data-i18n>Back to the zoo</button></div>
   </dialog>
 
   <dialog id="goodbye-dialog" class="dialog goodbye" aria-labelledby="goodbye-title">

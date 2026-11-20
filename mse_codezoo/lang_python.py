@@ -29,6 +29,9 @@ BIN_OPS: dict[type[ast.operator], str] = {
     ast.FloorDiv: "//",
     ast.Mod: "%",
     ast.Pow: "**",
+    ast.BitOr: "|",
+    ast.BitAnd: "&",
+    ast.BitXor: "^",
 }
 UNARY_OPS: dict[type[ast.unaryop], str] = {ast.USub: "-", ast.UAdd: "+", ast.Not: "not"}
 CMP_OPS: dict[type[ast.cmpop], str] = {
@@ -51,7 +54,18 @@ IFEXP_PRECEDENCE = 1
 BOOL_PRECEDENCE = {"or": 2, "and": 3}
 NOT_PRECEDENCE = 4
 CMP_PRECEDENCE = 5
-PRECEDENCE = {"+": 10, "-": 10, "*": 11, "/": 11, "//": 11, "%": 11, "**": 13}
+PRECEDENCE = {
+    "|": 7,
+    "^": 8,
+    "&": 9,
+    "+": 10,
+    "-": 10,
+    "*": 11,
+    "/": 11,
+    "//": 11,
+    "%": 11,
+    "**": 13,
+}
 UNARY_PRECEDENCE = 12
 POW_PRECEDENCE = 13
 ATOM_PRECEDENCE = 15
@@ -147,8 +161,11 @@ def friendly_name(node: ast.AST) -> str:
 # --- parsing -----------------------------------------------------------------
 
 
-def parse(text: str, version: tuple[int, int] = BASELINE) -> ParseResult:
-    """Parse Python ``text`` into IR, accepting only syntax available in ``version``."""
+def parse(text: str, version: tuple[int, int] = BASELINE, *, id_prefix: str = "") -> ParseResult:
+    """Parse Python ``text`` into IR, accepting only syntax available in ``version``.
+
+    ``id_prefix`` keeps node ids of a helper file apart from the main program's.
+    """
     try:
         tree = ast.parse(text, feature_version=version)
     except SyntaxError as exc:
@@ -159,7 +176,7 @@ def parse(text: str, version: tuple[int, int] = BASELINE) -> ParseResult:
         return ParseResult(
             None, [Diagnostic(1, 0, t("Python can't read this file: {why}.", why=exc))]
         )
-    converter = _Converter(text)
+    converter = _Converter(text, id_prefix)
     program = converter.program(tree)
     return ParseResult(program, converter.diagnostics, converter.positions)
 
@@ -188,9 +205,9 @@ def _scan_comments(text: str) -> tuple[list[tuple[int, int, str]], dict[int, str
 
 
 class _Converter:
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, id_prefix: str = "") -> None:
         self.lines = text.splitlines()
-        self.new_id = ir.Ids()
+        self.new_id = ir.Ids(f"{id_prefix}n")
         self.diagnostics: list[Diagnostic] = []
         self.positions: dict[str, Span] = {}
         self.comments, self.inline = _scan_comments(text)
@@ -255,19 +272,21 @@ class _Converter:
         match node:
             case ast.Expr(value=value):
                 return ir.ExprStmt(id=stmt_id, value=self.expr(value))
-            case ast.Assign(targets=[ast.Name() as target], value=value):
-                return ir.Assign(id=stmt_id, target=self.name(target), value=self.expr(value))
-            case ast.AugAssign(target=ast.Name() as target, op=op, value=value) if (
-                type(op) in BIN_OPS
-            ):
+            case ast.Assign(targets=[target], value=value):
+                return ir.Assign(id=stmt_id, target=self.target(target), value=self.expr(value))
+            case ast.Assign():
+                raise Unsupported("`a = b = ...` with several `=`")
+            case ast.AugAssign(
+                target=ast.Name() | ast.Subscript() as target, op=op, value=value
+            ) if type(op) in BIN_OPS:
                 return ir.AugAssign(
                     id=stmt_id,
-                    target=self.name(target),
+                    target=self.target(target),
                     op=BIN_OPS[type(op)],
                     value=self.expr(value),
                 )
-            case ast.For(target=ast.Name() as target, iter=iterable, body=body, orelse=[]):
-                header_target = self.name(target)
+            case ast.For(target=target, iter=iterable, body=body, orelse=[]):
+                header_target = self.loop_target(target)
                 header_iter = self.expr(iterable)
                 return ir.For(
                     id=stmt_id,
@@ -291,9 +310,161 @@ class _Converter:
                     test=header_test,
                     body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
                 )
+            case ast.FunctionDef():
+                return self.function(node, stmt_id, next_line)
+            case ast.Return(value=value):
+                return ir.Return(id=stmt_id, value=None if value is None else self.expr(value))
+            case ast.Break():
+                return ir.Break(id=stmt_id)
+            case ast.Continue():
+                return ir.Continue(id=stmt_id)
+            case ast.Global(names=names):
+                return ir.Global(id=stmt_id, names=list(names))
+            case ast.Try():
+                return self.try_(node, stmt_id, next_line)
+            case ast.Raise(exc=exc, cause=None):
+                return ir.Raise(id=stmt_id, exc=None if exc is None else self.expr(exc))
+            case ast.Raise():
+                raise Unsupported("`raise ... from`")
+            case ast.Assert(test=test, msg=msg):
+                return ir.Assert(
+                    id=stmt_id, test=self.expr(test), msg=None if msg is None else self.expr(msg)
+                )
+            case ast.Delete(targets=targets):
+                return ir.Delete(id=stmt_id, targets=[self.target(t) for t in targets])
+            case ast.Import(names=[ast.alias(name=module, asname=None)]) if "." not in module:
+                return ir.Import(id=stmt_id, module=module)
+            case ast.ImportFrom(module=str() as module, names=names, level=0) if (
+                "." not in module and all(a.asname is None and a.name != "*" for a in names)
+            ):
+                return ir.Import(id=stmt_id, module=module, names=[a.name for a in names])
             case ast.Pass():
                 return ir.Pass(id=stmt_id)
         raise Unsupported(friendly_name(node))
+
+    def function(self, node: ast.FunctionDef, stmt_id: str, next_line: float) -> ir.FunctionDef:
+        args = node.args
+        if node.decorator_list:
+            raise Unsupported("decorators")
+        if args.posonlyargs or args.vararg or args.kwonlyargs or args.kwarg:
+            raise Unsupported("`*args` and other special inputs")
+        if node.returns is not None or any(a.annotation is not None for a in args.args):
+            raise Unsupported("type hints")
+        if getattr(node, "type_params", None):
+            raise Unsupported("type parameters")
+        defaults: list[ast.expr | None] = [None] * (len(args.args) - len(args.defaults))
+        defaults += list(args.defaults)
+        params = [
+            ir.Param(
+                id=self.new_id(),
+                name=arg.arg,
+                default=None if default is None else self.expr(default),
+            )
+            for arg, default in zip(args.args, defaults, strict=True)
+        ]
+        body = node.body
+        return ir.FunctionDef(
+            id=stmt_id,
+            name=node.name,
+            params=params,
+            body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
+        )
+
+    def try_(self, node: ast.Try, stmt_id: str, next_line: float) -> ir.Try:
+        def header(keyword: str, section: list[ast.stmt], after: int) -> int:
+            """The line of the `else:` / `finally:` that opens ``section``."""
+            for line in range(section[0].lineno, after, -1):
+                if self.lines[line - 1][node.col_offset :].startswith(keyword):
+                    return line
+            return section[0].lineno
+
+        def end(stmts: list[ast.stmt]) -> int:
+            return stmts[-1].end_lineno or stmts[-1].lineno
+
+        starts: list[float] = [h.lineno for h in node.handlers]  # where each part begins
+        after = end(node.handlers[-1].body) if node.handlers else end(node.body)
+        else_line = finally_line = None
+        if node.orelse:
+            else_line = header("else", node.orelse, after)
+            starts.append(else_line)
+            after = end(node.orelse)
+        if node.finalbody:
+            finally_line = header("finally", node.finalbody, after)
+            starts.append(finally_line)
+        starts.append(next_line)
+
+        body = self.body(node.body, indent=node.body[0].col_offset, stop_line=starts[0])
+        handlers = []
+        for number, handler in enumerate(node.handlers):
+            handler_id = self.new_id()
+            self.positions[handler_id] = Span(
+                handler.lineno,
+                handler.col_offset,
+                handler.lineno,
+                len(self.lines[handler.lineno - 1]),
+            )
+            kind = None if handler.type is None else self.except_kind(handler.type)
+            note = self._header_note(handler.lineno, handler.body[0].lineno)
+            inner = self.body(
+                handler.body, indent=handler.body[0].col_offset, stop_line=starts[number + 1]
+            )
+            handlers.append(
+                ir.ExceptHandler(id=handler_id, kind=kind, name=handler.name, body=note + inner)
+            )
+        rest = starts[len(node.handlers) :]
+        orelse: list[ir.Stmt] = []
+        finalbody: list[ir.Stmt] = []
+        if else_line is not None:
+            rest.pop(0)
+            orelse = self._header_note(else_line, node.orelse[0].lineno) + self.body(
+                node.orelse, indent=node.orelse[0].col_offset, stop_line=rest[0]
+            )
+        if finally_line is not None:
+            rest.pop(0)
+            finalbody = self._header_note(finally_line, node.finalbody[0].lineno) + self.body(
+                node.finalbody, indent=node.finalbody[0].col_offset, stop_line=rest[0]
+            )
+        return ir.Try(id=stmt_id, body=body, handlers=handlers, orelse=orelse, finalbody=finalbody)
+
+    def _header_note(self, line: float, first_line: int) -> list[ir.Stmt]:
+        """A comment on an `except:` / `else:` / `finally:` line, kept as a note."""
+        note = self.inline.get(int(line))
+        if note is None or line == first_line:
+            return []
+        return [ir.Comment(id=self.new_id(), text=note)]
+
+    def except_kind(self, node: ast.expr) -> ir.Expr:
+        if isinstance(node, ast.Name):
+            return self.expr(node)
+        if isinstance(node, ast.Tuple) and all(isinstance(e, ast.Name) for e in node.elts):
+            return self.expr(node)
+        raise Unsupported("this kind of `except`")
+
+    def target(self, node: ast.expr) -> ir.Expr:
+        """The left side of `=`, `del` or a loop: names, `a[i]`, or a tuple of them."""
+        match node:
+            case ast.Name():
+                return self.name(node)
+            case ast.Subscript():
+                return self.expr(node)
+            case ast.Tuple(elts=elts) | ast.List(elts=elts):
+                tuple_id = self.new_id()
+                self.positions[tuple_id] = self.span(node)
+                if sum(isinstance(e, ast.Starred) for e in elts) > 1:
+                    raise Unsupported("`*` unpacking")
+                return ir.Tuple(id=tuple_id, elts=[self.target(e) for e in elts])
+            case ast.Starred(value=ast.Name() as value):
+                starred_id = self.new_id()
+                self.positions[starred_id] = self.span(node)
+                return ir.Starred(id=starred_id, value=self.name(value))
+        raise Unsupported(friendly_name(node))
+
+    def loop_target(self, node: ast.expr) -> ir.Expr:
+        if isinstance(node, ast.Name):
+            return self.name(node)
+        if isinstance(node, ast.Tuple) and all(isinstance(e, ast.Name) for e in node.elts):
+            return self.target(node)
+        raise Unsupported("this kind of loop variable")
 
     def _else_line(self, node: ast.If) -> int:
         """The line of the ``else:`` or ``elif`` that ends the ``if`` body."""
@@ -346,14 +517,17 @@ class _Converter:
                     args=[self.expr(a) for a in args],
                     keywords=[self.keyword(k) for k in keywords],
                 )
-            case ast.Call(func=ast.Attribute(value=obj, attr=method), args=args, keywords=[]):
+            case ast.Call(func=ast.Attribute(value=obj, attr=method), args=args, keywords=keywords):
                 if any(isinstance(arg, ast.Starred) for arg in args):
                     raise Unsupported("`*` unpacking")
+                if any(k.arg is None for k in keywords):
+                    raise Unsupported("`**` unpacking")
                 return ir.MethodCall(
                     id=expr_id,
                     obj=self.expr(obj),
                     method=method,
                     args=[self.expr(a) for a in args],
+                    keywords=[self.keyword(k) for k in keywords],
                 )
             case ast.Call():
                 raise Unsupported("this kind of call")
@@ -385,9 +559,62 @@ class _Converter:
                 return ir.FString(id=expr_id, parts=[self.fstring_part(v) for v in values])
             case ast.Subscript(value=value, slice=index):
                 return ir.Subscript(id=expr_id, value=self.expr(value), index=self.index(index))
+            case ast.Attribute(value=value, attr=attr):
+                return ir.Attribute(id=expr_id, value=self.expr(value), attr=attr)
+            case ast.List(elts=elts):
+                return ir.List(id=expr_id, elts=[self.element(e) for e in elts])
+            case ast.Tuple(elts=elts):
+                return ir.Tuple(id=expr_id, elts=[self.element(e) for e in elts])
+            case ast.Set(elts=elts):
+                return ir.Set(id=expr_id, elts=[self.element(e) for e in elts])
+            case ast.Dict(keys=keys, values=values):
+                return ir.Dict(
+                    id=expr_id,
+                    keys=[None if k is None else self.expr(k) for k in keys],
+                    values=[self.expr(v) for v in values],
+                )
+            case ast.ListComp(elt=elt, generators=generators):
+                return ir.Comprehension(
+                    id=expr_id, kind="list", elt=self.expr(elt), generators=self.comp(generators)
+                )
+            case ast.SetComp(elt=elt, generators=generators):
+                return ir.Comprehension(
+                    id=expr_id, kind="set", elt=self.expr(elt), generators=self.comp(generators)
+                )
+            case ast.DictComp(key=key, value=value, generators=generators):
+                return ir.Comprehension(
+                    id=expr_id,
+                    kind="dict",
+                    elt=self.expr(key),
+                    value=self.expr(value),
+                    generators=self.comp(generators),
+                )
             case ast.Constant():
                 raise Unsupported("this kind of value")
         raise Unsupported(friendly_name(node))
+
+    def element(self, node: ast.expr) -> ir.Expr:
+        """An item of a list, tuple or set literal; ``*others`` is allowed there."""
+        if isinstance(node, ast.Starred):
+            starred_id = self.new_id()
+            self.positions[starred_id] = self.span(node)
+            return ir.Starred(id=starred_id, value=self.expr(node.value))
+        return self.expr(node)
+
+    def comp(self, generators: list[ast.comprehension]) -> list[ir.CompFor]:
+        out = []
+        for gen in generators:
+            if gen.is_async:
+                raise Unsupported("async comprehensions")
+            out.append(
+                ir.CompFor(
+                    id=self.new_id(),
+                    target=self.loop_target(gen.target),
+                    iter=self.expr(gen.iter),
+                    ifs=[self.expr(i) for i in gen.ifs],
+                )
+            )
+        return out
 
     def keyword(self, node: ast.keyword) -> ir.Keyword:
         assert node.arg is not None
@@ -456,8 +683,34 @@ class _Printer:
             case ir.RawCode(text=text):
                 self.lines += [pad + line if line.strip() else "" for line in text.splitlines()]
             case ir.For(target=target, iter=iterable, body=body):
-                self.emit(f"{pad}for {target.name} in {expr_to_text(iterable)}:", stmt)
+                self.emit(f"{pad}for {target_to_text(target)} in {expr_to_text(iterable)}:", stmt)
                 self.body(body, depth + 1)
+            case ir.FunctionDef(name=name, params=params, body=body):
+                inputs = ", ".join(
+                    p.name if p.default is None else f"{p.name}={expr_to_text(p.default)}"
+                    for p in params
+                )
+                self.emit(f"{pad}def {name}({inputs}):", stmt)
+                self.body(body, depth + 1)
+            case ir.Try(body=body, handlers=handlers, orelse=orelse, finalbody=finalbody):
+                self.emit(f"{pad}try:", stmt)
+                self.body(body, depth + 1)
+                for handler in handlers:
+                    line = f"{pad}except"
+                    if handler.kind is not None:
+                        line += " " + expr_to_text(handler.kind)
+                    if handler.name is not None:
+                        line += f" as {handler.name}"
+                    self.lines.append(line + ":")
+                    row = len(self.lines)
+                    self.source_map[handler.id] = Span(row, len(pad), row, len(self.lines[-1]))
+                    self.body(handler.body, depth + 1)
+                if orelse:
+                    self.lines.append(f"{pad}else:")
+                    self.body(orelse, depth + 1)
+                if finalbody:
+                    self.lines.append(f"{pad}finally:")
+                    self.body(finalbody, depth + 1)
             case ir.While(test=test, body=body):
                 self.emit(f"{pad}while {expr_to_text(test)}:", stmt)
                 self.body(body, depth + 1)
@@ -495,12 +748,43 @@ def _simple_stmt_text(stmt: ir.Stmt) -> str:
         case ir.ExprStmt(value=value):
             return expr_to_text(value)
         case ir.Assign(target=target, value=value):
-            return f"{target.name} = {expr_to_text(value)}"
+            return f"{target_to_text(target)} = {target_to_text(value)}"
         case ir.AugAssign(target=target, op=op, value=value):
-            return f"{target.name} {op}= {expr_to_text(value)}"
+            return f"{target_to_text(target)} {op}= {expr_to_text(value)}"
+        case ir.Return(value=None):
+            return "return"
+        case ir.Return(value=value):
+            return f"return {target_to_text(value)}"
+        case ir.Break():
+            return "break"
+        case ir.Continue():
+            return "continue"
+        case ir.Global(names=names):
+            return f"global {', '.join(names)}"
+        case ir.Raise(exc=None):
+            return "raise"
+        case ir.Raise(exc=exc):
+            return f"raise {expr_to_text(exc)}"
+        case ir.Assert(test=test, msg=None):
+            return f"assert {expr_to_text(test)}"
+        case ir.Assert(test=test, msg=msg):
+            return f"assert {expr_to_text(test)}, {expr_to_text(msg)}"
+        case ir.Delete(targets=targets):
+            return f"del {', '.join(target_to_text(t) for t in targets)}"
+        case ir.Import(module=module, names=[]):
+            return f"import {module}"
+        case ir.Import(module=module, names=names):
+            return f"from {module} import {', '.join(names)}"
         case ir.Pass():
             return "pass"
     raise TypeError(f"cannot print {type(stmt).__name__}")
+
+
+def target_to_text(expr: ir.Expr) -> str:
+    """Like ``expr_to_text``, but a tuple goes without brackets: ``a, b = b, a``."""
+    if isinstance(expr, ir.Tuple) and len(expr.elts) > 1:
+        return ", ".join(expr_to_text(e) for e in expr.elts)
+    return expr_to_text(expr)
 
 
 def _precedence(expr: ir.Expr) -> int:
@@ -541,8 +825,45 @@ def expr_to_text(expr: ir.Expr) -> str:
             parts = [expr_to_text(a) for a in args]
             parts += [f"{k.name}={expr_to_text(k.value)}" for k in keywords]
             return f"{func}({', '.join(parts)})"
-        case ir.MethodCall(obj=obj, method=method, args=args):
-            return f"{_primary(obj)}.{method}({', '.join(expr_to_text(a) for a in args)})"
+        case ir.MethodCall(obj=obj, method=method, args=args, keywords=keywords):
+            parts = [expr_to_text(a) for a in args]
+            parts += [f"{k.name}={expr_to_text(k.value)}" for k in keywords]
+            return f"{_primary(obj)}.{method}({', '.join(parts)})"
+        case ir.Attribute(value=value, attr=attr):
+            return f"{_primary(value)}.{attr}"
+        case ir.List(elts=elts):
+            return "[" + ", ".join(expr_to_text(e) for e in elts) + "]"
+        case ir.Tuple(elts=[one]):
+            return f"({expr_to_text(one)},)"
+        case ir.Tuple(elts=elts):
+            return "(" + ", ".join(expr_to_text(e) for e in elts) + ")"
+        case ir.Set(elts=[]):
+            return "set()"
+        case ir.Set(elts=elts):
+            return "{" + ", ".join(expr_to_text(e) for e in elts) + "}"
+        case ir.Dict(keys=keys, values=values):
+            items = [
+                f"**{_wrap(v, _precedence(v) < ATOM_PRECEDENCE)}"
+                if k is None
+                else f"{expr_to_text(k)}: {expr_to_text(v)}"
+                for k, v in zip(keys, values, strict=True)
+            ]
+            return "{" + ", ".join(items) + "}"
+        case ir.Starred(value=value):
+            return "*" + _wrap(value, _precedence(value) < ATOM_PRECEDENCE)
+        case ir.Comprehension(kind=kind, elt=elt, value=value, generators=generators):
+            head = expr_to_text(elt)
+            if kind == "dict" and value is not None:
+                head = f"{head}: {expr_to_text(value)}"
+            loops = []
+            for gen in generators:
+                loops.append(
+                    f"for {target_to_text(gen.target)} in "
+                    f"{_wrap(gen.iter, _precedence(gen.iter) <= IFEXP_PRECEDENCE)}"
+                )
+                loops += [f"if {_wrap(c, _precedence(c) <= IFEXP_PRECEDENCE)}" for c in gen.ifs]
+            brackets = "[]" if kind == "list" else "{}"
+            return f"{brackets[0]}{head} {' '.join(loops)}{brackets[1]}"
         case ir.Subscript(value=value, index=index):
             return f"{_primary(value)}[{expr_to_text(index)}]"
         case ir.Slice(lower=lower, upper=upper, step=step):
@@ -631,11 +952,17 @@ def outline(program: ir.Program) -> Iterator[tuple[int, ir.Stmt]]:
     def visit(stmts: list[ir.Stmt], depth: int) -> Iterator[tuple[int, ir.Stmt]]:
         for stmt in stmts:
             yield depth, stmt
-            if isinstance(stmt, ir.For | ir.While):
+            if isinstance(stmt, ir.For | ir.While | ir.FunctionDef):
                 yield from visit(stmt.body, depth + 1)
             elif isinstance(stmt, ir.If):
                 yield from visit(stmt.body, depth + 1)
                 yield from visit(stmt.orelse, depth + 1)
+            elif isinstance(stmt, ir.Try):
+                yield from visit(stmt.body, depth + 1)
+                for handler in stmt.handlers:
+                    yield from visit(handler.body, depth + 1)
+                yield from visit(stmt.orelse, depth + 1)
+                yield from visit(stmt.finalbody, depth + 1)
 
     yield from visit(program.body, 0)
 
@@ -648,13 +975,27 @@ def block_label(stmt: ir.Stmt) -> str:
         case ir.ExprStmt(value=value):
             return f"value {expr_to_text(value)}"
         case ir.Assign(target=target, value=value):
-            return f"set {target.name} to {expr_to_text(value)}"
+            return f"set {target_to_text(target)} to {target_to_text(value)}"
         case ir.AugAssign(target=target, op=op, value=value):
-            return f"change {target.name} by {op}{expr_to_text(value)}"
-        case ir.For(target=target, iter=ir.Call(func="range", args=[count])):
+            return f"change {target_to_text(target)} by {op}{expr_to_text(value)}"
+        case ir.FunctionDef(name=name, params=params):
+            return f"teach {name}({', '.join(p.name for p in params)})"
+        case ir.Return(value=None):
+            return "give back"
+        case ir.Return(value=value):
+            return f"give back {target_to_text(value)}"
+        case ir.Break():
+            return "stop the loop"
+        case ir.Continue():
+            return "skip to the next turn"
+        case ir.Try():
+            return "try / if it goes wrong"
+        case ir.Raise() | ir.Assert() | ir.Delete() | ir.Global() | ir.Import():
+            return _simple_stmt_text(stmt)
+        case ir.For(target=ir.Name() as target, iter=ir.Call(func="range", args=[count])):
             return f"repeat {expr_to_text(count)} times ({target.name} counts)"
         case ir.For(target=target, iter=iterable):
-            return f"for each {target.name} in {expr_to_text(iterable)}"
+            return f"for each {target_to_text(target)} in {expr_to_text(iterable)}"
         case ir.If(test=test, orelse=[]):
             return f"if {expr_to_text(test)}"
         case ir.If(test=test):

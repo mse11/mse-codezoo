@@ -1,0 +1,95 @@
+{
+  "id": "m10-l06",
+  "title": "The first burrow",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "lists"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "E...E",
+      "##.##",
+      "##.##"
+    ],
+    "start": [
+      2,
+      2,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "E"
+  },
+  "constraints": {
+    "maxLines": 10,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "sniff",
+    "hide",
+    "guard_ahead"
+  ],
+  "hints": [
+    "sniff() lists the open ways: \"left\", \"ahead\", \"right\". Each is a tunnel.",
+    "explore(): grab(), then for each way: turn_to, step, explore(), back_up, turn_from."
+  ],
+  "mode": "both_editable",
+  "files": {
+    "burrow": "def turn_to(side):\n    if side == \"left\":\n        turn_left()\n    elif side == \"right\":\n        turn_right()\n\n\ndef turn_from(side):\n    if side == \"left\":\n        turn_right()\n    elif side == \"right\":\n        turn_left()\n\n\ndef back_up():\n    turn_left()\n    turn_left()\n    if guard_ahead():\n        hide()\n    step(1)\n    turn_left()\n    turn_left()\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Prvá nora",
+      "hints": [
+        "sniff() vymenuje voľné cesty: \"left\", \"ahead\", \"right\". Každá je tunel.",
+        "explore(): grab(), potom pre každú cestu: turn_to, krok, explore(), back_up, turn_from."
+      ]
+    }
+  }
+}

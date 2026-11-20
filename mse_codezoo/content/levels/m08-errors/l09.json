@@ -1,0 +1,96 @@
+{
+  "id": "m08-l09",
+  "title": "Around every crack",
+  "module": "errors",
+  "concepts": [
+    "try",
+    "while"
+  ],
+  "animal": "penguin",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".......",
+      "..-..-B"
+    ],
+    "start": [
+      0,
+      1,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        "........",
+        ".-...-.B"
+      ],
+      "start": [
+        0,
+        1,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 12,
+    "mustUse": [
+      "Try",
+      "While"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "slide"
+  ],
+  "hints": [
+    "Step one square at a time inside `try:`.",
+    "At a crack: up, 2 steps along, down, and face east again."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Okolo každej trhliny",
+      "hints": [
+        "Kráčaj po jednom políčku vnútri `try:`.",
+        "Pri trhline: hore, 2 kroky vedľa, dole a znova na východ."
+      ]
+    }
+  }
+}

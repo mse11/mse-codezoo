@@ -19,6 +19,18 @@ otherwise the browser's ``Accept-Language`` decides. Titles, hints and messages 
     GET  /api/profiles/<id>/progress   stars per level, today's minutes and limit
     POST /api/profiles/<id>/time {seconds} -> today's minutes and limit
     POST /api/parent/<action> {pin?, ...}  check | settings | report | export | remove
+
+Phase 3:
+    GET  /api/animals                  every animal pack, ready to draw
+    POST /api/run  also takes {modules?: {"tricks": "..."}, save?: true,
+                   levelData?: {...}} (a level from the editor); with a profile it answers
+                   new stickers and a practice suggestion too
+    POST /api/story {run}              -> {html}: a printable storybook of a saved run
+    GET  /cards.html?animal=monkey     printable unplugged cards
+    POST /api/profiles/<id>/unlock {code}      -> {card, sticker, new}
+    GET  /api/profiles/<id>/habitat            stickers, their places, outfits
+    POST /api/profiles/<id>/habitat {placed?, outfit?}
+    POST /api/levels/check {level, solution}   -> {errors}: the editor's "Test" button
 """
 
 from __future__ import annotations
@@ -34,19 +46,40 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from mse_codezoo import __version__, ir
-from mse_codezoo.game import attempt_from_run, level_to_json, run_level, run_to_json
-from mse_codezoo.i18n import from_accept_language, normalize, use_lang
+from mse_codezoo.cards import card_for_code, card_public, cards_html
+from mse_codezoo.game import (
+    attempt_from_run,
+    level_to_json,
+    run_level,
+    run_to_json,
+    solution_errors,
+)
+from mse_codezoo.i18n import from_accept_language, normalize, t, use_lang
 from mse_codezoo.lang_python import parse, print_program
-from mse_codezoo.levels import Level, LevelError, find_level, level_files, load_level
+from mse_codezoo.levels import (
+    Level,
+    LevelError,
+    animal_names,
+    find_level,
+    level_files,
+    load_level,
+    load_pack,
+    validate_level_data,
+)
 from mse_codezoo.profiles import PICTURES, PinError, ProfileError, ProfileStore
+from mse_codezoo.runs import RunFileError, make_run
+from mse_codezoo.story import storybook_html
 
 WEB_DIR = Path(__file__).parent / "web"
-MAX_BODY = 256 * 1024
-DRAIN_LIMIT = 8 * 1024 * 1024  # larger bodies are not read; the connection is closed
+MAX_BODY = 2 * 1024 * 1024  # a saved run for the storybook can be large
+DRAIN_LIMIT = 16 * 1024 * 1024  # larger bodies are not read; the connection is closed
 DEFAULT_PORT = 8765
 PROGRESS_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/progress$")
 TIME_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/time$")
 PARENT_PATH = re.compile(r"^/api/parent/(?P<action>[a-z]+)$")
+UNLOCK_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/unlock$")
+HABITAT_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/habitat$")
+MAX_MODULES = 5
 
 
 class ApiError(Exception):
@@ -69,15 +102,18 @@ def list_levels() -> list[dict[str, Any]]:
                 "title": level.shown_title,
                 "module": level.module,
                 "animal": level.animal,
+                "signature": level.signature,
                 "worlds": len(level.worlds()),
             }
         )
     return levels
 
 
-def get_level(level_id: str) -> dict[str, Any]:
+def get_level(level_id: str, animal: str | None = None) -> dict[str, Any]:
+    if animal is not None and animal not in animal_names():
+        animal = None
     try:
-        return level_to_json(find_level(level_id))
+        return level_to_json(find_level(level_id), animal)
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
 
@@ -110,6 +146,25 @@ def api_print(body: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _modules(body: dict[str, Any]) -> dict[str, str]:
+    modules = body.get("modules") or {}
+    ok = isinstance(modules, dict) and len(modules) <= MAX_MODULES
+    ok = ok and all(
+        isinstance(k, str) and k.isidentifier() and isinstance(v, str) for k, v in modules.items()
+    )
+    if not ok:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "`modules` must map helper names to Python text")
+    return modules
+
+
+def _inline_level(data: Any) -> Level:
+    """A level sent by the editor; checked like a level file before it runs."""
+    report = validate_level_data(data, has_solution=True)
+    if not report.ok:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "; ".join(report.errors))
+    return Level.from_dict(data)
+
+
 def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
     source = _text(body, "source")
     animal = body.get("animal")
@@ -117,15 +172,61 @@ def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
     variant = body.get("variant", 0)
     if isinstance(variant, bool) or not isinstance(variant, int):
         raise ApiError(HTTPStatus.BAD_REQUEST, "`variant` must be a whole number")
+    if animal is not None and not isinstance(animal, str):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "`animal` must be text")
     try:
-        level = find_level(_text(body, "level"))
-        run = run_level(level, source, animal=animal, variant=variant)
+        if "levelData" in body:
+            level = _inline_level(body["levelData"])
+        else:
+            level = find_level(_text(body, "level"))
+        run = run_level(level, source, animal=animal, variant=variant, modules=_modules(body))
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
     data = run_to_json(run)
-    if isinstance(player, str) and player:
+    if body.get("save") and run.result is not None:
+        data["savedRun"] = make_run(run, source)
+    if isinstance(player, str) and player and "levelData" not in body:
         data["progress"] = store.record(player, attempt_from_run(run, source))
+        levels = _all_levels()
+        data["newStickers"] = store.award(player, levels)
+        data["suggestion"] = store.suggest(player, level, levels)
     return data
+
+
+def api_story(body: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return {"html": storybook_html(body.get("run"))}
+    except RunFileError as exc:
+        raise ApiError(HTTPStatus.BAD_REQUEST, str(exc)) from None
+
+
+def api_animals() -> list[dict[str, Any]]:
+    return [load_pack(name).public() for name in animal_names()]
+
+
+def api_unlock(profile_id: str, body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
+    levels = _all_levels()
+    card = card_for_code(_text(body, "code"), levels)
+    if card is None:
+        raise ProfileError(t("That code doesn't match any card. Check the spelling."))
+    return {"card": card_public(card, levels), **store.unlock_card(profile_id, card)}
+
+
+def api_set_habitat(profile_id: str, body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
+    outfit = body.get("outfit")
+    if outfit is not None and not isinstance(outfit, str):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "`outfit` must be text")
+    return store.set_habitat(profile_id, body.get("placed"), outfit)
+
+
+def api_check_level(body: dict[str, Any]) -> dict[str, Any]:
+    data = body.get("level")
+    solution = _text(body, "solution")
+    report = validate_level_data(data, has_solution=True)
+    if not report.ok:
+        return {"ok": False, "errors": report.errors}
+    errors = solution_errors(Level.from_dict(data), solution)
+    return {"ok": not errors, "errors": errors}
 
 
 # --- players and grown-ups --------------------------------------------------------------
@@ -160,8 +261,11 @@ def api_add_profile(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]
 
 
 def api_progress(profile_id: str, store: ProfileStore) -> dict[str, Any]:
-    levels = store.progress(profile_id)["levels"]
+    data = store.progress(profile_id)
+    levels = data["levels"]
     return {
+        "stickers": len(data.get("stickers", [])),
+        "outfit": data.get("outfit", "none"),
         "levels": {
             level_id: {"stars": entry.get("stars", 0), "solved": entry.get("solved", False)}
             for level_id, entry in levels.items()
@@ -247,8 +351,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(api_profiles(store))
             elif match := PROGRESS_PATH.match(path):
                 self._json(api_progress(match["id"], store))
+            elif match := HABITAT_PATH.match(path):
+                self._json(store.habitat(match["id"]))
+            elif path == "/api/animals":
+                self._json(api_animals())
+            elif path == "/cards.html":
+                self._cards()
             elif path.startswith("/api/levels/"):
-                self._json(get_level(unquote(path.removeprefix("/api/levels/"))))
+                animal = parse_qs(urlsplit(self.path).query).get("animal", [None])[0]
+                self._json(get_level(unquote(path.removeprefix("/api/levels/")), animal))
             elif path.startswith("/api/"):
                 raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
             else:
@@ -288,7 +399,30 @@ class Handler(BaseHTTPRequestHandler):
             return api_time(match["id"], body, store)
         if match := PARENT_PATH.match(path):
             return api_parent(match["action"], body, store)
+        if match := UNLOCK_PATH.match(path):
+            return api_unlock(match["id"], body, store)
+        if match := HABITAT_PATH.match(path):
+            return api_set_habitat(match["id"], body, store)
+        if path == "/api/story":
+            return api_story(body)
+        if path == "/api/levels/check":
+            return api_check_level(body)
         raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
+
+    def _cards(self) -> None:
+        animal = parse_qs(urlsplit(self.path).query).get("animal", ["monkey"])[0]
+        if animal not in animal_names():
+            raise ApiError(HTTPStatus.NOT_FOUND, "no such animal")
+        self._html(cards_html(animal, _all_levels()))
+
+    def _html(self, text: str) -> None:
+        payload = text.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
 
     # --- helpers ---------------------------------------------------------------
 

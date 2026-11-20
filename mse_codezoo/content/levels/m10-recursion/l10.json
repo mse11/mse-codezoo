@@ -1,0 +1,96 @@
+{
+  "id": "m10-l10",
+  "title": "The guarded burrow",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "if"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "E#E#E",
+      ".#o#o",
+      "..o..",
+      "##.##"
+    ],
+    "start": [
+      2,
+      3,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "E"
+  },
+  "constraints": {
+    "maxLines": 12,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "sniff",
+    "hide",
+    "guard_ahead"
+  ],
+  "hints": [
+    "Guards watch some tunnels. back_up() already hides; you hide before stepping in.",
+    "In explore(), before step(1): if guard_ahead(): hide()."
+  ],
+  "mode": "both_editable",
+  "files": {
+    "burrow": "def turn_to(side):\n    if side == \"left\":\n        turn_left()\n    elif side == \"right\":\n        turn_right()\n\n\ndef turn_from(side):\n    if side == \"left\":\n        turn_right()\n    elif side == \"right\":\n        turn_left()\n\n\ndef back_up():\n    turn_left()\n    turn_left()\n    if guard_ahead():\n        hide()\n    step(1)\n    turn_left()\n    turn_left()\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Strážená nora",
+      "hints": [
+        "Stráže strážia niektoré tunely. back_up() sa už skrýva; ty sa skry pred krokom dnu.",
+        "V explore() pred step(1): if guard_ahead(): hide()."
+      ]
+    }
+  }
+}

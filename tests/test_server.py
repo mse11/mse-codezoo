@@ -112,6 +112,7 @@ def test_levels_list(base_url):
         "title": "One banana",
         "module": "sequences",
         "animal": "monkey",
+        "signature": False,
         "worlds": 1,
     }
     assert first in levels
@@ -134,7 +135,7 @@ def test_unknown_level_is_404(base_url):
 
 
 def test_parse(base_url):
-    status, data = get_json(base_url, "/api/parse", {"source": "step(1)\ndef jump():\n    pass\n"})
+    status, data = get_json(base_url, "/api/parse", {"source": "step(1)\nclass Jump:\n    pass\n"})
     assert status == 200
     assert data["ok"] is True
     assert PROGRAM_SCHEMA.is_valid(data["program"])

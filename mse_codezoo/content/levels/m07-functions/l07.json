@@ -1,0 +1,94 @@
+{
+  "id": "m07-l07",
+  "title": "Climb every tree",
+  "module": "functions",
+  "concepts": [
+    "def"
+  ],
+  "animal": "monkey",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "t.t..t",
+      "......"
+    ],
+    "start": [
+      0,
+      1,
+      "east"
+    ],
+    "items": [
+      [
+        0,
+        0,
+        "C"
+      ],
+      [
+        2,
+        0,
+        "C"
+      ],
+      [
+        5,
+        0,
+        "C"
+      ]
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "C"
+  },
+  "constraints": {
+    "maxLines": 9,
+    "mustUse": [
+      "FunctionDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "swing",
+    "climb"
+  ],
+  "hints": [
+    "climb_tree(): turn left, climb(), turn right.",
+    "climb_tree(), step(2), climb_tree(), step(3), climb_tree()."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Vylez na každú palmu",
+      "hints": [
+        "climb_tree(): doľava, climb(), doprava.",
+        "climb_tree(), step(2), climb_tree(), step(3), climb_tree()."
+      ]
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "id": "m07-l02",
+  "title": "Climbing stairs",
+  "module": "functions",
+  "concepts": [
+    "def"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B",
+      "..B.",
+      ".B..",
+      "...."
+    ],
+    "start": [
+      0,
+      3,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 9,
+    "mustUse": [
+      "FunctionDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import"
+  ],
+  "hints": [
+    "One stair: step, turn left, step, turn right, grab.",
+    "Teach `climb_stair()` once and call it three times."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Po schodoch",
+      "hints": [
+        "Jeden schod: krok, doľava, krok, doprava, chyť.",
+        "Nauč `climb_stair()` raz a zavolaj ho trikrát."
+      ]
+    }
+  }
+}

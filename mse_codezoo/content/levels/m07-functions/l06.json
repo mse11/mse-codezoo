@@ -1,0 +1,76 @@
+{
+  "id": "m07-l06",
+  "title": "A file of tricks",
+  "module": "functions",
+  "concepts": [
+    "import"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B.B.B"
+    ],
+    "start": [
+      2,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "Import"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import"
+  ],
+  "hints": [
+    "tricks.py already has hop(n) and turn_around(). Bring them in with `from tricks import hop, turn_around`.",
+    "grab(), hop(2), turn_around(), hop(4)."
+  ],
+  "mode": "both_editable",
+  "files": {
+    "tricks": "def turn_around():\n    turn_left()\n    turn_left()\n\n\ndef hop(n=1):\n    step(n)\n    grab()\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Súbor s trikmi",
+      "hints": [
+        "tricks.py už má hop(n) a turn_around(). Prines si ich cez `from tricks import hop, turn_around`.",
+        "grab(), hop(2), turn_around(), hop(4)."
+      ]
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "id": "m09-l10",
+  "title": "Dam with leftovers",
+  "module": "collections",
+  "concepts": [
+    "dictionaries",
+    "while"
+  ],
+  "animal": "beaver",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".OPPOL~~~."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "build",
+        "logs": {
+          "oak": 1,
+          "pine": 2
+        }
+      },
+      {
+        "type": "say",
+        "text": "{'birch': 1, 'oak': 1}"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 9,
+    "mustUse": [
+      "Dict",
+      "While"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "build",
+    "inventory"
+  ],
+  "hints": [
+    "Grab logs until the water, then build what the plan says.",
+    "say(inventory()) at the end shows the logs left over."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Hrádza a zvyšky",
+      "hints": [
+        "Zbieraj polená až po vodu, potom postav, čo hovorí plán.",
+        "say(inventory()) na konci ukáže zvyšné polená."
+      ]
+    }
+  }
+}

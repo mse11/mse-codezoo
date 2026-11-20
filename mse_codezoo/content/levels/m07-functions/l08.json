@@ -1,0 +1,104 @@
+{
+  "id": "m07-l08",
+  "title": "Tricks with a dot",
+  "module": "functions",
+  "concepts": [
+    "import",
+    "for"
+  ],
+  "animal": "monkey",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "tttt",
+      "...."
+    ],
+    "start": [
+      0,
+      1,
+      "east"
+    ],
+    "items": [
+      [
+        0,
+        0,
+        "C"
+      ],
+      [
+        1,
+        0,
+        "C"
+      ],
+      [
+        2,
+        0,
+        "C"
+      ],
+      [
+        3,
+        0,
+        "C"
+      ]
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "C"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "Import",
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "swing",
+    "climb"
+  ],
+  "hints": [
+    "`import tricks` brings the whole file; call tricks.climb_tree().",
+    "Climb, then step, 4 times, but don't step off the end."
+  ],
+  "mode": "both_editable",
+  "files": {
+    "tricks": "def climb_tree():\n    turn_left()\n    climb()\n    turn_right()\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Triky s bodkou",
+      "hints": [
+        "`import tricks` prinesie celý súbor; volaj tricks.climb_tree().",
+        "Vylez, potom krok, 4-krát, ale nezíď z okraja."
+      ]
+    }
+  }
+}

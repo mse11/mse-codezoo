@@ -1,0 +1,98 @@
+{
+  "id": "m10-l03",
+  "title": "There and back",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "call stack"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "reach",
+        "at": [
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 10,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "Each call takes one step there; after the inner call returns, it steps back.",
+    "At n == 0: grab() and turn around. Watch the call stack grow and shrink."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Tam a späť",
+      "hints": [
+        "Každé volanie urobí krok tam; keď sa vnútorné vráti, urobí krok späť.",
+        "Pri n == 0: grab() a otoč sa. Sleduj, ako zásobník volaní rastie a klesá."
+      ]
+    }
+  }
+}

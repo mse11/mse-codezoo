@@ -1,0 +1,89 @@
+{
+  "id": "m08-l05",
+  "title": "Raise your own",
+  "module": "errors",
+  "concepts": [
+    "raise",
+    "try"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B.B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "no walking backwards"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 10,
+    "mustUse": [
+      "Raise",
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each"
+  ],
+  "hints": [
+    "safe_step(n) should `raise ValueError(\"no walking backwards\")` when n < 0.",
+    "Catch it with `except ValueError as e:` and say(e)."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Vyhoď vlastnú chybu",
+      "hints": [
+        "safe_step(n) má pri n < 0 urobiť `raise ValueError(\"no walking backwards\")`.",
+        "Zachyť ju cez `except ValueError as e:` a say(e)."
+      ]
+    }
+  }
+}

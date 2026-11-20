@@ -3,7 +3,8 @@ name = "mse-codezoo"
 version = "0.1.0"
 description = "Learn real Python through animal coding games"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.5.1",

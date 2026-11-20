@@ -550,6 +550,30 @@ Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), t
 - [ ] Pilot against the MVP metrics; device and performance testing of the 3D stage on the cheapest target tablet and Chromebook
 - [ ] Decide free or paid, open or closed before the pilot (see [Future improvements](#3-free-or-paid-open-or-closed))
 
+**Phase 3 steps (weeks 15–24)**
+
+- [x] Interpreter: `def` with inputs, defaults and keyword arguments, `return` (several values as a tuple), local scope, closures, `global`, `import` / `from … import` of helper files (the level's own `files`, or the learner's `.py` files next to the program), recursion with a depth limit of 40 and a "base case?" message; `break` / `continue`; `try` / `except` / `else` / `finally`, `raise`, bare `raise`, `assert`, with real Python exceptions so `except` matches CPython (the zoo's limits stay uncatchable); lists, tuples, dicts, sets, unpacking with `*rest`, `del`, subscript assignment, list/dict/set comprehensions, collection methods and builtins (`sorted` with `key=`, `enumerate`, `zip`…); size guards for collections; the interpreter now runs statements directly (an emit callback replaces the generator) so learner functions can produce steps; uncaught errors keep a traceback (function, line) from the outside in; IR version 3, schema regenerated
+- [x] Python adapter: parse and print every new node (bare tuples in `a, b = b, a` and `return`, `except (A, B) as e`, comments on `except` / `else` / `finally` lines kept as notes, starred items, comprehensions); round-trip and CPython differential tests for all of it (`tests/test_phase3_language.py`)
+- [x] Animals: penguin, beaver and fox packs (English and Slovak names, their own item names, `catch()` for the penguin); terrain tiles (`~` water or gap, `t` tree, `-` thin ice, `o` a guard's watch, `=` bridge) and items on terrain; tricks: monkey `swing()` / `climb()`, penguin `slide()` and `CrackError`, beaver `build(log)` / `inventory()`, fox `sniff()` / `hide()` / `guard_ahead()`; a `build` goal
+- [x] Core levels re-skinned for every animal: programs, helper files and hints follow the chosen animal (`reskin_source`), the web has an animal picker, signature levels (`"signature": true`) stay with their own animal; validation refuses terrain or tricks in a core level and runs every core solution as every animal
+- [x] Modules 6–10: Loops II (11 levels), Functions (12), Errors and debugging (9), Collections (10), Recursion (10); 109 levels in all, with debugging levels in every module and signature levels for all four animals; Slovak titles and hints; every reference solution earns 3 stars in every world, for every animal that can play it, in CPython and in Pyodide
+- [x] Blocks for the new constructs: `break`, `continue`, `def`, call (statement and value), `return`, `try` / `except`, `raise`, for each, list (up to 4 items), `append`, `len`, `[ ]`, `.get()`, `.items()`, `import`, `global`, and the animals' tricks; anything else stays a grey raw block
+- [x] Stages: penguin, beaver and fox models and every pack's items in 3D, ground per world, water, trees with fruit on top, thin ice, guard posts, bridges; swing, climb, slide, build, crack and hide animations in 3D and 2D; the call stack under the stage as nested burrows while a program runs
+- [x] Saved runs (`*.run.json`): `codezoo run --save`, "Save this run" in the web; `codezoo replay RUN` replays one in the terminal
+- [x] Storybook: narration generated from a run's events with a picture per page, an editable title and an editable line per page, printable; `codezoo story export`, "Make a storybook" in the web; English and Slovak
+- [x] Printable unplugged cards per animal and module (`codezoo cards print`, `/cards.html`), each with a word code and a QR code from a small stdlib encoder (checked against an independent QR reader); typing or scanning a code (camera only where the browser can read QR codes, nothing stored) unlocks a sticker and opens the level; `codezoo cards unlock`
+- [x] Stickers and habitat: stickers for the first solved level, finished modules, star milestones and cards; "My zoo" places them in the habitat by dragging, and outfits unlocked by sticker count show on both stages; kept in the player's progress and export
+- [x] Adaptive suggestion: after 3 failed tries on a level, an earlier level that practises the same concept (fewest stars first) is offered in the web and the CLI; the child can still pick freely
+- [x] Level editor prototype (`editor.html`): tile painter with terrain, start, flag and items on trees, goal, hints, starter and solution; "Test the level" runs the same checks as `levels validate` (`POST /api/levels/check`); download the level JSON and solution file; open an existing level file
+- [x] `codezoo world new ANIMAL` scaffolds `SPEC.md`, `pack.json` and a first signature level
+- [x] Grown-up report: new mistake kinds (endless recursion, uncaught errors) with try-at-home tips
+- [x] Tests: `test_phase3_language.py`, `test_phase3_features.py` and `test_web_i18n.py` (every web text has a Slovak translation); the Pyodide CI job solves all 109 levels
+- [ ] Fewer levels than planned in modules 8–10 (9–10 instead of about 12) and fewer signature levels per module (1–4 instead of about 4); to be filled with the level editor once content production starts
+- [ ] Generators, `lambda` and generator expressions move with module 11 to phase 4 (they stay raw code until then)
+- [ ] Graduation path (export a real `.py` and run it in CPython): still to decide; helper files and saved runs are a first step
+- [ ] Recorded narration for the storybook and voices for cards (speech synthesis first); a native-speaker review of the new Slovak texts (same open point as phase 2)
+- [ ] Learning-gain and drop-off check with pilot families (the phase 3 gate); device testing of the new 3D animals on the cheapest tablet
+
 ## Not yet covered
 
 Eleven topics still need a decision; none blocks phase 0, but each should be settled by the phase shown.
@@ -615,7 +639,7 @@ The phase 2 pilot is when real families start using CodeZoo, and the money model
 
 - **Promises to families.** Pilot parents will ask whether it stays free; charging later for something promised free loses the trust a children's app depends on.
 - **Accounts and privacy.** Paid usually means a purchase or licence check and often accounts, which brings parental consent, GDPR and COPPA work and a server. "Everything stays on the device" fully holds only for free or one-time-purchase models.
-- **Open source.** Invites community animal packs and teacher forks, which the plan wants, but makes selling harder; the MIT licence already in the repository cannot be taken back for copies already shared.
+- **Open source.** Invites community animal packs and teacher forks, which the plan wants, but makes selling harder; the code moved from MIT to Apache-2.0 on Nov 20, 2026 (same freedom to use, fork and sell, plus an explicit patent grant and a NOTICE file); copies already shared under MIT stay MIT.
 - **Schools.** Paid school licences would pull the teacher class view (phase 5) much earlier.
 
 | Option | Fits the current plan? |

@@ -1,0 +1,72 @@
+{
+  "id": "m06-l04",
+  "title": "Four sides",
+  "module": "loops-2",
+  "concepts": [
+    "for",
+    "nested loops"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB",
+      "B..B",
+      "B..B",
+      "BBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "One side is 3 times: step and grab. Then turn.",
+    "Put the side loop inside a loop that runs 4 times."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Štyri strany",
+      "hints": [
+        "Jedna strana je 3-krát: krok a chyť. Potom sa otoč.",
+        "Vlož cyklus jednej strany do cyklu, ktorý sa zopakuje 4-krát."
+      ]
+    }
+  }
+}

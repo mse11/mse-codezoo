@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from dataclasses import MISSING, dataclass, field, fields
 from typing import Any
 
-IR_VERSION = 2  # bump when the JSON shape changes in a way old clients can't read
+IR_VERSION = 3  # bump when the JSON shape changes in a way old clients can't read
 
 
 @dataclass(kw_only=True)
@@ -64,11 +64,70 @@ class Call(Expr):
 
 @dataclass(kw_only=True)
 class MethodCall(Expr):
-    """A method on a value, like ``name.upper()``."""
+    """A method on a value, like ``name.upper()`` or ``logs.sort(reverse=True)``."""
 
     obj: Expr
     method: str
     args: list[Expr] = field(default_factory=list)
+    keywords: list[Keyword] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Attribute(Expr):
+    """A name inside a module: ``tricks.HEIGHT``."""
+
+    value: Expr
+    attr: str
+
+
+@dataclass(kw_only=True)
+class List(Expr):
+    elts: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Tuple(Expr):
+    elts: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Set(Expr):
+    elts: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Dict(Expr):
+    """``{"oak": 3, **other}``: a key of ``None`` marks a ``**`` merge of ``values[i]``."""
+
+    keys: list[Expr | None] = field(default_factory=list)
+    values: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Starred(Expr):
+    """``*rest`` in ``first, *rest = logs`` or ``[*a, *b]``."""
+
+    value: Expr
+
+
+@dataclass(kw_only=True)
+class CompFor(Node):
+    """One ``for target in iter if ...`` part of a comprehension."""
+
+    target: Expr
+    iter: Expr
+    ifs: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Comprehension(Expr):
+    """``[elt for ...]`` (kind ``list``), ``{elt for ...}`` (``set``) or
+    ``{elt: value for ...}`` (``dict``)."""
+
+    kind: str
+    elt: Expr
+    value: Expr | None = None
+    generators: list[CompFor] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -153,20 +212,27 @@ class ExprStmt(Stmt):
 
 @dataclass(kw_only=True)
 class Assign(Stmt):
-    target: Name
+    """``target = value``; the target is a ``Name``, a ``Subscript`` (``inv["oak"] = 3``)
+    or a ``Tuple`` of them (``a, b = b, a``)."""
+
+    target: Expr
     value: Expr
 
 
 @dataclass(kw_only=True)
 class AugAssign(Stmt):
-    target: Name
+    """``x += 1`` or ``inv["oak"] += 1``."""
+
+    target: Expr
     op: str
     value: Expr
 
 
 @dataclass(kw_only=True)
 class For(Stmt):
-    target: Name
+    """``for target in iter:``; the target is a ``Name`` or a ``Tuple`` of names."""
+
+    target: Expr
     iter: Expr
     body: list[Stmt] = field(default_factory=list)
 
@@ -184,6 +250,84 @@ class If(Stmt):
 class While(Stmt):
     test: Expr
     body: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Break(Stmt):
+    pass
+
+
+@dataclass(kw_only=True)
+class Continue(Stmt):
+    pass
+
+
+@dataclass(kw_only=True)
+class Param(Node):
+    """One input of a function, with an optional default: ``height=2``."""
+
+    name: str
+    default: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class FunctionDef(Stmt):
+    name: str
+    params: list[Param] = field(default_factory=list)
+    body: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Return(Stmt):
+    value: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class Global(Stmt):
+    names: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class ExceptHandler(Node):
+    """``except kind as name:``; ``kind`` is a name, a ``Tuple`` of names or ``None``."""
+
+    kind: Expr | None = None
+    name: str | None = None
+    body: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Try(Stmt):
+    body: list[Stmt] = field(default_factory=list)
+    handlers: list[ExceptHandler] = field(default_factory=list)
+    orelse: list[Stmt] = field(default_factory=list)
+    finalbody: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Raise(Stmt):
+    """``raise CrackError("thin ice")``, or a bare ``raise`` inside ``except``."""
+
+    exc: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class Assert(Stmt):
+    test: Expr
+    msg: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class Delete(Stmt):
+    targets: list[Expr] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Import(Stmt):
+    """``import tricks`` (no ``names``) or ``from tricks import climb_tree, HEIGHT``."""
+
+    module: str
+    names: list[str] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -217,6 +361,14 @@ NODE_TYPES: dict[str, type[Node]] = {
         Call,
         Keyword,
         MethodCall,
+        Attribute,
+        List,
+        Tuple,
+        Set,
+        Dict,
+        Starred,
+        CompFor,
+        Comprehension,
         BinOp,
         UnaryOp,
         Compare,
@@ -232,6 +384,18 @@ NODE_TYPES: dict[str, type[Node]] = {
         For,
         If,
         While,
+        Break,
+        Continue,
+        Param,
+        FunctionDef,
+        Return,
+        Global,
+        ExceptHandler,
+        Try,
+        Raise,
+        Assert,
+        Delete,
+        Import,
         Pass,
         Comment,
         RawCode,

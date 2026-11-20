@@ -1,0 +1,75 @@
+{
+  "id": "m06-l11",
+  "title": "Snake through the jungle",
+  "module": "loops-2",
+  "concepts": [
+    "while",
+    "break",
+    "if"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBBB",
+      "####B",
+      "BBBBB",
+      "B####",
+      "BBBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 11,
+    "mustUse": [
+      "While",
+      "Break"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "When blocked, try right. Still blocked? Turn back and try left.",
+    "Blocked in every way means the end: break."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Hadíkom cez džungľu",
+      "hints": [
+        "Keď je cesta zatarasená, skús doprava. Stále? Otoč sa a skús doľava.",
+        "Zatarasené všade znamená koniec: break."
+      ]
+    }
+  }
+}

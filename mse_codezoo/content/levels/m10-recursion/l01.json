@@ -1,0 +1,91 @@
+{
+  "id": "m10-l01",
+  "title": "Count down",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "base case"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "3",
+      "2",
+      "1",
+      "Go!"
+    ]
+  },
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "countdown(n) says n, then calls countdown(n - 1).",
+    "The base case: when n == 0, say(\"Go!\") and return."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Odpočítavanie",
+      "hints": [
+        "countdown(n) povie n a potom zavolá countdown(n - 1).",
+        "Základný prípad: keď n == 0, say(\"Go!\") a return."
+      ]
+    }
+  }
+}

@@ -7,7 +7,15 @@ import * as THREE from "./vendor/three/three.module.min.js";
 
 const ANGLE = { north: Math.PI, east: Math.PI / 2, south: 0, west: -Math.PI / 2 };
 const STEP = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] };
-const ITEM_EMOJI = { banana: "🍌", coconut: "🥥", rotten: "🤢" };
+import { EMOJI as ITEM_EMOJI } from "./stage.js";
+
+// ground colours per world: [tile, other tile, edge]
+const GROUND = {
+  monkey: [0x7cb342, 0x8bc34a, 0x3e6b2f],
+  penguin: [0xe3f2fd, 0xf5fbff, 0x90a4ae],
+  beaver: [0x9ccc65, 0xaed581, 0x5d4037],
+  fox: [0x558b2f, 0x689f38, 0x33691e],
+};
 const reducedMotion =window.matchMedia("(prefers-reduced-motion: reduce)");
 
 export function webglAvailable() {
@@ -74,6 +82,138 @@ function makeMonkey() {
   return monkey;
 }
 
+// The other animals share the monkey's shape idea: a body, a head group that can nod, feet.
+function makeAnimal(kind) {
+  if (kind === "penguin") return makePenguin();
+  if (kind === "beaver") return makeBeaver();
+  if (kind === "fox") return makeFox();
+  return makeMonkey();
+}
+
+function finish(animal, parts, head) {
+  animal.add(...parts, head);
+  animal.userData.head = head;
+  animal.rotation.order = "YXZ";
+  return animal;
+}
+
+function eyesAt(y, z, spread = 0.07) {
+  return [-spread, spread].map((x) => {
+    const eye = mesh(new THREE.SphereGeometry(0.028, 8, 6), 0x1a1a1a);
+    eye.position.set(x, y, z);
+    return eye;
+  });
+}
+
+function makePenguin() {
+  const penguin = new THREE.Group();
+  const body = mesh(new THREE.IcosahedronGeometry(0.27, 1), 0x263238);
+  body.scale.set(0.9, 1.3, 0.85);
+  body.position.y = 0.36;
+  const belly = mesh(new THREE.IcosahedronGeometry(0.2, 1), 0xfafafa);
+  belly.scale.set(0.8, 1.2, 0.5);
+  belly.position.set(0, 0.33, 0.13);
+  const feet = [-0.09, 0.09].map((x) => {
+    const foot = mesh(new THREE.BoxGeometry(0.1, 0.03, 0.14), 0xffa000);
+    foot.position.set(x, 0.02, 0.08);
+    return foot;
+  });
+  const wings = [-0.25, 0.25].map((x) => {
+    const wing = mesh(new THREE.BoxGeometry(0.04, 0.3, 0.14), 0x263238);
+    wing.position.set(x, 0.38, 0);
+    wing.rotation.z = x > 0 ? -0.25 : 0.25;
+    return wing;
+  });
+  const head = new THREE.Group();
+  head.position.y = 0.72;
+  const skull = mesh(new THREE.IcosahedronGeometry(0.16, 1), 0x263238);
+  const beak = mesh(new THREE.ConeGeometry(0.05, 0.14, 5), 0xffa000);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, -0.02, 0.17);
+  head.add(skull, beak, ...eyesAt(0.04, 0.13, 0.06));
+  return finish(penguin, [body, belly, ...feet, ...wings], head);
+}
+
+function makeBeaver() {
+  const beaver = new THREE.Group();
+  const fur = 0x795548;
+  const body = mesh(new THREE.IcosahedronGeometry(0.28, 1), fur);
+  body.scale.set(1, 0.95, 1.1);
+  body.position.y = 0.3;
+  const tail = mesh(new THREE.BoxGeometry(0.22, 0.05, 0.36), 0x4e342e);
+  tail.position.set(0, 0.08, -0.38);
+  const feet = [-0.13, 0.13].map((x) => {
+    const foot = mesh(new THREE.IcosahedronGeometry(0.07, 0), 0x4e342e);
+    foot.position.set(x, 0.05, 0.1);
+    return foot;
+  });
+  const head = new THREE.Group();
+  head.position.y = 0.58;
+  const skull = mesh(new THREE.IcosahedronGeometry(0.17, 1), fur);
+  const nose = mesh(new THREE.SphereGeometry(0.04, 8, 6), 0x212121);
+  nose.position.set(0, 0, 0.17);
+  const teeth = mesh(new THREE.BoxGeometry(0.07, 0.06, 0.02), 0xfff8e1);
+  teeth.position.set(0, -0.08, 0.15);
+  const ears = [-0.12, 0.12].map((x) => {
+    const ear = mesh(new THREE.SphereGeometry(0.04, 6, 4), 0x5d4037);
+    ear.position.set(x, 0.13, -0.02);
+    return ear;
+  });
+  head.add(skull, nose, teeth, ...ears, ...eyesAt(0.06, 0.13));
+  return finish(beaver, [body, tail, ...feet], head);
+}
+
+function makeFox() {
+  const fox = new THREE.Group();
+  const fur = 0xef6c00;
+  const body = mesh(new THREE.IcosahedronGeometry(0.24, 1), fur);
+  body.scale.set(0.9, 0.9, 1.3);
+  body.position.y = 0.32;
+  const tail = mesh(new THREE.ConeGeometry(0.1, 0.45, 6), fur);
+  tail.rotation.x = -Math.PI / 2.6;
+  tail.position.set(0, 0.36, -0.42);
+  const tip = mesh(new THREE.ConeGeometry(0.06, 0.14, 6), 0xfafafa);
+  tip.rotation.x = -Math.PI / 2.6;
+  tip.position.set(0, 0.47, -0.6);
+  const legs = [-0.1, 0.1].map((x) => {
+    const leg = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 5), 0x3e2723);
+    leg.position.set(x, 0.09, 0.08);
+    return leg;
+  });
+  const head = new THREE.Group();
+  head.position.set(0, 0.56, 0.18);
+  const skull = mesh(new THREE.IcosahedronGeometry(0.15, 1), fur);
+  const snout = mesh(new THREE.ConeGeometry(0.07, 0.18, 5), 0xfafafa);
+  snout.rotation.x = Math.PI / 2;
+  snout.position.set(0, -0.03, 0.16);
+  const ears = [-0.08, 0.08].map((x) => {
+    const ear = mesh(new THREE.ConeGeometry(0.05, 0.13, 4), fur);
+    ear.position.set(x, 0.16, 0);
+    return ear;
+  });
+  head.add(skull, snout, ...ears, ...eyesAt(0.04, 0.12, 0.06));
+  return finish(fox, [body, tail, tip, ...legs], head);
+}
+
+function makeTree() {
+  const tree = new THREE.Group();
+  const trunk = mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.9, 6), 0x795548);
+  trunk.position.y = 0.45;
+  const crown = mesh(new THREE.IcosahedronGeometry(0.42, 0), 0x2e7d32);
+  crown.position.y = 1.05;
+  tree.add(trunk, crown);
+  return tree;
+}
+
+function makeLog(color) {
+  const log = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 8), color);
+  log.rotation.z = Math.PI / 2;
+  log.position.y = 0.1;
+  const group = new THREE.Group();
+  group.add(log);
+  return group;
+}
+
 function makeBanana(color = 0xf4d03f) {
   const banana = new THREE.Group();
   const curve = mesh(new THREE.TorusGeometry(0.18, 0.06, 6, 10, Math.PI * 0.75), color);
@@ -102,10 +242,51 @@ function makeRock() {
   return rock;
 }
 
+function makeBlob(color, scale = [1, 1, 1], size = 0.15) {
+  const group = new THREE.Group();
+  const blob = mesh(new THREE.IcosahedronGeometry(size, 1), color);
+  blob.scale.set(...scale);
+  blob.position.y = size * scale[1] + 0.02;
+  group.add(blob);
+  return group;
+}
+
 function makeItem(noun) {
   if (noun === "banana") return makeBanana();
   if (noun === "rotten") return makeBanana(0x6b5b2a);
   if (noun === "coconut") return makeCoconut();
+  if (noun === "fish") {
+    const fish = makeBlob(0x4fc3f7, [1.5, 0.7, 0.6]);
+    const tail = mesh(new THREE.ConeGeometry(0.08, 0.14, 4), 0x0288d1);
+    tail.rotation.z = Math.PI / 2;
+    tail.position.set(-0.28, 0.12, 0);
+    fish.add(tail);
+    return fish;
+  }
+  if (noun === "pebble") return makeBlob(0x9e9e9e, [1.2, 0.6, 1]);
+  if (noun === "crab") return makeBlob(0xe53935, [1.4, 0.6, 1]);
+  if (noun === "egg") return makeBlob(0xfffde7, [0.8, 1.1, 0.8]);
+  if (noun === "berry") return makeBlob(0x5e35b1, [1, 1, 1], 0.12);
+  if (noun === "trap") return makeBlob(0x616161, [1.4, 0.3, 1.4]);
+  if (noun === "oak") return makeLog(0x8d6e63);
+  if (noun === "pine") return makeLog(0xbcaaa4);
+  if (noun === "birch") return makeLog(0xeeeeee);
+  if (noun === "stick") return makeLog(0x6d4c41);
+  if (noun === "leaf") return makeBlob(0x66bb6a, [1.3, 0.2, 0.8]);
+  if (noun === "thorn") {
+    const thorn = mesh(new THREE.ConeGeometry(0.08, 0.3, 5), 0x558b2f);
+    thorn.position.y = 0.15;
+    return thorn;
+  }
+  if (noun === "mushroom") {
+    const group = new THREE.Group();
+    const stem = mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.16, 6), 0xfff8e1);
+    stem.position.y = 0.08;
+    const cap = mesh(new THREE.ConeGeometry(0.16, 0.12, 8), 0xc62828);
+    cap.position.y = 0.2;
+    group.add(stem, cap);
+    return group;
+  }
   const gem = mesh(new THREE.OctahedronGeometry(0.15, 0), 0x4fc3f7);
   gem.position.y = 0.2;
   return gem;
@@ -168,7 +349,10 @@ export class Stage3D {
     this.mood = document.createElement("div");
     this.mood.className = "mood3d";
     this.mood.hidden = true;
-    this.overlay.append(this.bubble, this.mood);
+    this.outfit = document.createElement("div");
+    this.outfit.className = "outfit3d";
+    this.outfit.hidden = true;
+    this.overlay.append(this.bubble, this.mood, this.outfit);
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
@@ -218,23 +402,41 @@ export class Stage3D {
     if (this.board) this.scene.remove(this.board);
     this.tweens.clear();
     this.nudged = null;
+    this.hidden = false;
     const board = new THREE.Group();
     const [width, height] = world.size;
     this.width = width;
     this.height = height;
 
-    const ground = mesh(new THREE.BoxGeometry(width + 0.6, 0.3, height + 0.6), 0x3e6b2f);
+    const [tileA, tileB, edge] = GROUND[pack.id] || GROUND.monkey;
+    const ground = mesh(new THREE.BoxGeometry(width + 0.6, 0.3, height + 0.6), edge);
     ground.position.set((width - 1) / 2, -0.2, (height - 1) / 2);
     board.add(ground);
+    const terrain = new Map((world.terrain || []).map(([x, y, kind]) => [`${x},${y}`, kind]));
+    this.tiles = new Map();
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const tile = mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), (x + y) % 2 ? 0x7cb342 : 0x8bc34a);
-        tile.position.set(x, -0.05, y);
+        const kind = terrain.get(`${x},${y}`);
+        const tile = this.makeTile(kind, (x + y) % 2 ? tileA : tileB);
+        tile.position.set(x, kind === "~" ? -0.08 : -0.05, y); // water sits a little lower
         board.add(tile);
+        this.tiles.set(`${x},${y}`, tile);
+        if (kind === "t") {
+          const tree = makeTree();
+          tree.position.set(x, 0, y);
+          board.add(tree);
+        }
+        if (kind === "o") {
+          const post = mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.5, 6), 0xb71c1c);
+          post.position.set(x + 0.35, 0.25, y - 0.35);
+          const lamp = mesh(new THREE.SphereGeometry(0.09, 8, 6), 0xffeb3b, { emissive: 0xffc107, emissiveIntensity: 0.6 });
+          lamp.position.set(x + 0.35, 0.55, y - 0.35);
+          board.add(post, lamp);
+        }
       }
     }
     // a few plants around the edge, placed the same way every time
-    for (let i = 0; i < width + height; i++) {
+    for (let i = 0; pack.id !== "penguin" && i < width + height; i++) {
       const plant = makePlant(i);
       const side = i % 4;
       const along = (i * 7) % Math.max(width, height);
@@ -253,8 +455,9 @@ export class Stage3D {
     this.items = new Map();
     for (const [x, y, tile] of world.items) {
       const item = makeItem(pack.items[tile]);
-      item.position.set(x, 0, y);
-      item.userData.baseY = 0;
+      const up = terrain.get(`${x},${y}`) === "t" ? 1.3 : 0; // fruit grows at the top of a tree
+      item.position.set(x, up, y);
+      item.userData.baseY = up;
       board.add(item);
       this.items.set(`${x},${y}`, item);
     }
@@ -263,7 +466,7 @@ export class Stage3D {
       flag.position.set(x, 0, y);
       board.add(flag);
     }
-    this.monkey = makeMonkey();
+    this.monkey = makeAnimal(pack.id);
     board.add(this.monkey);
     this.scene.add(board);
     this.board = board;
@@ -276,6 +479,28 @@ export class Stage3D {
     this.mood.hidden = true;
     this.placeCamera();
     this.resize();
+  }
+
+  makeTile(kind, color) {
+    switch (kind) {
+      case "~":
+        return mesh(new THREE.BoxGeometry(0.98, 0.06, 0.98), 0x4fa3e0, { transparent: true, opacity: 0.85, roughness: 0.2 });
+      case "-":
+        return mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), 0x81d4fa, { transparent: true, opacity: 0.7, roughness: 0.1 });
+      case "o":
+        return mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), 0xf8bbd0);
+      case "=":
+        return mesh(new THREE.BoxGeometry(0.96, 0.12, 0.96), 0xa1887f);
+      default:
+        return mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), color);
+    }
+  }
+
+  // What the animal wears (from the habitat): an emoji drawn above its head.
+  setOutfit(emoji) {
+    this.outfitText = emoji || "";
+    this.outfit.textContent = this.outfitText;
+    this.outfit.hidden = !this.outfitText;
   }
 
   // Fit the whole board in view for the current window shape, seen from above at an angle.
@@ -352,6 +577,11 @@ export class Stage3D {
       node.style.left = `${x}px`;
       node.style.top = `${y}px`;
     }
+    const top = this.monkey.position.clone();
+    top.y += 0.85;
+    top.project(this.camera);
+    this.outfit.style.left = `${((top.x + 1) / 2) * this.container.clientWidth}px`;
+    this.outfit.style.top = `${((1 - top.y) / 2) * this.container.clientHeight}px`;
   }
 
   say(text) {
@@ -386,6 +616,10 @@ export class Stage3D {
     this.mood.hidden = true;
     switch (event.type) {
       case "move": {
+        if (this.hidden) {
+          monkey.scale.set(1, 1, 1);
+          this.hidden = false;
+        }
         const [fx, fz] = this.position;
         const [tx, tz] = event.to;
         this.position = event.to;
@@ -400,11 +634,14 @@ export class Stage3D {
             item.position.z = sz + (z - sz) * e;
           });
         }
-        await this.tween(d, (e, p) => {
+        const hop = event.slide ? 0 : 0.18; // a penguin slides on its belly, no hops
+        if (event.slide) monkey.rotation.x = 0.9;
+        await this.tween(event.slide ? d * 0.6 : d, (e, p) => {
           monkey.position.x = fx + (tx - fx) * e;
           monkey.position.z = fz + (tz - fz) * e;
-          monkey.position.y = Math.sin(p * Math.PI) * 0.18;
+          monkey.position.y = Math.sin(p * Math.PI) * hop;
         });
+        if (!event.slide) monkey.rotation.x = 0;
         // an item under the monkey would be hidden inside it: slide it out in front of its feet
         const here = this.items.get(`${tx},${tz}`);
         if (here) {
@@ -419,6 +656,67 @@ export class Stage3D {
         }
         break;
       }
+      case "swing": {
+        const [fx, fz] = this.position;
+        const [tx, tz] = event.to;
+        this.position = event.to;
+        await this.tween(d * 2, (e, p) => {
+          monkey.position.x = fx + (tx - fx) * e;
+          monkey.position.z = fz + (tz - fz) * e;
+          monkey.position.y = Math.sin(p * Math.PI) * 0.9;
+        });
+        break;
+      }
+      case "climb": {
+        const key = event.at.join(",");
+        const item = this.items.get(key);
+        const [x, z] = event.at;
+        const [fx, fz] = this.position;
+        const climb = (e) => {
+          monkey.position.x = fx + (x - fx) * 0.45 * e;
+          monkey.position.z = fz + (z - fz) * 0.45 * e;
+          monkey.position.y = e * 0.9;
+        };
+        await this.tween(d * 1.2, climb);
+        if (item) {
+          this.say(`+1 ${ITEM_EMOJI[this.level.pack.items[event.item]] || "⭐"}`);
+          const start = item.position.clone();
+          await this.tween(Math.max(d, 260), (e) => {
+            item.position.y = start.y + e * 0.4;
+            item.scale.setScalar(1 - e);
+          });
+          item.parent?.remove(item);
+          this.items.delete(key);
+          this.hideBubble();
+        }
+        await this.tween(d * 1.2, (e) => climb(1 - e));
+        break;
+      }
+      case "build": {
+        const key = event.at.join(",");
+        const old = this.tiles.get(key);
+        const bridge = this.makeTile("=");
+        bridge.position.set(event.at[0], 0.4, event.at[1]);
+        this.board.add(bridge);
+        await this.tween(d * 1.5, (e) => (bridge.position.y = 0.4 - e * 0.45));
+        if (old) this.board.remove(old);
+        this.tiles.set(key, bridge);
+        break;
+      }
+      case "crack": {
+        const tile = this.tiles.get(event.at.join(","));
+        const color = tile?.material.color.clone();
+        await this.tween(700, (_, p) => {
+          if (tile) tile.material.color.setRGB(1, 0.6 + 0.4 * (1 - Math.sin(p * Math.PI)), 0.6);
+          monkey.rotation.z = Math.sin(p * Math.PI * 6) * 0.12 * (1 - p);
+        });
+        if (tile && color) tile.material.color.copy(color);
+        break;
+      }
+      case "hide":
+        await this.tween(d, (e) => monkey.scale.set(1, 1 - e * 0.4, 1));
+        this.hidden = true;
+        break;
       case "turn": {
         const from = monkey.rotation.y;
         let delta = (ANGLE[event.facing] - from) % (Math.PI * 2);

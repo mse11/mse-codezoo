@@ -1,0 +1,74 @@
+{
+  "id": "m06-l05",
+  "title": "Spiral path",
+  "module": "loops-2",
+  "concepts": [
+    "while",
+    "if"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".....",
+      "####.",
+      "B..#.",
+      ".###.",
+      "....."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "While",
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "Walk until something is in the way, then turn right.",
+    "while not item_here(): if is_blocked(): turn_right() else: step(1)"
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Špirálová cestička",
+      "hints": [
+        "Choď, kým ti niečo nezavadzia, potom sa otoč doprava.",
+        "while not item_here(): if is_blocked(): turn_right() else: step(1)"
+      ]
+    }
+  }
+}

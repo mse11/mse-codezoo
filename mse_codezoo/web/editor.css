@@ -1,0 +1,28 @@
+/* Level editor prototype: a tile painter beside a form. Uses the colours of style.css. */
+.editor .logo a { color: inherit; text-decoration: none; }
+.editor-title { font-weight: 700; margin-right: 12px; }
+.editor-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 16px; }
+@media (max-width: 800px) { .editor-main { grid-template-columns: 1fr; } }
+.editor-main section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.editor-main label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.editor-main .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.editor-main textarea, .editor-main input, .editor-main select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid #c8c2b2; }
+.editor-main textarea { font-family: ui-monospace, Consolas, monospace; font-size: 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.tools button { min-width: 44px; min-height: 40px; font-size: 20px; border-radius: 10px; }
+.tools button[aria-checked="true"] { outline: 3px solid #f2b84b; }
+.editor-grid { display: grid; gap: 2px; max-width: 100%; touch-action: none; user-select: none; }
+.editor-grid .cell { aspect-ratio: 1; border-radius: 6px; background: #9ccc65; display: grid; place-items: center; font-size: clamp(14px, 3.5vw, 28px); cursor: pointer; }
+.editor-grid .cell.alt { background: #8bc34a; }
+.editor-grid .cell.wall { background: #8a8178; }
+.editor-grid .cell.water { background: #7cc4f0; }
+.editor-grid .cell.thin-ice { background: #e8f6fd; }
+.editor-grid .cell.watched { background: #fde2e2; }
+.editor-grid .cell.tree { background: #b8dca6; }
+.report { padding: 8px 12px; border-radius: 10px; }
+.report.ok { background: #dff3d8; color: #1f4a14; }
+.report.err { background: #fde2e2; color: #6a1a1a; }
+.report ul { margin: 4px 0 0; padding-left: 18px; }
+.file-button input { font-size: 13px; }
+#json { max-height: 260px; overflow: auto; font-size: 12px; }
+.editor-main label[hidden] { display: none; }

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeZoo level editor</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="editor.css">
+  <script type="module" src="editor.js"></script>
+</head>
+<body class="editor">
+  <header class="bar">
+    <h1 class="logo"><a href="index.html">CodeZoo</a></h1>
+    <span class="editor-title" data-i18n>Level editor</span>
+    <span class="note" data-i18n>Prototype: paint a world, write a solution, test it, download the files.</span>
+  </header>
+  <main class="editor-main">
+    <section class="editor-world">
+      <div class="row">
+        <label><span data-i18n>Width</span> <input id="width" type="number" min="1" max="16" value="6"></label>
+        <label><span data-i18n>Height</span> <input id="height" type="number" min="1" max="12" value="3"></label>
+        <label><span data-i18n>Animal</span> <select id="animal"></select></label>
+      </div>
+      <div id="tools" class="tools" role="radiogroup" aria-label="Tile" data-i18n-label="Tile"></div>
+      <div class="row">
+        <label><span data-i18n>Start facing</span>
+          <select id="facing"><option>east</option><option>south</option><option>west</option><option>north</option></select>
+        </label>
+        <span class="note" data-i18n>Pick “start”, then tap the square where the animal begins.</span>
+      </div>
+      <div id="grid" class="editor-grid"></div>
+    </section>
+    <section class="editor-form">
+      <div class="row">
+        <label><span data-i18n>Level id</span> <input id="level-id" value="my-l01"></label>
+        <label><span data-i18n>Title</span> <input id="title" value="My first level"></label>
+      </div>
+      <div class="row">
+        <label><span data-i18n>Module</span> <select id="module"></select></label>
+        <label><span data-i18n>Goal</span>
+          <select id="goal-type">
+            <option value="collect_all" data-i18n>collect every item</option>
+            <option value="reach" data-i18n>reach the flag</option>
+            <option value="say" data-i18n>say a text</option>
+          </select>
+        </label>
+        <label id="goal-item-row"><span data-i18n>Item</span> <select id="goal-item"></select></label>
+        <label id="goal-text-row" hidden><span data-i18n>Text</span> <input id="goal-text" value="Yum!"></label>
+      </div>
+      <label><span data-i18n>Must use (node types, split by commas)</span> <input id="must-use" placeholder="For, If"></label>
+      <label><span data-i18n>Hints, one per line</span> <textarea id="hints" rows="2">Count the squares.</textarea></label>
+      <label><span data-i18n>Starter program (optional, for a bug to fix)</span> <textarea id="starter" rows="3" spellcheck="false"></textarea></label>
+      <label><span data-i18n>Reference solution</span> <textarea id="solution" rows="6" spellcheck="false">step(1)
+grab()
+</textarea></label>
+      <div class="row">
+        <button id="test" type="button" class="primary" data-i18n>Test the level</button>
+        <button id="download" type="button" data-i18n>Download the files</button>
+        <label class="file-button"><span data-i18n>Open a level file</span> <input id="open" type="file" accept=".json,application/json"></label>
+      </div>
+      <div id="report" class="report" aria-live="polite"></div>
+      <details><summary data-i18n>Level JSON</summary><pre id="json"></pre></details>
+    </section>
+  </main>
+</body>
+</html>

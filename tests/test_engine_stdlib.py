@@ -23,7 +23,12 @@ def imported_top_level_names(path: Path) -> set[str]:
     return names
 
 
-@pytest.mark.parametrize("module", sorted(PACKAGE.rglob("*.py")), ids=lambda p: p.name)
+# learner programs in the levels run in our interpreter, not in Python; they may import
+# the level's own helper files ("tricks", "burrow")
+ENGINE = sorted(p for p in PACKAGE.rglob("*.py") if "content" not in p.parts)
+
+
+@pytest.mark.parametrize("module", ENGINE, ids=lambda p: p.name)
 def test_module_imports_only_stdlib(module: Path):
     allowed = set(sys.stdlib_module_names) | {"mse_codezoo", "__future__"}
     allowed |= ALLOWED_THIRD_PARTY.get(module.name, set())

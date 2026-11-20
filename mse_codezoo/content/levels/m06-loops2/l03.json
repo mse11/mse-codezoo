@@ -1,0 +1,70 @@
+{
+  "id": "m06-l03",
+  "title": "Skip the rotten ones",
+  "module": "loops-2",
+  "concepts": [
+    "for",
+    "continue"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BRBRBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B",
+    "avoid": "R"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "Continue"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "`continue` jumps straight to the next turn of the loop.",
+    "if item_here() == \"rotten\": continue. After that, grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Preskoč zhnité",
+      "hints": [
+        "`continue` skočí rovno na ďalšie kolo cyklu.",
+        "if item_here() == \"rotten\": continue. Potom grab()."
+      ]
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "id": "m09-l01",
+  "title": "A list of moves",
+  "module": "collections",
+  "concepts": [
+    "lists",
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B.B..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "List",
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "[1, 2, 3] is a list. A `for` loop can walk through it.",
+    "for n in [1, 2, 3]: step(n), grab()."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Zoznam ťahov",
+      "hints": [
+        "[1, 2, 3] je zoznam. Cyklus `for` ním môže prejsť.",
+        "for n in [1, 2, 3]: step(n), grab()."
+      ]
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "id": "m09-l06",
+  "title": "Exactly the plan",
+  "module": "collections",
+  "concepts": [
+    "dictionaries",
+    "for"
+  ],
+  "animal": "beaver",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".OPOL~~~."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "build",
+    "logs": {
+      "oak": 2,
+      "pine": 1
+    }
+  },
+  "constraints": {
+    "maxLines": 8,
+    "mustUse": [
+      "Dict",
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "build",
+    "inventory"
+  ],
+  "hints": [
+    "plan = {\"oak\": 2, \"pine\": 1}. plan.items() gives each log and its count.",
+    "for log, count in plan.items(): build that log count times, stepping each time."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Presne podľa plánu",
+      "hints": [
+        "plan = {\"oak\": 2, \"pine\": 1}. plan.items() dá každé poleno a jeho počet.",
+        "for log, count in plan.items(): postav to poleno count-krát, vždy s krokom."
+      ]
+    }
+  }
+}

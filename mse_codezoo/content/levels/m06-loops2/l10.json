@@ -1,0 +1,73 @@
+{
+  "id": "m06-l10",
+  "title": "Slide to the fish",
+  "module": "loops-2",
+  "concepts": [
+    "while"
+  ],
+  "animal": "penguin",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "....#.",
+      "......",
+      "......",
+      "#B...."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 4,
+    "mustUse": [
+      "While"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "slide"
+  ],
+  "hints": [
+    "slide() glides until something is in the way.",
+    "while not item_here(): slide() and turn_right(). Then catch()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Šmyk k rybke",
+      "hints": [
+        "slide() kĺže, kým niečo nezavadzia.",
+        "while not item_here(): slide() a turn_right(). Potom catch()."
+      ]
+    }
+  }
+}

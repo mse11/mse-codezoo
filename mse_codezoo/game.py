@@ -7,8 +7,10 @@ That is what makes ``if`` worth learning. Standard library only.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from mse_codezoo import interpreter, ir
@@ -16,8 +18,8 @@ from mse_codezoo.feelings import Feeling, feeling
 from mse_codezoo.goals import CheckResult, check, goal_met
 from mse_codezoo.i18n import t
 from mse_codezoo.interpreter import RunResult, Step
-from mse_codezoo.lang_python import ParseResult, parse
-from mse_codezoo.levels import Level, load_pack, solution_path
+from mse_codezoo.lang_python import ParseResult, parse, print_program
+from mse_codezoo.levels import Level, core_animals, load_pack, solution_path
 from mse_codezoo.profiles import Attempt, classify_mistakes
 from mse_codezoo.world import Pack, World
 
@@ -33,6 +35,7 @@ class LevelRun:
     check: CheckResult | None = None
     variant: int = 0  # which world was shown: 0 = the main one
     feeling: Feeling | None = None
+    animal: str = ""
 
     def line_of(self, node_id: str | None) -> int | None:
         span = self.parsed.positions.get(node_id or "")
@@ -47,8 +50,84 @@ class LevelRun:
         return None
 
 
+Modules = dict[str, str]
+
+
+def pick_animal(level: Level, animal: str | None) -> str:
+    """The animal that plays: the one asked for, unless the level is only for its own."""
+    if animal and animal in core_animals(level):
+        return animal
+    return level.animal
+
+
+def reskin_program(program: ir.Program, source: Pack, target: Pack) -> ir.Program:
+    """The same program for another animal: its command names and item names (in place)."""
+    actions = {source.action_name(n): target.action_name(n) for n in source.all_actions()}
+    items = {
+        source.item_name(tile): target.item_name(tile)
+        for tile in source.items
+        if tile in target.items
+    }
+    for node in ir.walk(program):
+        if isinstance(node, ir.Call) and node.func in actions:
+            node.func = actions[node.func]
+        elif isinstance(node, ir.Name) and node.name in actions:
+            node.name = actions[node.name]
+        elif isinstance(node, ir.Const) and isinstance(node.value, str) and node.value in items:
+            node.value = items[node.value]
+    return program
+
+
+def reskin_source(text: str, source: Pack, target: Pack) -> str:
+    """Python text for another animal; text that doesn't parse is left as it is."""
+    if not text or source.id == target.id:
+        return text
+    parsed = parse(text)
+    if not parsed.ok or parsed.program is None:
+        return text
+    return print_program(reskin_program(parsed.program, source, target)).text
+
+
+def reskin_text(text: str, source: Pack, target: Pack, lang: str) -> str:
+    """A hint for another animal: command names in it, and the animal's and items' names."""
+    if source.id == target.id:
+        return text
+    for neutral in source.all_actions():
+        old, new = source.action_name(neutral), target.action_name(neutral)
+        if old != new:
+            text = re.sub(rf"\b{re.escape(old)}\(", f"{new}(", text)
+    pairs: list[tuple[str, str]] = []
+    src, dst = source.names.get(lang, {}), target.names.get(lang, {})
+    for tile, forms in src.get("items", {}).items():
+        other = dst.get("items", {}).get(tile)
+        if other:
+            pairs += [
+                (forms[k], other.get(k, other["one"])) for k in ("many", "few", "one") if k in forms
+            ]
+    if src.get("animal") and dst.get("animal"):
+        pairs.append((src["animal"], dst["animal"]))
+    for old, new in sorted(pairs, key=lambda p: -len(p[0])):
+        text = re.sub(rf"\b{re.escape(old)}\b", new, text)
+    return text
+
+
+def level_modules(level: Level, extra: Modules | None = None, pack: Pack | None = None) -> Modules:
+    """Helper files a program may ``import``: the level's own (for this animal), then the
+    learner's own."""
+    own = load_pack(level.animal)
+    files = {
+        name: reskin_source(text, own, pack) if pack else text for name, text in level.files.items()
+    }
+    return {**files, **(extra or {})}
+
+
 def _others_outcome(
-    level: Level, program: ir.Program, pack: Pack, shown: int, max_steps: int
+    level: Level,
+    program: ir.Program,
+    pack: Pack,
+    shown: int,
+    max_steps: int,
+    modules: Modules | None = None,
 ) -> tuple[bool, str] | None:
     """Run the program in every world except the shown one; the first failure wins."""
     worlds = level.worlds()
@@ -58,7 +137,9 @@ def _others_outcome(
         if number == shown:
             continue
         world = World.from_spec(spec, pack)
-        result = interpreter.run(program, world.actions(), world.drain_events, max_steps)
+        result = interpreter.run(
+            program, world.actions(), world.drain_events, max_steps, modules=modules
+        )
         ok, message = (False, result.error.message) if result.error else goal_met(goal, world)
         if not ok:
             return False, t(
@@ -78,12 +159,15 @@ def run_level(
     max_steps: int = interpreter.MAX_STEPS,
     on_step: OnStep | None = None,
     seed: int = 0,
+    modules: Modules | None = None,
 ) -> LevelRun:
     worlds = level.worlds()
     variant = variant if 0 <= variant < len(worlds) else 0
     parsed = parse(source)
     run = LevelRun(level, parsed, variant=variant)
-    pack = load_pack(animal or level.animal)
+    pack = load_pack(pick_animal(level, animal))
+    run.animal = pack.id
+    modules = level_modules(level, modules, pack)
     if not parsed.ok or parsed.program is None:
         run.feeling = feeling(
             animal=pack.animal_name(), parsed=False, solved=False, stars=0, error_kind="syntax"
@@ -93,11 +177,16 @@ def run_level(
     world = World.from_spec(spec, pack)
     callback = (lambda step: on_step(step, world, parsed)) if on_step else None
     result = interpreter.run(
-        parsed.program, world.actions(), world.drain_events, max_steps, on_step=callback
+        parsed.program,
+        world.actions(),
+        world.drain_events,
+        max_steps,
+        on_step=callback,
+        modules=modules,
     )
     also = None
     if result.ok and goal_met(goal, world)[0]:
-        also = _others_outcome(level, parsed.program, pack, variant, max_steps)
+        also = _others_outcome(level, parsed.program, pack, variant, max_steps, modules)
     run.world = world
     run.result = result
     run.check = check(goal, level.constraints, parsed.program, result, world, also=also)
@@ -113,16 +202,33 @@ def run_level(
     return run
 
 
-def solution_errors(level: Level) -> list[str]:
-    """Problems with the level's reference solution; empty when it earns every star."""
-    if level.path is None:
-        return ["level has no file path, so its reference solution can't be found"]
-    path = solution_path(level.path)
-    try:
-        source = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        return [f"cannot read {path.name}: {exc}"]
+def solution_errors(level: Level, source: str | None = None) -> list[str]:
+    """Problems with the level's reference solution; empty when it earns every star.
+
+    ``source`` is the solution's text; by default it is read from the level's folder.
+    """
+    if source is None:
+        if level.path is None:
+            return ["level has no file path, so its reference solution can't be found"]
+        path = solution_path(level.path)
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            return [f"cannot read {path.name}: {exc}"]
+    else:
+        path = solution_path(level.path or Path("level.json"))
     errors: list[str] = []
+    for animal in core_animals(level):
+        if animal != level.animal:
+            # every animal can play a core level: its re-skinned solution must work too
+            other = run_level(
+                level,
+                reskin_source(source, load_pack(level.animal), load_pack(animal)),
+                animal=animal,
+            )
+            if other.check is None or not other.check.solved:
+                why = other.check.message if other.check else "does not parse"
+                errors.append(f"{path.name} fails for the {animal}: {why}")
     for variant in range(len(level.worlds())):
         run = run_level(level, source, variant=variant)
         if not run.parsed.ok:
@@ -152,6 +258,7 @@ def run_to_json(run: LevelRun) -> dict[str, Any]:
     """Everything a client needs to replay a run: steps with lines, final world, stars."""
     data: dict[str, Any] = {
         "level": run.level.id,
+        "animal": run.animal,
         "variant": run.variant,
         "diagnostics": [vars(d) for d in run.parsed.diagnostics],
         "program": ir.to_dict(run.parsed.program) if run.parsed.program else None,
@@ -169,6 +276,10 @@ def run_to_json(run: LevelRun) -> dict[str, Any]:
                 "kind": error.kind,
                 "node_id": error.node_id,
                 "line": run.line_of(error.node_id),
+                "exception": type(error.exception).__name__ if error.exception else None,
+                "traceback": [
+                    {"function": name, "line": run.line_of(node)} for name, node in error.traceback
+                ],
             }
             if error
             else None
@@ -195,20 +306,26 @@ def level_to_json(level: Level, animal: str | None = None) -> dict[str, Any]:
 
     Titles, hints and names come in the current language (see ``i18n.use_lang``).
     """
-    pack = load_pack(animal or level.animal)
+    from mse_codezoo.i18n import current
+
+    own = load_pack(level.animal)
+    pack = load_pack(pick_animal(level, animal))
     worlds = level.worlds()
     return {
         "id": level.id,
         "title": level.shown_title,
+        "signature": level.signature,
+        "animals": core_animals(level),
+        "files": level_modules(level, pack=pack),
         "module": level.module,
         "concepts": level.concepts,
         "mode": level.mode,
         "goal": level.goal,
         "goals": [goal for _spec, goal in worlds],
         "constraints": level.constraints,
-        "hints": level.shown_hints,
+        "hints": [reskin_text(h, own, pack, current()) for h in level.shown_hints],
         "unlockedBlocks": level.unlocked_blocks,
-        "starter": level.starter,
+        "starter": reskin_source(level.starter, own, pack),
         "pack": pack.public(),
         "world": world_to_json(level.world, pack),
         "worlds": [world_to_json(spec, pack) for spec, _goal in worlds],

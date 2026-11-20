@@ -1,0 +1,104 @@
+{
+  "id": "m09-l04",
+  "title": "Bridge the river",
+  "module": "collections",
+  "concepts": [
+    "lists",
+    "for"
+  ],
+  "animal": "beaver",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".OP~~."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "build",
+        "logs": {
+          "oak": 1,
+          "pine": 1
+        }
+      },
+      {
+        "type": "reach",
+        "at": [
+          5,
+          0
+        ]
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "List"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "build",
+    "inventory"
+  ],
+  "hints": [
+    "Grab both logs first. build(\"oak\") lays an oak log into the water ahead.",
+    "for log in [\"oak\", \"pine\"]: build(log), step(1). Then one more step."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Premosti rieku",
+      "hints": [
+        "Najprv chyť obe polená. build(\"oak\") položí dubové poleno do vody pred tebou.",
+        "for log in [\"oak\", \"pine\"]: build(log), step(1). Potom ešte krok."
+      ]
+    }
+  }
+}

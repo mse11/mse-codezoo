@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from mse_codezoo import ir
-from mse_codezoo.goals import goal_errors
+from mse_codezoo.goals import PSEUDO_CONCEPTS, goal_errors
 from mse_codezoo.i18n import LANGS, current
 from mse_codezoo.lang_python import parse
-from mse_codezoo.world import Pack, World
+from mse_codezoo.world import TERRAIN, TRICKS, Pack, World
 
 CONTENT_DIR = Path(__file__).parent / "content"
 LEVELS_DIR = CONTENT_DIR / "levels"
@@ -43,6 +43,8 @@ class Level:
     animal: str = DEFAULT_ANIMAL
     starter: str = ""  # program the level opens with (e.g. a broken one to fix)
     variants: list[dict[str, Any]] = field(default_factory=list)  # more worlds to solve
+    signature: bool = False  # uses the animal's own tricks, so only that animal plays it
+    files: dict[str, str] = field(default_factory=dict)  # helper files: {"tricks": "def ..."}
     i18n: dict[str, dict[str, Any]] = field(default_factory=dict)  # lang -> title, hints
     path: Path | None = None
 
@@ -82,6 +84,8 @@ class Level:
             animal=data.get("animal", DEFAULT_ANIMAL),
             starter=data.get("starter", ""),
             variants=list(data.get("variants", [])),
+            signature=bool(data.get("signature", False)),
+            files=dict(data.get("files", {})),
             i18n=dict(data.get("i18n", {})),
             path=path,
         )
@@ -157,6 +161,15 @@ def validate_level(path: Path) -> LevelReport:
     except LevelError as exc:
         report.errors.append(str(exc))
         return report
+    return validate_level_data(data, report, has_solution=solution_path(path).is_file())
+
+
+def validate_level_data(
+    data: Any, report: LevelReport | None = None, *, has_solution: bool = True
+) -> LevelReport:
+    """The structural checks of ``validate_level`` for a level given as data."""
+    report = report or LevelReport(Path("level.json"))
+    path = report.path
     if not isinstance(data, dict):
         report.errors.append("level must be a JSON object")
         return report
@@ -164,7 +177,7 @@ def validate_level(path: Path) -> LevelReport:
     missing = [key for key in REQUIRED_KEYS if key not in data]
     if missing:
         report.errors.append(f"missing keys: {', '.join(missing)}")
-    if not solution_path(path).is_file():
+    if not has_solution:
         report.errors.append(f"missing reference solution {solution_path(path).name}")
     if missing:
         return report
@@ -206,7 +219,11 @@ def validate_level(path: Path) -> LevelReport:
     max_lines = constraints.get("maxLines")
     if max_lines is not None and (not isinstance(max_lines, int) or max_lines < 1):
         report.errors.append("constraints.maxLines must be a positive whole number")
-    unknown = [n for n in constraints.get("mustUse", []) if n not in ir.NODE_TYPES]
+    unknown = [
+        n
+        for n in constraints.get("mustUse", [])
+        if n not in ir.NODE_TYPES and n not in PSEUDO_CONCEPTS
+    ]
     if unknown:
         report.errors.append(f"constraints.mustUse has unknown node types: {', '.join(unknown)}")
 
@@ -219,4 +236,43 @@ def validate_level(path: Path) -> LevelReport:
     animal = data.get("animal", DEFAULT_ANIMAL)
     if not (ANIMALS_DIR / animal / "pack.json").is_file():
         report.errors.append(f"unknown animal {animal!r}")
+        return report
+    files = data.get("files", {})
+    if not isinstance(files, dict) or not all(
+        isinstance(k, str) and k.isidentifier() and isinstance(v, str) and parse(v).ok
+        for k, v in files.items()
+    ):
+        report.errors.append('files must map a helper name to valid Python: {"tricks": "..."}')
+    if not data.get("signature"):
+        # a core level is re-skinned for every animal, so it may use only the shared world
+        uses = [
+            tile
+            for spec in [data["world"], *[v for v in variants if isinstance(v, dict)]]
+            for row in _rows(spec)
+            for tile in row
+            if tile in TERRAIN
+        ]
+        if uses or any(block in TRICKS for block in data.get("unlockedBlocks", [])):
+            report.errors.append(
+                'uses terrain or tricks, so it must be a signature level ("signature": true)'
+            )
     return report
+
+
+def core_animals(level: Level) -> list[str]:
+    """Animals that can play ``level``: only its own for a signature level, else all."""
+    if level.signature:
+        return [level.animal]
+    return animal_names()
+
+
+def animal_names(root: Path = ANIMALS_DIR) -> list[str]:
+    names = sorted(p.parent.name for p in root.glob("*/pack.json"))
+    return [DEFAULT_ANIMAL, *[n for n in names if n != DEFAULT_ANIMAL]]
+
+
+def _rows(spec: dict[str, Any]) -> list[str]:
+    tiles = spec.get("tiles")
+    if isinstance(tiles, str):
+        return tiles.split("\n")
+    return [row for row in tiles if isinstance(row, str)] if isinstance(tiles, list) else []

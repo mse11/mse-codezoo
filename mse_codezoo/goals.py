@@ -8,6 +8,8 @@ Goal types:
 * ``say`` ``{"text": "3 bananas"}``: the animal says exactly this at some point;
   or ``{"texts": ["yum", "hmm"]}``: it says exactly these, in this order, and nothing else.
 * ``avoid`` ``{"item": "R"}``: never pick up an ``R``.
+* ``build`` ``{"logs": {"oak": 2, "pine": 1}}``: the beaver built exactly these logs into
+  the dam.
 * ``all`` ``{"goals": [...]}``: every goal in the list.
 
 Standard library only.
@@ -24,7 +26,7 @@ from mse_codezoo.interpreter import RunResult
 from mse_codezoo.lang_python import print_program
 from mse_codezoo.world import World
 
-GOAL_TYPES = ("collect_all", "reach", "say", "avoid", "all")
+GOAL_TYPES = ("collect_all", "reach", "say", "avoid", "build", "all")
 
 
 def concept_name(node_type: str) -> str:
@@ -43,6 +45,21 @@ def concept_name(node_type: str) -> str:
         "AugAssign": t("a variable update like `x += 1`"),
         "UnaryOp": t("`not` or a minus sign"),
         "BinOp": t("an operator like `+` or `*`"),
+        "Break": t("`break`"),
+        "Continue": t("`continue`"),
+        "FunctionDef": t("a function (`def`)"),
+        "Return": t("`return`"),
+        "Try": t("`try` / `except`"),
+        "Raise": t("`raise`"),
+        "Assert": t("`assert`"),
+        "Import": t("`import`"),
+        "List": t("a list"),
+        "Tuple": t("a tuple"),
+        "Dict": t("a dictionary"),
+        "Set": t("a set"),
+        "Comprehension": t("a comprehension"),
+        "Recursion": t("a function that calls itself"),
+        "Global": t("`global`"),
     }
     return names.get(node_type, f"`{node_type}`")
 
@@ -71,7 +88,19 @@ def count_lines(program: ir.Program) -> int:
 
 
 def used_node_types(program: ir.Program) -> set[str]:
-    return {type(node).__name__ for node in ir.walk(program)}
+    """Node type names in the program, plus ``Recursion`` for a function that calls itself."""
+    found = {type(node).__name__ for node in ir.walk(program)}
+    for node in ir.walk(program):
+        if isinstance(node, ir.FunctionDef) and any(
+            isinstance(inner, ir.Call) and inner.func == node.name
+            for stmt in node.body
+            for inner in ir.walk(stmt)
+        ):
+            found.add("Recursion")
+    return found
+
+
+PSEUDO_CONCEPTS = ("Recursion",)  # allowed in ``mustUse`` besides node type names
 
 
 def goal_met(goal: dict[str, Any], world: World) -> tuple[bool, str]:
@@ -135,6 +164,18 @@ def goal_met(goal: dict[str, Any], world: World) -> tuple[bool, str]:
                     text=text,
                 )
             return False, t('The {animal} should say "{text}".', animal=animal, text=text)
+        case "build":
+            wanted = {str(k): int(v) for k, v in goal["logs"].items()}
+            if world.built == wanted:
+                return True, t("The {animal} built the dam!", animal=animal)
+            missing = ", ".join(
+                f"{name} {wanted[name] - world.built.get(name, 0)}"
+                for name in sorted(wanted)
+                if world.built.get(name, 0) < wanted[name]
+            )
+            if missing:
+                return False, t("The dam still needs: {logs}.", logs=missing)
+            return False, t("The dam has the wrong logs in it: {logs}.", logs=world.built)
         case "all":
             messages = []
             for part in goal["goals"]:
@@ -167,6 +208,12 @@ def goal_errors(goal: Any, world: World | None) -> list[str]:
         case "avoid":
             if not isinstance(goal.get("item"), str):
                 return ["goal.item must be a tile letter"]
+        case "build":
+            logs = goal.get("logs")
+            if not isinstance(logs, dict) or not all(
+                isinstance(k, str) and isinstance(v, int) and v > 0 for k, v in logs.items()
+            ):
+                return ['goal.logs must be like {"oak": 2}']
         case "all":
             parts = goal.get("goals")
             if not isinstance(parts, list) or not parts:

@@ -1,0 +1,95 @@
+{
+  "id": "m08-l02",
+  "title": "Thin ice",
+  "module": "errors",
+  "concepts": [
+    "try",
+    "except"
+  ],
+  "animal": "penguin",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".....",
+      ".-..B"
+    ],
+    "start": [
+      0,
+      1,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".....",
+        "....B"
+      ],
+      "start": [
+        0,
+        1,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 10,
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "slide"
+  ],
+  "hints": [
+    "slide() raises CrackError at thin ice. `try:` it, and go round in `except CrackError:`.",
+    "Round: turn_left(), step(1), turn_right(), slide(), turn_right(), step(1)."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Tenký ľad",
+      "hints": [
+        "slide() pri tenkom ľade vyhodí CrackError. Daj ho do `try:` a obíď to v `except CrackError:`.",
+        "Obchádzka: turn_left(), step(1), turn_right(), slide(), turn_right(), step(1)."
+      ]
+    }
+  }
+}

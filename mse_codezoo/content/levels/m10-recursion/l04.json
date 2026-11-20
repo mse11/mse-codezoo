@@ -1,0 +1,117 @@
+{
+  "id": "m10-l04",
+  "title": "Count by returning",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "return"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "3"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".BB"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "2"
+      }
+    },
+    {
+      "tiles": [
+        ".BBBBB"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "5"
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "Recursion",
+      "Return"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "No banana ahead? return 0.",
+    "Otherwise step, grab and return 1 + count()."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Počítaj cez návrat",
+      "hints": [
+        "Žiadny banán vpredu? return 0.",
+        "Inak krok, chyť a return 1 + count()."
+      ]
+    }
+  }
+}

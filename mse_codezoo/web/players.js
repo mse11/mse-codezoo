@@ -22,6 +22,8 @@ const AT_HOME = {
   missing_concept: "Ask: which blocks repeat? Could a loop do that for us?",
   endless_loop: "Play “Simon says, but only if”: act only when a rule is true, like “jump if I hold up a banana”.",
   type_mixup: "Sort objects at home into boxes and label them: is this a number, a word, or yes/no?",
+  endless_recursion: "Russian dolls: open one, then the next, until the smallest. That is a base case!",
+  uncaught_error: "Plan a “what if it goes wrong?” together: if it rains, we take an umbrella.",
 };
 
 const PLAYER_KEY = "codezoo.player";

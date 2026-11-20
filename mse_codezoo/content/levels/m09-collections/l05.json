@@ -1,0 +1,104 @@
+{
+  "id": "m09-l05",
+  "title": "What's in the bag?",
+  "module": "collections",
+  "concepts": [
+    "dictionaries"
+  ],
+  "animal": "beaver",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".OPOOL"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "3"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".OOPLP"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "2"
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "Subscript"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "build",
+    "inventory"
+  ],
+  "hints": [
+    "inventory() gives a dictionary like {\"oak\": 3, \"pine\": 1}.",
+    "bag = inventory(), then say(bag[\"oak\"])."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Čo je vo vaku?",
+      "hints": [
+        "inventory() dá slovník ako {\"oak\": 3, \"pine\": 1}.",
+        "bag = inventory(), potom say(bag[\"oak\"])."
+      ]
+    }
+  }
+}

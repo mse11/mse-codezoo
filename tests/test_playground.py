@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from mse_codezoo.cli import own_modules
 from mse_codezoo.game import run_level
 from mse_codezoo.levels import find_level
 
@@ -20,25 +21,35 @@ STARS = {
     "m03-l02.py": 3,
     "m04-l04.py": 3,
     "m05-l03.py": 3,
+    "m07-l03.py": 2,
+    "m07-l05.py": 3,
+    "m08-l02.py": 3,
+    "m09-l06.py": 3,
+    "m10-l06.py": 3,
 }
+HELPERS = {"mytricks.py"}  # imported by an example, not a level's program
 
 OOPS = {
     "bump.py": ("m01-l03", "Bump! The monkey walked into a wall."),
     "typo.py": ("m01-l01", "Did you mean `step`?"),
     "syntax.py": ("m01-l01", "Python can't read line"),
     "too-short.py": ("m01-l01", "1 banana still to collect."),
-    "def.py": ("m01-l01", "CodeZoo can't run functions (`def`) yet."),
+    "class.py": ("m01-l01", "CodeZoo can't run classes yet."),
     "no-brackets.py": ("m05-l01", "Add brackets to ask it: `is_blocked()`."),
     "one-world.py": ("m05-l02", "It works here, but not in world 2"),
+    "no-base-case.py": ("m10-l01", "Does it have a base case"),
+    "thin-ice.py": ("m08-l02", "Crack! The ice ahead is too thin"),
+    "no-global.py": ("m07-l11", "write `global score` first"),
 }
 
 
 def play(level_id, path):
-    return run_level(find_level(level_id), path.read_text(encoding="utf-8"))
+    source = path.read_text(encoding="utf-8")
+    return run_level(find_level(level_id), source, modules=own_modules(path, source))
 
 
 def test_every_example_is_listed():
-    assert {p.name for p in PLAYGROUND.glob("*.py")} == set(STARS)
+    assert {p.name for p in PLAYGROUND.glob("*.py")} == set(STARS) | HELPERS
     assert {p.name for p in (PLAYGROUND / "oops").glob("*.py")} == set(OOPS)
 
 

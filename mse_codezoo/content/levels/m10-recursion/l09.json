@@ -1,0 +1,86 @@
+{
+  "id": "m10-l09",
+  "title": "Add up a list",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "lists"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "9"
+  },
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "An empty list adds up to 0.",
+    "Otherwise: the first item + total(the rest), and the rest is logs[1:]."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Sčítaj zoznam",
+      "hints": [
+        "Prázdny zoznam má súčet 0.",
+        "Inak: prvá položka + total(zvyšok), a zvyšok je logs[1:]."
+      ]
+    }
+  }
+}

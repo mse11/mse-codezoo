@@ -1,0 +1,96 @@
+{
+  "id": "m09-l02",
+  "title": "Fill a list",
+  "module": "collections",
+  "concepts": [
+    "lists",
+    "append"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BCBC."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "4"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "List",
+      "MethodCall"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "found = [] makes an empty list; found.append(x) adds to it.",
+    "At the end, say(len(found))."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Naplň zoznam",
+      "hints": [
+        "found = [] urobí prázdny zoznam; found.append(x) doň pridá.",
+        "Na konci say(len(found))."
+      ]
+    }
+  }
+}

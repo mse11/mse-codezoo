@@ -22,7 +22,17 @@ SOURCES = [
     "for i in range(5):\n    step(1)\n    grab()\n",
     "for i in range(2):\n    pass\n",
     "say('hi')\nx = None\ny = True\nz = 2.5\n",
-    "def spin():\n    turn_left()\n",  # RawCode
+    "class Spin:\n    pass\n",  # RawCode
+    "def spin(n, k=2):\n    global x\n    return n, k\n",
+    (
+        "try:\n    a = [1, *b]\nexcept (KeyError, ValueError) as e:\n    raise\n"
+        "else:\n    del a[0]\nfinally:\n    pass\n"
+    ),
+    (
+        "import tricks\nfrom tricks import x\nd = {'a': 1, **e}\n"
+        "x, *y = {k: v for k, v in d.items() if v}\nprint(tricks.x, {1, 2}, (1,))\n"
+    ),
+    "for a, b in z:\n    if a:\n        break\n    continue\nassert a, 'no'\n",
     (
         "if is_blocked():\n    turn_left()\nelif item_here() == 'banana' and not x:\n"
         "    grab()\nelse:\n    step()\n"
@@ -73,6 +83,13 @@ def test_every_node_type_has_a_definition():
         "FString",
         "Slice",
         "Subscript",
+        "Attribute",
+        "List",
+        "Tuple",
+        "Set",
+        "Dict",
+        "Starred",
+        "Comprehension",
     }
     assert stmt_members == {
         "ExprStmt",
@@ -81,6 +98,16 @@ def test_every_node_type_has_a_definition():
         "For",
         "If",
         "While",
+        "Break",
+        "Continue",
+        "FunctionDef",
+        "Return",
+        "Global",
+        "Try",
+        "Raise",
+        "Assert",
+        "Delete",
+        "Import",
         "Pass",
         "Comment",
         "RawCode",
@@ -134,7 +161,7 @@ def set_in(path, value):
         set_in(["body", 0, "body", 0, "extra"], 1),  # unknown field
         set_in(["body", 0, "iter"], {"type": "Pass", "id": "x"}),  # statement as expression
         set_in(["body", 0, "body", 0], {"type": "Name", "id": "x", "name": "a"}),  # expr as stmt
-        set_in(["body", 0, "target"], {"type": "Const", "id": "x", "value": 1}),  # target: Name
+        set_in(["body", 0, "target"], {"type": "Pass", "id": "x"}),  # target: an expression
         set_in(["body", 0, "body", 0, "value", "args", 0, "value"], [1]),  # Const of a list
         lambda data: data["body"][0].pop("iter"),  # missing required field
         lambda data: data.pop("id"),  # program without id
@@ -158,4 +185,4 @@ def test_schema_command_writes_a_file(tmp_path):
     target = tmp_path / "ir.schema.json"
     result = CliRunner().invoke(main, ["schema", "-o", str(target)])
     assert result.exit_code == 0, result.output
-    assert json.loads(target.read_text(encoding="utf-8"))["$id"] == "urn:mse-codezoo:ir:v2"
+    assert json.loads(target.read_text(encoding="utf-8"))["$id"] == "urn:mse-codezoo:ir:v3"

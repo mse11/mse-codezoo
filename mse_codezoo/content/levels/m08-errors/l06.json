@@ -1,0 +1,80 @@
+{
+  "id": "m08-l06",
+  "title": "Check with assert",
+  "module": "errors",
+  "concepts": [
+    "assert",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "Assert"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each"
+  ],
+  "hints": [
+    "`assert` stops the program when its check is false.",
+    "The banana is 3 steps away, not 2."
+  ],
+  "mode": "both_editable",
+  "starter": "step(2)\nassert item_here(), \"no banana here!\"\ngrab()\n",
+  "i18n": {
+    "sk": {
+      "title": "Kontrola cez assert",
+      "hints": [
+        "`assert` zastaví program, keď jeho kontrola neplatí.",
+        "Banán je 3 kroky ďaleko, nie 2."
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+CodeZoo
+Copyright 2026 Michal Sestrienka
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes third-party software with its own licences:
+- Blockly 13.3.0 (Apache-2.0), in mse_codezoo/web/vendor/blockly/
+- three.js r170 (MIT), in mse_codezoo/web/vendor/three/

@@ -1,0 +1,82 @@
+{
+  "id": "m07-l11",
+  "title": "Keep the score",
+  "module": "functions",
+  "concepts": [
+    "global"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "4"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 9,
+    "mustUse": [
+      "Global"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import"
+  ],
+  "hints": [
+    "Changing `score` inside a function needs `global score` first.",
+    "score += 1 in the function; say(score) at the end."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Počítaj body",
+      "hints": [
+        "Na zmenu `score` vo funkcii treba najprv `global score`.",
+        "score += 1 vo funkcii; na konci say(score)."
+      ]
+    }
+  }
+}

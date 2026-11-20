@@ -64,6 +64,24 @@ def main(ctx: click.Context, lang: str | None) -> None:
 # --- helpers -------------------------------------------------------------------
 
 
+def own_modules(program: Path, source: str) -> dict[str, str]:
+    """Helper files the program imports that sit next to it, like your own ``tricks.py``."""
+    parsed = parse(source)
+    if parsed.program is None:
+        return {}
+    found = {}
+    for node in ir.walk(parsed.program):
+        if isinstance(node, ir.Import):
+            path = program.with_name(f"{node.module}.py")
+            if path.is_file() and path.resolve() != program.resolve():
+                found[node.module] = path.read_text(encoding="utf-8")
+    return found
+
+
+def _all_levels() -> list[Level]:
+    return [load_level(path) for path in level_files()]
+
+
 def _load(level_ref: str, program: Path) -> tuple[Level, str]:
     try:
         level = find_level(level_ref)
@@ -94,6 +112,22 @@ def describe_event(event: dict[str, Any], world: World) -> str:
             return "bump!"
         case "sense":
             return f"asks {event['what']}() -> {event['result']!r}"
+        case "swing":
+            x, y = event["to"]
+            return f"swung across to ({x}, {y})"
+        case "climb":
+            item = event.get("item")
+            return f"climbed a tree, got a {world.pack.item_name(item)}" if item else "climbed"
+        case "crack":
+            return "crack! thin ice ahead"
+        case "build":
+            return f"built a {world.pack.item_name(event['item'])} log into the dam"
+        case "hide":
+            return "hides"
+        case "call":
+            return f"calls {event['name']}({', '.join(event['args'])})"
+        case "return":
+            return f"{event['name']} gives back {event['value']}"
     return event["type"]
 
 
@@ -122,8 +156,18 @@ def _level_header(level: Level, animal: str | None) -> str:
 @click.option("--animal", help="Play as another animal (default: the level's animal).")
 @click.option("--trace", is_flag=True, help="Print every step and the grid after each move.")
 @click.option("--json", "as_json", is_flag=True, help="Print machine-readable output.")
-def run(level: str, program: Path, animal: str | None, trace: bool, as_json: bool) -> None:
-    """Run PROGRAM headless in LEVEL (a level id like m01-l01, or a level file)."""
+@click.option(
+    "--save",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Save the run as a .run.json file, for `codezoo replay` and `codezoo story export`.",
+)
+def run(
+    level: str, program: Path, animal: str | None, trace: bool, as_json: bool, save: Path | None
+) -> None:
+    """Run PROGRAM headless in LEVEL (a level id like m01-l01, or a level file).
+
+    PROGRAM may `import` your own helper files that sit next to it (like tricks.py).
+    """
     lvl, source = _load(level, program)
     source_lines = source.splitlines()
 
@@ -142,10 +186,22 @@ def run(level: str, program: Path, animal: str | None, trace: bool, as_json: boo
     if not as_json:
         click.echo(_level_header(lvl, animal))
     try:
-        result = run_level(lvl, source, animal=animal, on_step=on_step if trace else None)
+        result = run_level(
+            lvl,
+            source,
+            animal=animal,
+            on_step=on_step if trace else None,
+            modules=own_modules(program, source),
+        )
     except LevelError as exc:
         raise click.ClickException(str(exc)) from None
 
+    if save is not None and result.result is not None:
+        from mse_codezoo.runs import make_run
+
+        save.write_text(json.dumps(make_run(result, source), indent=1), encoding="utf-8")
+        if not as_json:
+            click.echo(f"Saved the run to {save}")
     if as_json:
         click.echo(json.dumps(run_to_json(result), indent=2))
     else:
@@ -163,8 +219,20 @@ def _echo_run(run: LevelRun, show_grid: bool) -> None:
     for line in run.result.output:
         click.echo(f"printed: {line}")
     if run.result.error:
-        line = run.line_of(run.result.error.node_id)
-        click.echo(f"line {line}: {run.result.error.message}", err=True)
+        error = run.result.error
+        if len(error.traceback) > 1:
+            click.echo("Traceback (where it happened, from the outside in):", err=True)
+            frames = error.traceback
+            if len(frames) > 6:  # deep recursion: the start and the end tell the story
+                frames = [*frames[:3], ("...", f"{len(frames) - 5} more"), *frames[-2:]]
+            for name, node in frames:
+                if name == "...":
+                    click.echo(f"  ... {node} ...", err=True)
+                    continue
+                where = "the program" if name == "<program>" else f"{name}()"
+                click.echo(f"  line {run.line_of(node)}, in {where}", err=True)
+        line = run.line_of(error.node_id)
+        click.echo(f"line {line}: {error.message}", err=True)
     else:
         click.echo(f"Finished in {len(run.result.steps)} steps.")
 
@@ -178,12 +246,13 @@ def check(level: str, program: Path, animal: str | None, player: str | None) -> 
     """Check PROGRAM against LEVEL's goal and constraints; print stars and hints."""
     lvl, source = _load(level, program)
     try:
-        result = run_level(lvl, source, animal=animal)
+        result = run_level(lvl, source, animal=animal, modules=own_modules(program, source))
     except LevelError as exc:
         raise click.ClickException(str(exc)) from None
+    extras: list[str] = []
     if player is not None:
         try:
-            _store().record(player, attempt_from_run(result, source))
+            extras = _after_attempt(_store(), player, lvl, result, source)
         except ProfileError as exc:
             raise click.ClickException(str(exc)) from None
     click.echo(_level_header(lvl, animal))
@@ -200,8 +269,26 @@ def check(level: str, program: Path, animal: str | None, player: str | None) -> 
         click.echo(result.feeling.text)
     if not outcome.solved and lvl.shown_hints:
         click.echo(f"Hint: {lvl.shown_hints[0]}")
+    for line in extras:
+        click.echo(line)
     if not outcome.solved:
         raise SystemExit(1)
+
+
+def _after_attempt(
+    store: ProfileStore, player: str, level: Level, result: LevelRun, source: str
+) -> list[str]:
+    """Record the attempt; lines about new stickers and a practice suggestion."""
+    store.record(player, attempt_from_run(result, source))
+    levels = _all_levels()
+    lines = [f"New sticker: {s['emoji']} {s['name']}" for s in store.award(player, levels)]
+    suggestion = store.suggest(player, level, levels)
+    if suggestion:
+        lines.append(
+            f"Want some practice with {suggestion['concept']} first? "
+            f"Try {suggestion['level']}: {suggestion['title']}"
+        )
+    return lines
 
 
 @main.command()
@@ -311,7 +398,13 @@ def _show_level(level: Level, path: Path, color: bool, variant: int) -> None:
     if len(data["worlds"]) > 1:
         click.echo(f"World {variant + 1} of {len(data['worlds'])} (the program must solve all)")
     click.echo(render(StageState.from_json(world), color=color))
-    click.echo(legend(goal_world.pack, [tile for _x, _y, tile in world["items"]]))
+    click.echo(
+        legend(
+            goal_world.pack,
+            [tile for _x, _y, tile in world["items"]],
+            [kind for _x, _y, kind in world.get("terrain", [])],
+        )
+    )
     click.echo(f"Your program: {path}")
 
 
@@ -360,7 +453,13 @@ def play(
     def run_once(level: Level, path: Path) -> bool:
         nonlocal last_tick
         source = path.read_text(encoding="utf-8")
-        result = run_level(level, source, variant=variant, seed=int(time.time()))
+        result = run_level(
+            level,
+            source,
+            variant=variant,
+            seed=int(time.time()),
+            modules=own_modules(path, source),
+        )
         data = run_to_json(result)
         _echo_diagnostics(result.parsed)
         if data.get("steps") is not None:
@@ -389,7 +488,8 @@ def play(
             face = result.feeling.face if _can_show(result.feeling.face) else ""
             click.echo(f"{face} {result.feeling.text}".strip())
         if player is not None:
-            store.record(player, attempt_from_run(result, source))
+            for line in _after_attempt(store, player, level, result, source):
+                click.echo(line)
             now = time.monotonic()
             status = store.add_time(player, now - last_tick)
             last_tick = now
@@ -663,7 +763,8 @@ def levels_list() -> None:
     for path in files:
         try:
             level = load_level(path)
-            click.echo(f"{level.id:<10} {level.shown_title}")
+            only = f"  ({level.animal} only)" if level.signature else ""
+            click.echo(f"{level.id:<10} {level.shown_title}{only}")
         except LevelError as exc:
             click.echo(f"{path.relative_to(LEVELS_DIR).as_posix():<10} (invalid: {exc})")
     click.echo(f"{len(files)} level(s)")
@@ -685,6 +786,9 @@ def describe_goal(goal: dict[str, Any], world: World) -> str:
             return f'say "{goal["text"]}"'
         case "avoid":
             return f"leave every {world.pack.noun(goal['item'])} alone"
+        case "build":
+            logs = ", ".join(f"{count} {kind}" for kind, count in goal["logs"].items())
+            return f"build a dam from exactly {logs}"
         case "all":
             return " and ".join(describe_goal(part, world) for part in goal["goals"])
     return str(goal.get("type"))
@@ -760,3 +864,206 @@ def levels_validate(paths: tuple[Path, ...], all_levels: bool) -> None:
     click.echo(f"{len(targets) - failed}/{len(targets)} level(s) valid")
     if failed:
         raise SystemExit(1)
+
+
+# --- saved runs, storybook, cards, new worlds ------------------------------------------
+
+
+def _read_run(path: Path) -> dict[str, Any]:
+    from mse_codezoo.runs import RunFileError, check_run
+
+    try:
+        return check_run(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError, RunFileError) as exc:
+        raise click.ClickException(f"Can't read {path.name}: {exc}") from None
+
+
+@main.command()
+@click.argument("run_file", metavar="RUN", type=ProgramPath)
+@click.option("--speed", type=click.IntRange(1, 5), default=3, show_default=True)
+@click.option("--no-color", is_flag=True, help="Plain text, no colours.")
+def replay(run_file: Path, speed: int, no_color: bool) -> None:
+    """Replay a saved run (from `codezoo run --save`) in the terminal."""
+    from mse_codezoo.term import replay as show
+
+    data = _read_run(run_file)
+    color = not no_color and sys.stdout.isatty()
+    show(
+        data["start"],
+        data["steps"],
+        str(data.get("source", "")).splitlines(),
+        echo=click.echo,
+        color=color,
+        animate=sys.stdout.isatty(),
+        speed=speed,
+        header=f"Level {data.get('level')}: {data.get('title', '')}",
+    )
+    check_data = data.get("check") or {}
+    if check_data.get("message"):
+        click.echo(check_data["message"])
+
+
+@main.group()
+def story() -> None:
+    """Storybooks made from saved runs."""
+
+
+@story.command("export")
+@click.argument("run_file", metavar="RUN", type=ProgramPath)
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path), required=True)
+def story_export(run_file: Path, output: Path) -> None:
+    """Turn a saved run into a printable HTML storybook."""
+    from mse_codezoo.story import storybook_html
+
+    output.write_text(storybook_html(_read_run(run_file)), encoding="utf-8")
+    click.echo(f"Wrote {output}. Open it in a browser to add your own lines and print it.")
+
+
+@main.group()
+def cards() -> None:
+    """Printable unplugged cards with unlock codes."""
+
+
+@cards.command("print")
+@click.option("--animal", default="monkey", show_default=True, help="Whose cards.")
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path), required=True)
+def cards_print(animal: str, output: Path) -> None:
+    """Write the cards for ANIMAL as an HTML page; print it on paper or to PDF."""
+    from mse_codezoo.cards import cards_html
+
+    try:
+        load_pack(animal)
+    except LevelError as exc:
+        raise click.ClickException(str(exc)) from None
+    output.write_text(cards_html(animal, _all_levels()), encoding="utf-8")
+    click.echo(f"Wrote {output}.")
+
+
+@cards.command("unlock")
+@click.argument("code")
+@click.option("--profile", "player", required=True, help="The player who played the card.")
+@_profile_errors
+def cards_unlock(code: str, player: str) -> None:
+    """Unlock a card's sticker with the code printed on it."""
+    from mse_codezoo.cards import card_for_code
+
+    levels = _all_levels()
+    card = card_for_code(code, levels)
+    if card is None:
+        raise click.ClickException("That code doesn't match any card. Check the spelling.")
+    result = _store().unlock_card(player, card)
+    sticker = result["sticker"]
+    click.echo(
+        f"{sticker['emoji']} {sticker['name']}" + ("" if result["new"] else " (already yours)")
+    )
+    click.echo(f"Now play it on the screen: codezoo play --level {card.level_id}")
+
+
+@main.group()
+def world() -> None:
+    """Animal worlds."""
+
+
+SPEC_TEMPLATE = """# {title} world: SPEC
+
+The plan for a new animal world, filled in before any level is built
+(see "Agent workflow for a new animal world" in IMPLEMENTATION_PLAN.md).
+
+## Characters
+
+- The {animal}: ...
+
+## Mechanic
+
+- Core actions it renames (for example `grab` -> `catch`): ...
+- Its own tricks, and the module each one teaches: ...
+
+## Concept mapping
+
+| Module | Signature level idea |
+| --- | --- |
+| ... | ... |
+
+## Level list
+
+1. {first_id}: first steps (generated by `codezoo world new`)
+
+## Fun pass and playtest notes
+
+- ...
+"""
+
+
+@world.command("new")
+@click.argument("animal")
+@click.option(
+    "--content",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Content folder to write into (default: the bundled mse_codezoo/content).",
+)
+def world_new(animal: str, content: Path | None) -> None:
+    """Scaffold SPEC.md, pack.json and a first level for a new animal world."""
+    import re
+
+    from mse_codezoo.levels import CONTENT_DIR
+
+    if not re.fullmatch(r"[a-z][a-z0-9_]{1,23}", animal):
+        raise click.ClickException("Animal names are lowercase letters, like 'otter'.")
+    root = content or CONTENT_DIR
+    folder = root / "animals" / animal
+    if folder.exists():
+        raise click.ClickException(f"{folder} already exists.")
+    folder.mkdir(parents=True)
+    actions = {
+        name: name
+        for name in World.from_spec({"tiles": ["."], "start": [0, 0, "east"]}).pack.all_actions()
+    }
+    pack = {
+        "id": animal,
+        "animal": animal,
+        "world": "world",
+        "emoji": "🐾",
+        "tricks": [],
+        "actions": actions,
+        "items": {"B": "treat", "C": "bonus", "R": "bad"},
+        "names": {
+            "en": {
+                "animal": animal,
+                "world": "world",
+                "items": {
+                    "B": {"one": "treat", "many": "treats"},
+                    "C": {"one": "bonus", "many": "bonuses"},
+                    "R": {"one": "bad treat", "many": "bad treats"},
+                },
+            }
+        },
+    }
+    (folder / "pack.json").write_text(
+        json.dumps(pack, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    level_dir = root / "levels" / f"w-{animal}"
+    level_dir.mkdir(parents=True, exist_ok=True)
+    first_id = f"{animal}-l01"
+    level = {
+        "id": first_id,
+        "title": "First steps",
+        "module": "sequences",
+        "concepts": ["sequence"],
+        "animal": animal,
+        "signature": True,
+        "world": {"tiles": [".B"], "start": [0, 0, "east"]},
+        "goal": {"type": "collect_all", "item": "B"},
+        "constraints": {"maxLines": 2, "mustUse": []},
+        "unlockedBlocks": ["step", "grab"],
+        "hints": ["One step, then grab()."],
+        "mode": "blocks_only",
+    }
+    (level_dir / "l01.json").write_text(json.dumps(level, indent=2) + "\n", encoding="utf-8")
+    (level_dir / "l01.solution.py").write_text("step(1)\ngrab()\n", encoding="utf-8")
+    title = animal.capitalize()
+    (folder / "SPEC.md").write_text(
+        SPEC_TEMPLATE.format(title=title, animal=animal, first_id=first_id), encoding="utf-8"
+    )
+    click.echo(f"Created {folder}/SPEC.md, pack.json and {level_dir}/l01.json.")
+    click.echo("Fill in SPEC.md, then loop on `codezoo levels validate --all`.")

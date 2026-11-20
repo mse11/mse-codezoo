@@ -1,0 +1,86 @@
+{
+  "id": "m06-l06",
+  "title": "Count the steps",
+  "module": "loops-2",
+  "concepts": [
+    "while",
+    "variables"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "......#"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "5"
+  },
+  "variants": [
+    {
+      "tiles": [
+        "...#"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "2"
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "While",
+      "AugAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "Start with steps = 0 and add 1 after every step.",
+    "When the loop ends, say(steps)."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Spočítaj kroky",
+      "hints": [
+        "Začni so steps = 0 a po každom kroku pridaj 1.",
+        "Keď cyklus skončí, say(steps)."
+      ]
+    }
+  }
+}

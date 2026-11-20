@@ -1,0 +1,88 @@
+{
+  "id": "m08-l04",
+  "title": "Not a number",
+  "module": "errors",
+  "concepts": [
+    "try",
+    "ValueError"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..BB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "What is two?"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each"
+  ],
+  "hints": [
+    "int(\"two\") raises ValueError. Catch it and say what went wrong.",
+    "except ValueError: say(\"What is \" + text + \"?\")"
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "To nie je číslo",
+      "hints": [
+        "int(\"two\") vyhodí ValueError. Zachyť ho a povedz, čo sa stalo.",
+        "except ValueError: say(\"What is \" + text + \"?\")"
+      ]
+    }
+  }
+}

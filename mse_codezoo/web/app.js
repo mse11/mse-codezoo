@@ -17,6 +17,7 @@ import { Stage } from "./stage.js";
 const $ = (id) => document.getElementById(id);
 const HEARTBEAT_SECONDS = 30;
 const VIEW_KEY = "codezoo.view";
+const ANIMAL_KEY = "codezoo.animal";
 
 setLang(initialLang());
 
@@ -34,6 +35,10 @@ const state = {
   player: null, // profile, or null for a guest
   progress: {}, // level id -> {stars, solved}
   over: false, // daily limit reached
+  animals: [], // every animal pack
+  animal: null, // the animal chosen for core levels (null: the level's own)
+  outfit: "", // what the animal wears, from the player's habitat
+  stack: [], // the call stack while a run plays: one burrow per function call
 };
 
 const stage2d = new Stage($("stage"));
@@ -154,11 +159,20 @@ async function playerChosen(profile) {
   state.player = profile;
   state.progress = {};
   state.over = false;
+  state.outfit = "";
   if (profile) {
     const progress = await api.progress(profile.id);
     state.progress = progress.levels;
     applyToday(progress.today);
+    try {
+      const habitat = await api.habitat(profile.id);
+      state.outfit = habitat.outfits.find((o) => o.id === habitat.outfit)?.emoji || "";
+    } catch {
+      // no habitat yet
+    }
   }
+  stage.setOutfit?.(state.outfit);
+  $("zoo").hidden = !profile;
   renderLevelOptions();
   updateButtons();
 }
@@ -200,7 +214,8 @@ function renderLevelOptions() {
   select.replaceChildren(
     ...state.levels.map((l) => {
       const stars = starText(state.progress[l.id]?.stars || 0);
-      return el("option", { value: l.id }, `${l.id} · ${l.title}${stars ? `  ${stars}` : ""}`);
+      const only = l.signature ? `${animalEmoji(l.animal)} ` : "";
+      return el("option", { value: l.id }, `${l.id} · ${only}${l.title}${stars ? `  ${stars}` : ""}`);
     }),
   );
   if (state.level) select.value = state.level.id;
@@ -208,9 +223,14 @@ function renderLevelOptions() {
 
 const MUST_USE = {
   For: "for", While: "while", If: "if", Compare: "== <", BoolOp: "and / or", UnaryOp: "not",
-  FString: 'f"…"', MethodCall: ".upper()", Subscript: "[ ]", Assign: "x = …",
-  AugAssign: "x += …", BinOp: "+ * /", Comment: "#",
+  FString: 'f"…"', MethodCall: ".method()", Subscript: "[ ]", Assign: "x = …",
+  AugAssign: "x += …", BinOp: "+ * /", Comment: "#", Break: "break", Continue: "continue",
+  FunctionDef: "def", Return: "return", Try: "try / except", Raise: "raise", Assert: "assert",
+  Import: "import", List: "[…]", Tuple: "(a, b)", Dict: "{key: value}", Set: "{a, b}",
+  Global: "global", Comprehension: "[… for …]", Recursion: t("a function that calls itself"),
 };
+
+const animalEmoji = (id) => state.animals.find((a) => a.id === id)?.emoji || "🐾";
 
 function describeGoal(level, goal) {
   const pack = level.pack;
@@ -230,6 +250,10 @@ function describeGoal(level, goal) {
       return t("Make the {animal} say “{text}”", { animal, text: goal.text });
     case "avoid":
       return t("Leave every {item} alone", { item: one(goal.item) });
+    case "build":
+      return t("Build a dam from exactly: {logs}", {
+        logs: Object.entries(goal.logs).map(([log, n]) => `${n} × ${log}`).join(", "),
+      });
     case "all":
       return goal.goals
         .map((part, i) => {
@@ -293,9 +317,30 @@ function chooseWorld(index) {
   stage.load(state.level, currentWorld(), currentGoal());
 }
 
+function renderAnimals() {
+  const select = $("animal-select");
+  select.replaceChildren(
+    ...state.animals.map((a) => el("option", { value: a.id }, `${a.emoji} ${a.animalName}`)),
+  );
+  const level = state.level;
+  if (!level) return;
+  select.value = level.pack.id;
+  select.disabled = level.signature || level.animals.length < 2;
+  select.title = level.signature ? t("Only the {animal} can play this level.", { animal: level.pack.animalName }) : "";
+}
+
+function renderFiles() {
+  const files = Object.entries(state.level.files || {});
+  $("files").replaceChildren(
+    ...files.map(([name, text]) =>
+      el("details", {}, el("summary", {}, t("Helper file {name}.py (import it)", { name })), el("pre", {}, text)),
+    ),
+  );
+}
+
 async function loadLevel(id) {
   stopPlayback();
-  const level = await api.level(id);
+  const level = await api.level(id, state.animal);
   state.level = level;
   state.variant = 0;
   state.hintsShown = 0;
@@ -307,7 +352,10 @@ async function loadLevel(id) {
 
   renderGoal();
   renderWorlds();
+  renderAnimals();
+  renderFiles();
   stage.load(level, currentWorld(), currentGoal());
+  stage.setOutfit?.(state.outfit);
   showDiagnostics([]);
   const typing = level.mode === "both_editable" || level.mode === "code_first";
   $("edit-code").checked = typing;
@@ -328,6 +376,7 @@ async function useView(want3d) {
       if (!module.webglAvailable()) throw new Error("no WebGL");
       stage3d ??= new module.Stage3D($("stage"));
       next = stage3d;
+      next.setOutfit?.(state.outfit);
     } catch {
       $("view-3d").checked = false;
       $("view-3d").disabled = true; // this device can't draw 3D; the 2D stage works everywhere
@@ -336,6 +385,7 @@ async function useView(want3d) {
   }
   if (next !== stage) stage.detach();
   stage = next;
+  stage.setOutfit?.(state.outfit);
   stage.setSpeed(Number($("speed").value));
   saveSetting(VIEW_KEY, stage === stage2d ? "2d" : "3d");
   if (state.level) {
@@ -360,12 +410,15 @@ async function changeLanguage(code) {
   players.relabel();
   updateButtons();
   state.levels = await api.levels();
+  state.animals = await api.animals();
   renderLevelOptions();
   if (!state.level) return;
-  const level = await api.level(state.level.id);
+  const level = await api.level(state.level.id, state.animal);
   state.level = level;
   renderGoal();
   renderWorlds();
+  renderAnimals();
+  renderFiles();
   invalidateRun();
   stage.load(level, currentWorld(), currentGoal());
   blocks.redefine();
@@ -387,8 +440,23 @@ function invalidateRun() {
   state.stepIndex = 0;
   $("result").replaceChildren();
   $("feeling").replaceChildren();
+  state.stack = [];
+  renderStack();
   code.highlight(0);
   blocks.highlight(null);
+}
+
+// The call stack as nested burrows: one box for every function that is still running.
+function renderStack() {
+  $("callstack").replaceChildren(
+    ...state.stack.map((frame, i) =>
+      el(
+        "div",
+        { class: `frame${i === state.stack.length - 1 ? " active" : ""}`, style: `margin-left:${i * 14}px` },
+        `${frame.name}(${frame.args.join(", ")})`,
+      ),
+    ),
+  );
 }
 
 function stopPlayback() {
@@ -406,7 +474,9 @@ function updateButtons() {
 async function ensureRun() {
   if (state.run) return state.run;
   stage.reset();
-  const result = await api.run(state.level.id, state.text, state.player?.id, state.variant);
+  const result = await api.run(state.level.id, state.text, state.player?.id, state.variant, {
+    animal: state.level.pack.id,
+  });
   state.run = result;
   state.stepIndex = 0;
   showDiagnostics(result.diagnostics || []);
@@ -420,7 +490,17 @@ async function ensureRun() {
 async function playStep(step) {
   code.highlight(step.line, step.error ? "error" : "run");
   blocks.highlight(blockAtLine(step.line));
-  for (const event of step.events) await stage.play(event);
+  for (const event of step.events) {
+    if (event.type === "call") {
+      state.stack.push(event);
+      renderStack();
+    } else if (event.type === "return") {
+      state.stack.pop();
+      renderStack();
+    } else {
+      await stage.play(event);
+    }
+  }
 }
 
 async function play({ single = false } = {}) {
@@ -480,9 +560,215 @@ function showResult(run) {
       el("div", { class: `message ${run.check.solved ? "ok" : "err"}` }, prefix + run.check.message),
       el("ul", {}, ...run.check.stars.map((s) => el("li", {}, `${s.earned ? "✓" : "–"} ${s.label}`))),
     );
+    let trace = run.error?.traceback || [];
+    if (trace.length > 6) {
+      // deep recursion: the start and the end tell the story
+      trace = [...trace.slice(0, 3), { gap: trace.length - 5 }, ...trace.slice(-2)];
+    }
+    if (trace.length > 1) {
+      parts.push(
+        el("p", {}, t("Where it happened, from the outside in:")),
+        el(
+          "ol",
+          { class: "traceback" },
+          ...trace.map((f) =>
+            el("li", {}, f.gap ? t("… {n} more …", { n: f.gap }) : f.function === "<program>" ? t("line {line}, in the program", f) : t("line {line}, in {function}()", f)),
+          ),
+        ),
+      );
+    }
     if (run.output?.length) parts.push(el("pre", { class: "printed" }, run.output.join("\n")));
   }
+  for (const sticker of run.newStickers || []) {
+    parts.push(el("div", { class: "sticker-new" }, `${sticker.emoji} ${t("New sticker: {name}", sticker)}`));
+  }
+  if (run.suggestion) {
+    const go = el("button", { type: "button", class: "small" }, t("Practise first"));
+    go.addEventListener("click", () => loadLevel(run.suggestion.level));
+    parts.push(
+      el(
+        "div",
+        { class: "suggestion" },
+        t("Tricky one! Want to practise {concept} on “{title}” first? You can come back any time.", run.suggestion),
+        " ",
+        go,
+      ),
+    );
+  }
+  if (run.savedRun) {
+    const story = el("button", { type: "button", class: "small" }, t("📖 Make a storybook"));
+    story.addEventListener("click", () => openStory(run.savedRun));
+    const save = el("button", { type: "button", class: "small" }, t("💾 Save this run"));
+    save.addEventListener("click", () => download(`${run.level}.run.json`, JSON.stringify(run.savedRun)));
+    parts.push(el("div", { class: "result-tools" }, story, save));
+  }
   $("result").replaceChildren(...parts);
+}
+
+async function openStory(savedRun) {
+  const page = window.open("", "_blank");
+  try {
+    const { html } = await api.story(savedRun);
+    if (page) {
+      page.document.open();
+      page.document.write(html);
+      page.document.close();
+    } else {
+      download("storybook.html", html);
+    }
+  } catch (error) {
+    page?.close();
+    showDiagnostics([{ line: 0, severity: "error", message: error.message }]);
+  }
+}
+
+function download(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const link = el("a", { href: url, download: name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// --- the zoo: stickers in the habitat, outfits, card codes ------------------------------
+
+const zoo = { habitat: null, dragging: null };
+
+async function openZoo() {
+  if (!state.player) return players.choose();
+  zoo.habitat = await api.habitat(state.player.id);
+  $("zoo-error").textContent = "";
+  $("card-code").value = "";
+  $("cards-link").href = `cards.html?animal=${encodeURIComponent(state.level?.pack.id || "monkey")}&lang=${lang()}`;
+  $("scan-card").hidden = !("BarcodeDetector" in window && navigator.mediaDevices?.getUserMedia);
+  renderZoo();
+  $("zoo-dialog").showModal();
+}
+
+function renderZoo() {
+  const { stickers, placed, outfits, outfit } = zoo.habitat;
+  const area = $("habitat");
+  const wearing = outfits.find((o) => o.id === outfit)?.emoji || "";
+  const animal = el("div", { class: "home-animal", "aria-hidden": "true" }, state.level?.pack.emoji || "🐾");
+  if (wearing) animal.append(el("span", { class: "outfit" }, wearing));
+  const pieces = stickers
+    .filter((s) => placed[s.id])
+    .map((s) => {
+      const node = el("span", { class: "placed", title: s.name, "data-id": s.id }, s.emoji);
+      node.style.left = `${placed[s.id][0]}%`;
+      node.style.top = `${placed[s.id][1]}%`;
+      node.addEventListener("pointerdown", (event) => startDrag(event, s.id, node));
+      return node;
+    });
+  area.replaceChildren(animal, ...pieces);
+  const tray = stickers.filter((s) => !placed[s.id]);
+  $("sticker-tray").replaceChildren(
+    ...(tray.length
+      ? tray.map((s) => {
+          const button = el("button", { type: "button", title: s.name, "aria-label": s.name }, s.emoji);
+          button.addEventListener("click", () => place(s.id, [20 + Math.random() * 60, 20 + Math.random() * 60]));
+          return button;
+        })
+      : [el("span", { class: "note" }, stickers.length ? t("Every sticker is in the habitat.") : t("Solve levels to earn stickers!"))]),
+  );
+  $("outfits").replaceChildren(
+    ...outfits.map((o) => {
+      const button = el(
+        "button",
+        { type: "button", "aria-pressed": String(o.id === outfit), title: o.open ? "" : t("Needs {n} stickers", { n: o.needs }) },
+        o.emoji || t("nothing"),
+      );
+      button.disabled = !o.open;
+      button.addEventListener("click", () => saveHabitat({ outfit: o.id }));
+      return button;
+    }),
+  );
+}
+
+async function saveHabitat(body) {
+  try {
+    zoo.habitat = await api.setHabitat(state.player.id, body);
+    state.outfit = zoo.habitat.outfits.find((o) => o.id === zoo.habitat.outfit)?.emoji || "";
+    stage.setOutfit?.(state.outfit);
+    renderZoo();
+  } catch (error) {
+    $("zoo-error").textContent = error.message;
+  }
+}
+
+function place(id, spot) {
+  saveHabitat({ placed: { ...zoo.habitat.placed, [id]: spot.map((v) => Math.round(Math.max(0, Math.min(100, v)))) } });
+}
+
+function startDrag(event, id, node) {
+  event.preventDefault();
+  node.setPointerCapture(event.pointerId);
+  const box = $("habitat").getBoundingClientRect();
+  const move = (e) => {
+    node.style.left = `${((e.clientX - box.left) / box.width) * 100}%`;
+    node.style.top = `${((e.clientY - box.top) / box.height) * 100}%`;
+  };
+  const up = (e) => {
+    node.removeEventListener("pointermove", move);
+    node.removeEventListener("pointerup", up);
+    place(id, [((e.clientX - box.left) / box.width) * 100, ((e.clientY - box.top) / box.height) * 100]);
+  };
+  node.addEventListener("pointermove", move);
+  node.addEventListener("pointerup", up);
+}
+
+async function unlockCard(code) {
+  try {
+    const result = await api.unlock(state.player.id, code);
+    $("zoo-error").textContent = "";
+    zoo.habitat = await api.habitat(state.player.id);
+    renderZoo();
+    const open = el("button", { type: "button", class: "small" }, t("Play it now"));
+    open.addEventListener("click", () => {
+      $("zoo-dialog").close();
+      loadLevel(result.card.level);
+    });
+    $("card-result").replaceChildren(
+      `${result.sticker.emoji} ${result.new ? t("New sticker: {name}", result.sticker) : t("You already have this card's sticker.")} `,
+      open,
+    );
+  } catch (error) {
+    $("card-result").replaceChildren();
+    $("zoo-error").textContent = error.message;
+  }
+}
+
+// Optional: read the QR code on a card with the camera. The picture stays on this device.
+async function scanCard() {
+  const video = $("scan-video");
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  } catch {
+    $("zoo-error").textContent = t("The camera is not available. Type the code instead.");
+    return;
+  }
+  video.hidden = false;
+  video.srcObject = stream;
+  await video.play();
+  const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+  const stop = () => {
+    for (const track of stream.getTracks()) track.stop();
+    video.hidden = true;
+  };
+  const started = Date.now();
+  while (!video.hidden && Date.now() - started < 20000 && $("zoo-dialog").open) {
+    const codes = await detector.detect(video).catch(() => []);
+    const found = codes.find((c) => c.rawValue.toLowerCase().startsWith("codezoo:card:"));
+    if (found) {
+      stop();
+      $("card-code").value = found.rawValue.slice("codezoo:card:".length);
+      return unlockCard(found.rawValue);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  stop();
 }
 
 // --- wiring ------------------------------------------------------------------------
@@ -510,6 +796,18 @@ window.addEventListener("hashchange", () => {
   if (id !== state.level?.id && state.levels.some((l) => l.id === id)) loadLevel(id);
 });
 $("grownups").addEventListener("click", () => players.openGrownups());
+$("animal-select").addEventListener("change", (event) => {
+  state.animal = event.target.value;
+  saveSetting(ANIMAL_KEY, state.animal);
+  if (state.level) loadLevel(state.level.id);
+});
+$("zoo").addEventListener("click", () => openZoo());
+$("card-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  unlockCard($("card-code").value);
+});
+$("scan-card").addEventListener("click", () => scanCard());
+$("zoo-close").addEventListener("click", () => $("zoo-dialog").close());
 
 for (const tab of document.querySelectorAll(".tabs button")) {
   tab.addEventListener("click", () => {
@@ -535,7 +833,8 @@ async function start() {
   const want3d = readSetting(VIEW_KEY) !== "2d";
   $("view-3d").checked = want3d;
   await useView(want3d);
-  state.levels = await api.levels();
+  state.animal = readSetting(ANIMAL_KEY);
+  [state.levels, state.animals] = await Promise.all([api.levels(), api.animals()]);
   renderLevelOptions();
   const wanted = location.hash.slice(1);
   await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : state.levels[0].id);

@@ -1,0 +1,125 @@
+{
+  "id": "m06-l09",
+  "title": "Coconut trees",
+  "module": "loops-2",
+  "concepts": [
+    "while",
+    "break"
+  ],
+  "animal": "monkey",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "t.t.tt",
+      "......"
+    ],
+    "start": [
+      0,
+      1,
+      "east"
+    ],
+    "items": [
+      [
+        0,
+        0,
+        "C"
+      ],
+      [
+        2,
+        0,
+        "C"
+      ],
+      [
+        4,
+        0,
+        "C"
+      ],
+      [
+        5,
+        0,
+        "C"
+      ]
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "C"
+  },
+  "variants": [
+    {
+      "tiles": [
+        "tt..t.",
+        "......"
+      ],
+      "start": [
+        0,
+        1,
+        "east"
+      ],
+      "items": [
+        [
+          0,
+          0,
+          "C"
+        ],
+        [
+          1,
+          0,
+          "C"
+        ],
+        [
+          4,
+          0,
+          "C"
+        ]
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 8,
+    "mustUse": [
+      "Break"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "swing",
+    "climb"
+  ],
+  "hints": [
+    "Look left at every square: a tree there counts as blocked. climb() it.",
+    "At the end of the row, `break` out of `while True`."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Kokosové palmy",
+      "hints": [
+        "Na každom políčku sa pozri doľava: strom sa ráta ako prekážka. climb() naň.",
+        "Na konci radu vyskoč z `while True` pomocou `break`."
+      ]
+    }
+  }
+}

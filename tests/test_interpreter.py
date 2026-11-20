@@ -64,7 +64,7 @@ def test_actions_are_called_and_their_events_attached():
         ("x = 'ab' * 100000\n", "far too long"),
         ("x = -'a'\n", "only works on numbers"),
         ("x = '%d' % 5\n", "`%` with text"),
-        ("def jump():\n    pass\n", "CodeZoo can't run functions (`def`) yet."),
+        ("class Bee:\n    pass\n", "CodeZoo can't run classes yet."),
     ],
 )
 def test_friendly_errors(source, message):

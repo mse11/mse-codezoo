@@ -1,0 +1,91 @@
+{
+  "id": "m06-l02",
+  "title": "Stop at the banana",
+  "module": "loops-2",
+  "concepts": [
+    "while",
+    "break"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "....B....."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        "..B......."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    },
+    {
+      "tiles": [
+        ".......B.."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 5,
+    "mustUse": [
+      "Break"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "`while True:` repeats forever, until a `break` stops it.",
+    "Inside: step(1), then if item_here(): break."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Zastav pri banáne",
+      "hints": [
+        "`while True:` opakuje stále, kým ho nezastaví `break`.",
+        "Vnútri: step(1), potom if item_here(): break."
+      ]
+    }
+  }
+}

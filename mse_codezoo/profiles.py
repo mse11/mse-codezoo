@@ -37,6 +37,8 @@ MISTAKE_KINDS = {
     "missing_concept": "solves it without the new idea",
     "endless_loop": "loops that never stop",
     "type_mixup": "mixes up numbers, text and yes/no values",
+    "endless_recursion": "functions that call themselves without stopping",
+    "uncaught_error": "errors that no `except` catches",
 }
 ERROR_KINDS = {  # LearnerError.kind (or "syntax") -> mistake kind
     "bump": "bump",
@@ -44,7 +46,33 @@ ERROR_KINDS = {  # LearnerError.kind (or "syntax") -> mistake kind
     "syntax": "syntax",
     "too_many_steps": "endless_loop",
     "type": "type_mixup",
+    "too_deep": "endless_recursion",
+    "raised": "uncaught_error",
+    "crack": "uncaught_error",
+    "key": "type_mixup",
 }
+MODULE_EMOJI = {
+    "sequences": "👣",
+    "loops-1": "🔁",
+    "variables": "📦",
+    "text": "🔤",
+    "conditions": "🚦",
+    "loops-2": "🌀",
+    "functions": "🧩",
+    "errors": "🩹",
+    "collections": "🎒",
+    "recursion": "🪆",
+}
+STAR_MILESTONES = {10: "⭐", 30: "🌟", 60: "💫", 100: "🏆"}
+OUTFITS = {
+    "none": (0, ""),
+    "hat": (1, "🎩"),
+    "scarf": (3, "🧣"),
+    "glasses": (5, "🕶️"),
+    "crown": (10, "👑"),
+}
+MAX_HABITAT = 100
+PRACTICE_AFTER = 3  # failed tries on one level before a practice level is suggested
 
 
 class ProfileError(Exception):
@@ -235,6 +263,7 @@ class ProfileStore:
         if not private:
             entry["attempts"] = entry.get("attempts", 0) + 1
             entry["lastPlayed"] = today()
+            entry["fails"] = 0 if attempt.solved else entry.get("fails", 0) + 1
             for kind in attempt.mistakes:
                 data["mistakes"][kind] = data["mistakes"].get(kind, 0) + 1
         self._save_progress(profile.id, data)
@@ -280,12 +309,133 @@ class ProfileStore:
             name = f"{name} (2)"
         picture = info.get("picture") if info.get("picture") in PICTURES else PICTURES[0]
         profile = self.add(name, picture)
-        clean = {key: progress.get(key, {}) for key in ("levels", "mistakes", "time")}
-        if not all(isinstance(value, dict) for value in clean.values()):
+        clean = {key: progress.get(key, {}) for key in ("levels", "mistakes", "time", "habitat")}
+        stickers = progress.get("stickers", [])
+        if not all(isinstance(value, dict) for value in clean.values()) or not (
+            isinstance(stickers, list) and all(isinstance(s, dict) for s in stickers)
+        ):
             self.remove(profile.id)
             raise ProfileError(t("The progress in this file is damaged."))
+        clean["stickers"] = [
+            {"id": str(s.get("id")), "date": str(s.get("date", ""))}
+            for s in stickers
+            if s.get("id")
+        ]
+        if progress.get("outfit") in OUTFITS:
+            clean["outfit"] = progress["outfit"]
         self._save_progress(profile.id, clean)
         return profile
+
+    # --- stickers, habitat, outfit -------------------------------------------------
+
+    def stickers(self, ref: str) -> list[dict[str, Any]]:
+        """Earned stickers, each with its picture and name, oldest first."""
+        return [sticker_info(s["id"]) | {"date": s.get("date")} for s in self._stickers(ref)]
+
+    def _stickers(self, ref: str) -> list[dict[str, Any]]:
+        return list(self.progress(ref).get("stickers", []))
+
+    def _give(self, data: dict[str, Any], sticker_id: str) -> bool:
+        earned = data.setdefault("stickers", [])
+        if any(s["id"] == sticker_id for s in earned):
+            return False
+        earned.append({"id": sticker_id, "date": today()})
+        return True
+
+    def award(self, ref: str, levels: list[Any]) -> list[dict[str, Any]]:
+        """Give any stickers the progress now earns; returns the new ones."""
+        profile = self.find(ref)
+        data = self.progress(profile.id)
+        solved = {lid for lid, entry in data["levels"].items() if entry.get("solved")}
+        stars = sum(entry.get("stars", 0) for entry in data["levels"].values())
+        wanted = []
+        if solved:
+            wanted.append("first:solve")
+        modules: dict[str, list[str]] = {}
+        for level in levels:
+            modules.setdefault(level.module, []).append(level.id)
+        wanted += [f"module:{m}" for m, ids in modules.items() if all(i in solved for i in ids)]
+        wanted += [f"stars:{n}" for n in STAR_MILESTONES if stars >= n]
+        new = [sticker for sticker in wanted if self._give(data, sticker)]
+        if new:
+            self._save_progress(profile.id, data)
+        return [sticker_info(sticker) for sticker in new]
+
+    def unlock_card(self, ref: str, card: Any) -> dict[str, Any]:
+        """Give the sticker for a card whose code the child typed or scanned."""
+        profile = self.find(ref)
+        data = self.progress(profile.id)
+        new = self._give(data, card.sticker)
+        self._save_progress(profile.id, data)
+        return {"sticker": sticker_info(card.sticker), "new": new}
+
+    def habitat(self, ref: str) -> dict[str, Any]:
+        data = self.progress(ref)
+        count = len(data.get("stickers", []))
+        return {
+            "stickers": self.stickers(ref),
+            "placed": data.get("habitat", {}),
+            "outfit": data.get("outfit", "none"),
+            "outfits": [
+                {"id": name, "emoji": emoji, "needs": needs, "open": count >= needs}
+                for name, (needs, emoji) in OUTFITS.items()
+            ],
+        }
+
+    def set_habitat(
+        self, ref: str, placed: dict[str, Any] | None = None, outfit: str | None = None
+    ) -> dict[str, Any]:
+        """Where stickers sit in the habitat (0-100 across and down) and what the animal wears."""
+        profile = self.find(ref)
+        data = self.progress(profile.id)
+        earned = {s["id"] for s in data.get("stickers", [])}
+        if placed is not None:
+            if not isinstance(placed, dict) or len(placed) > MAX_HABITAT:
+                raise ProfileError(t("Those sticker places don't look right."))
+            clean = {}
+            for sticker, spot in placed.items():
+                ok = (
+                    sticker in earned
+                    and isinstance(spot, list)
+                    and len(spot) == 2
+                    and all(isinstance(v, int | float) and 0 <= v <= 100 for v in spot)
+                )
+                if not ok:
+                    raise ProfileError(t("Those sticker places don't look right."))
+                clean[sticker] = [round(float(spot[0]), 1), round(float(spot[1]), 1)]
+            data["habitat"] = clean
+        if outfit is not None:
+            needs = OUTFITS.get(outfit, (None, ""))[0]
+            if needs is None or len(earned) < needs:
+                raise ProfileError(t("Earn more stickers to wear that."))
+            data["outfit"] = outfit
+        self._save_progress(profile.id, data)
+        return self.habitat(profile.id)
+
+    def suggest(self, ref: str, level: Any, levels: list[Any]) -> dict[str, Any] | None:
+        """After several failed tries, an easier level that practises the same idea.
+
+        The child can still pick any level; this is only a friendly offer.
+        """
+        data = self.progress(ref)
+        entry = data["levels"].get(level.id, {})
+        if entry.get("solved") or entry.get("fails", 0) < PRACTICE_AFTER:
+            return None
+        order = [lv.id for lv in levels]
+        if level.id not in order:
+            return None
+        before = levels[: order.index(level.id)]
+        shared = [lv for lv in before if set(lv.concepts) & set(level.concepts)]
+        if not shared:
+            return None
+
+        def rank(candidate: Any) -> tuple[int, int]:
+            stars = data["levels"].get(candidate.id, {}).get("stars", 0)
+            return (stars, -order.index(candidate.id))  # fewest stars, then the closest
+
+        best = min(shared, key=rank)
+        concept = next(c for c in level.concepts if c in best.concepts)
+        return {"level": best.id, "title": best.shown_title, "concept": concept}
 
     # --- grown-ups ---------------------------------------------------------------
 
@@ -378,3 +528,41 @@ class ProfileStore:
             "stars": sum(e.get("stars", 0) for e in data["levels"].values()),
             "minutesThisWeek": round(sum(data["time"].get(day, 0) for day in week) / 60, 1),
         }
+
+
+def module_name(module: str) -> str:
+    names = {
+        "sequences": t("Sequences"),
+        "loops-1": t("Loops"),
+        "variables": t("Variables"),
+        "text": t("Types and text"),
+        "conditions": t("Conditions"),
+        "loops-2": t("Loops II"),
+        "functions": t("Functions"),
+        "errors": t("Errors and debugging"),
+        "collections": t("Collections"),
+        "recursion": t("Recursion"),
+    }
+    return names.get(module, module)
+
+
+def sticker_info(sticker_id: str) -> dict[str, Any]:
+    """A sticker's picture and name, for the habitat and the "new sticker!" message."""
+    kind, _, rest = sticker_id.partition(":")
+    if kind == "module":
+        return {
+            "id": sticker_id,
+            "emoji": MODULE_EMOJI.get(rest, "🏅"),
+            "name": t("Finished: {module}", module=module_name(rest)),
+        }
+    if kind == "stars" and rest.isdigit():
+        return {
+            "id": sticker_id,
+            "emoji": STAR_MILESTONES.get(int(rest), "⭐"),
+            "name": t("{count} stars", count=int(rest)),
+        }
+    if kind == "card":
+        animal = rest.split("-", 1)[0]
+        emoji = {"monkey": "🐒", "penguin": "🐧", "beaver": "🦫", "fox": "🦊"}.get(animal, "🃏")
+        return {"id": sticker_id, "emoji": emoji, "name": t("Card played away from the screen")}
+    return {"id": sticker_id, "emoji": "🎉", "name": t("First level solved")}

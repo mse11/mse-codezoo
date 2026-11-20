@@ -1,0 +1,74 @@
+{
+  "id": "m07-l04",
+  "title": "A default value",
+  "module": "functions",
+  "concepts": [
+    "def",
+    "defaults"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BB.B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "FunctionDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import"
+  ],
+  "hints": [
+    "`def go(n=1):` uses 1 when you call go() with nothing.",
+    "go(), go(), go(2)."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Predvolená hodnota",
+      "hints": [
+        "`def go(n=1):` použije 1, keď zavoláš go() bez ničoho.",
+        "go(), go(), go(2)."
+      ]
+    }
+  }
+}

@@ -23,14 +23,23 @@ async function call(method, path, body) {
 
 export const api = {
   levels: () => call("GET", "/api/levels"),
-  level: (id) => call("GET", `/api/levels/${encodeURIComponent(id)}`),
+  level: (id, animal) =>
+    call("GET", `/api/levels/${encodeURIComponent(id)}${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
+  animals: () => call("GET", "/api/animals"),
   parse: (source) => call("POST", "/api/parse", { source }),
   print: (program) => call("POST", "/api/print", { program }),
-  run: (level, source, profile, variant = 0) => call("POST", "/api/run", { level, source, profile, variant }),
+  run: (level, source, profile, variant = 0, extra = {}) =>
+    call("POST", "/api/run", { level, source, profile, variant, save: true, ...extra }),
+  runLevelData: (levelData, source, variant = 0) => call("POST", "/api/run", { levelData, source, variant }),
+  checkLevel: (level, solution) => call("POST", "/api/levels/check", { level, solution }),
+  story: (run) => call("POST", "/api/story", { run }),
 
   profiles: () => call("GET", "/api/profiles"),
   addProfile: (name, picture) => call("POST", "/api/profiles", { name, picture }),
   progress: (id) => call("GET", `/api/profiles/${id}/progress`),
   addTime: (id, seconds) => call("POST", `/api/profiles/${id}/time`, { seconds }),
   parent: (action, body = {}) => call("POST", `/api/parent/${action}`, body),
+  unlock: (id, code) => call("POST", `/api/profiles/${id}/unlock`, { code }),
+  habitat: (id) => call("GET", `/api/profiles/${id}/habitat`),
+  setHabitat: (id, body) => call("POST", `/api/profiles/${id}/habitat`, body),
 };

@@ -1,0 +1,90 @@
+{
+  "id": "m06-l01",
+  "title": "Walk to the wall",
+  "module": "loops-2",
+  "concepts": [
+    "while"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "......B#"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        "..B#"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    },
+    {
+      "tiles": [
+        "..........B#"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "While"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue"
+  ],
+  "hints": [
+    "The rock is at a different place in every world.",
+    "while not is_blocked(): step(1). Then grab()."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Choď až ku skale",
+      "hints": [
+        "Skala je v každom svete inde.",
+        "while not is_blocked(): step(1). Potom grab()."
+      ]
+    }
+  }
+}

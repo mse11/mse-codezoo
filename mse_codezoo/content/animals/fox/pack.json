@@ -1,0 +1,80 @@
+{
+  "id": "fox",
+  "animal": "fox",
+  "world": "forest",
+  "emoji": "🦊",
+  "tricks": [
+    "sniff",
+    "hide",
+    "guard_ahead"
+  ],
+  "actions": {
+    "step": "step",
+    "turn_left": "turn_left",
+    "turn_right": "turn_right",
+    "grab": "grab",
+    "say": "say",
+    "is_blocked": "is_blocked",
+    "item_here": "item_here",
+    "item_ahead": "item_ahead",
+    "sniff": "sniff",
+    "hide": "hide",
+    "guard_ahead": "guard_ahead"
+  },
+  "items": {
+    "B": "berry",
+    "C": "mushroom",
+    "R": "trap",
+    "E": "egg"
+  },
+  "names": {
+    "en": {
+      "animal": "fox",
+      "world": "forest",
+      "items": {
+        "B": {
+          "one": "berry",
+          "many": "berries"
+        },
+        "C": {
+          "one": "mushroom",
+          "many": "mushrooms"
+        },
+        "R": {
+          "one": "trap",
+          "many": "traps"
+        },
+        "E": {
+          "one": "egg",
+          "many": "eggs"
+        }
+      }
+    },
+    "sk": {
+      "animal": "líška",
+      "world": "les",
+      "items": {
+        "B": {
+          "one": "bobuľa",
+          "few": "bobule",
+          "many": "bobúľ"
+        },
+        "C": {
+          "one": "hríb",
+          "few": "hríby",
+          "many": "hríbov"
+        },
+        "R": {
+          "one": "pasca",
+          "few": "pasce",
+          "many": "pascí"
+        },
+        "E": {
+          "one": "vajíčko",
+          "few": "vajíčka",
+          "many": "vajíčok"
+        }
+      }
+    }
+  }
+}

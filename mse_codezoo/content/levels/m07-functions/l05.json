@@ -1,0 +1,91 @@
+{
+  "id": "m07-l05",
+  "title": "Give back an answer",
+  "module": "functions",
+  "concepts": [
+    "def",
+    "return"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "....#"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "3"
+  },
+  "variants": [
+    {
+      "tiles": [
+        "......#"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "5"
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 7,
+    "mustUse": [
+      "FunctionDef",
+      "Return"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import"
+  ],
+  "hints": [
+    "Count the steps inside the function and `return` the count.",
+    "say(count_to_wall()) says what the function gave back."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Vráť odpoveď",
+      "hints": [
+        "Počítaj kroky vo funkcii a počet vráť cez `return`.",
+        "say(count_to_wall()) povie, čo funkcia vrátila."
+      ]
+    }
+  }
+}

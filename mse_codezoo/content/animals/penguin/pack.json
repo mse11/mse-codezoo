@@ -1,0 +1,66 @@
+{
+  "id": "penguin",
+  "animal": "penguin",
+  "world": "ice field",
+  "emoji": "🐧",
+  "tricks": [
+    "slide"
+  ],
+  "actions": {
+    "step": "step",
+    "turn_left": "turn_left",
+    "turn_right": "turn_right",
+    "grab": "catch",
+    "say": "say",
+    "is_blocked": "is_blocked",
+    "item_here": "item_here",
+    "item_ahead": "item_ahead",
+    "slide": "slide"
+  },
+  "items": {
+    "B": "fish",
+    "C": "pebble",
+    "R": "crab"
+  },
+  "names": {
+    "en": {
+      "animal": "penguin",
+      "world": "ice field",
+      "items": {
+        "B": {
+          "one": "fish",
+          "many": "fish"
+        },
+        "C": {
+          "one": "pebble",
+          "many": "pebbles"
+        },
+        "R": {
+          "one": "crab",
+          "many": "crabs"
+        }
+      }
+    },
+    "sk": {
+      "animal": "tučniak",
+      "world": "ľadové pole",
+      "items": {
+        "B": {
+          "one": "rybka",
+          "few": "rybky",
+          "many": "rybiek"
+        },
+        "C": {
+          "one": "kamienok",
+          "few": "kamienky",
+          "many": "kamienkov"
+        },
+        "R": {
+          "one": "krab",
+          "few": "kraby",
+          "many": "krabov"
+        }
+      }
+    }
+  }
+}

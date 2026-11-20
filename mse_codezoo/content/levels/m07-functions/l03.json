@@ -1,0 +1,74 @@
+{
+  "id": "m07-l03",
+  "title": "Give it an input",
+  "module": "functions",
+  "concepts": [
+    "def",
+    "parameters"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B...B..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "FunctionDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import"
+  ],
+  "hints": [
+    "`def walk_and_grab(n):` gets a number n each time you call it.",
+    "walk_and_grab(1), then 4, then 3."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Daj mu vstup",
+      "hints": [
+        "`def walk_and_grab(n):` dostane pri každom zavolaní číslo n.",
+        "walk_and_grab(1), potom 4, potom 3."
+      ]
+    }
+  }
+}

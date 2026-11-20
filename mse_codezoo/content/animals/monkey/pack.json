@@ -10,27 +10,59 @@
     "say": "say",
     "is_blocked": "is_blocked",
     "item_here": "item_here",
-    "item_ahead": "item_ahead"
+    "item_ahead": "item_ahead",
+    "swing": "swing",
+    "climb": "climb"
   },
-  "items": { "B": "banana", "C": "coconut", "R": "rotten" },
+  "items": {
+    "B": "banana",
+    "C": "coconut",
+    "R": "rotten"
+  },
   "names": {
     "en": {
       "animal": "monkey",
       "world": "jungle",
       "items": {
-        "B": { "one": "banana", "many": "bananas" },
-        "C": { "one": "coconut", "many": "coconuts" },
-        "R": { "one": "rotten banana", "many": "rotten bananas" }
+        "B": {
+          "one": "banana",
+          "many": "bananas"
+        },
+        "C": {
+          "one": "coconut",
+          "many": "coconuts"
+        },
+        "R": {
+          "one": "rotten banana",
+          "many": "rotten bananas"
+        }
       }
     },
     "sk": {
       "animal": "opička",
       "world": "džungľa",
       "items": {
-        "B": { "one": "banán", "few": "banány", "many": "banánov" },
-        "C": { "one": "kokos", "few": "kokosy", "many": "kokosov" },
-        "R": { "one": "zhnitý banán", "few": "zhnité banány", "many": "zhnitých banánov" }
+        "B": {
+          "one": "banán",
+          "few": "banány",
+          "many": "banánov"
+        },
+        "C": {
+          "one": "kokos",
+          "few": "kokosy",
+          "many": "kokosov"
+        },
+        "R": {
+          "one": "zhnitý banán",
+          "few": "zhnité banány",
+          "many": "zhnitých banánov"
+        }
       }
     }
-  }
+  },
+  "emoji": "🐒",
+  "tricks": [
+    "swing",
+    "climb"
+  ]
 }

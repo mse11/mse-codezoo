@@ -1,0 +1,102 @@
+{
+  "id": "m10-l05",
+  "title": "Sneak past the guards",
+  "module": "recursion",
+  "concepts": [
+    "recursion",
+    "if"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "..o.o.E#"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "E"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".oo..E#"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 9,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "sniff",
+    "hide",
+    "guard_ahead"
+  ],
+  "hints": [
+    "A guard watches the squares marked with eyes. hide() before stepping there.",
+    "sneak(): blocked? grab() and return. Else hide if guard_ahead(), step, sneak()."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Prekradni sa okolo stráží",
+      "hints": [
+        "Stráž stráži políčka s očami. Pred krokom tam hide().",
+        "sneak(): zatarasené? grab() a return. Inak hide pri guard_ahead(), krok, sneak()."
+      ]
+    }
+  }
+}

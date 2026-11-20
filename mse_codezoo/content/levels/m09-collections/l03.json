@@ -1,0 +1,90 @@
+{
+  "id": "m09-l03",
+  "title": "A plan of pairs",
+  "module": "collections",
+  "concepts": [
+    "tuples",
+    "unpacking"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".....",
+      ".....",
+      "..B.B",
+      "..B.B"
+    ],
+    "start": [
+      0,
+      3,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 8,
+    "mustUse": [
+      "Tuple",
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "(2, \"left\") is a pair. `for steps, turn in plan:` splits each pair.",
+    "After each step and grab, turn the way the pair says."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Plán z dvojíc",
+      "hints": [
+        "(2, \"left\") je dvojica. `for steps, turn in plan:` každú rozdelí.",
+        "Po každom kroku a chytení sa otoč, ako hovorí dvojica."
+      ]
+    }
+  }
+}

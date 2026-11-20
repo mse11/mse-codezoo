@@ -385,3 +385,42 @@ select {
   .blockly { min-height: 60vh; }
   .code { min-height: 50vh; }
 }
+
+/* --- phase 3: terrain, tricks, call stack, zoo, files --- */
+.terrain rect { stroke: none; }
+.terrain.water rect { fill: #7cc4f0; }
+.terrain.tree rect { fill: #b8dca6; }
+.terrain.thin-ice rect { fill: #e8f6fd; stroke: #9cc9e0; stroke-dasharray: 4 3; stroke-width: 2; }
+.terrain.thin-ice.cracked rect { fill: #cfe9f7; stroke: #d65c5c; }
+.terrain.watched rect { fill: #fde2e2; }
+.terrain.bridge rect { fill: #c79a6b; }
+.stage-svg .outfit { font-size: 22px; }
+.body.swing { transition-timing-function: cubic-bezier(.3, -.4, .6, 1.4); }
+.body.hidden-animal { opacity: .45; }
+
+.callstack { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; font: 13px/1.3 var(--mono, monospace); }
+.callstack:empty { display: none; }
+.callstack .frame { border: 2px solid #b08a5b; background: #f7ecd9; color: #4a3520; border-radius: 12px 12px 4px 4px; padding: 3px 10px; }
+.callstack .frame.active { border-color: #e6732e; box-shadow: 0 0 0 2px #e6732e33; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callstack .frame { background: #3a2f23; color: #f3e6d3; } }
+
+.result .traceback { margin: 6px 0; padding: 0 0 0 18px; font: 13px/1.4 var(--mono, monospace); }
+.result .suggestion, .result .sticker-new { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: #fff4d6; color: #4a3a10; }
+.result .result-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.files { margin: 8px 0 0; }
+.files pre { margin: 4px 0 0; padding: 8px; border-radius: 8px; background: var(--panel, #f4f2ea); overflow-x: auto; font-size: 13px; }
+
+.habitat { position: relative; height: 260px; border-radius: 16px; overflow: hidden; touch-action: none;
+  background: linear-gradient(#bfe6ff 0 55%, #9bd17a 55% 100%); }
+.habitat .placed { position: absolute; font-size: 34px; transform: translate(-50%, -50%); cursor: grab; user-select: none; }
+.habitat .home-animal { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); font-size: 64px; }
+.habitat .home-animal .outfit { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); font-size: 36px; }
+.sticker-tray { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.sticker-tray button { font-size: 26px; padding: 2px 8px; }
+.outfits { display: flex; gap: 6px; flex-wrap: wrap; }
+.outfits button[aria-pressed="true"] { outline: 3px solid #f2b84b; }
+.card-code { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.card-code input { text-transform: uppercase; }
+.scan-video { width: 100%; max-height: 220px; border-radius: 12px; background: #000; }
+.animal-select { font-size: 20px; }
+.outfit3d { position: absolute; transform: translate(-50%, -100%); font-size: 30px; pointer-events: none; }

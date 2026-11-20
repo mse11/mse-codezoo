@@ -1,0 +1,84 @@
+{
+  "id": "m06-l08",
+  "title": "Swing across",
+  "module": "loops-2",
+  "concepts": [
+    "while",
+    "if"
+  ],
+  "animal": "monkey",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "..~..~.B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".~.~.~B"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ]
+    }
+  ],
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "While"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "swing",
+    "climb"
+  ],
+  "hints": [
+    "Water counts as blocked. swing() jumps over one square of water.",
+    "while not item_here(): if is_blocked(): swing() else: step(1)"
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Prehupni sa",
+      "hints": [
+        "Voda sa ráta ako prekážka. swing() preskočí jedno políčko vody.",
+        "while not item_here(): if is_blocked(): swing() else: step(1)"
+      ]
+    }
+  }
+}

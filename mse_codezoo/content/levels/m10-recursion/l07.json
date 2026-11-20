@@ -1,0 +1,95 @@
+{
+  "id": "m10-l07",
+  "title": "Burrow with three rooms",
+  "module": "recursion",
+  "concepts": [
+    "recursion"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "E#E#E",
+      ".#.#.",
+      ".....",
+      "##.##"
+    ],
+    "start": [
+      2,
+      3,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "E"
+  },
+  "constraints": {
+    "maxLines": 10,
+    "mustUse": [
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "sniff",
+    "hide",
+    "guard_ahead"
+  ],
+  "hints": [
+    "The same explore() works for any burrow without loops in it.",
+    "Watch the call stack: one box for every tunnel the fox is in."
+  ],
+  "mode": "both_editable",
+  "files": {
+    "burrow": "def turn_to(side):\n    if side == \"left\":\n        turn_left()\n    elif side == \"right\":\n        turn_right()\n\n\ndef turn_from(side):\n    if side == \"left\":\n        turn_right()\n    elif side == \"right\":\n        turn_left()\n\n\ndef back_up():\n    turn_left()\n    turn_left()\n    if guard_ahead():\n        hide()\n    step(1)\n    turn_left()\n    turn_left()\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Nora s tromi komôrkami",
+      "hints": [
+        "Rovnaké explore() funguje pre každú noru bez kruhov.",
+        "Sleduj zásobník volaní: jedna krabička za každý tunel, v ktorom líška je."
+      ]
+    }
+  }
+}

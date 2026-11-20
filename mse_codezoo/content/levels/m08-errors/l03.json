@@ -1,0 +1,97 @@
+{
+  "id": "m08-l03",
+  "title": "If nothing went wrong",
+  "module": "errors",
+  "concepts": [
+    "try",
+    "else"
+  ],
+  "animal": "penguin",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "....B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".-..."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "Too thin!"
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "slide"
+  ],
+  "hints": [
+    "`else:` after `except` runs only when nothing went wrong.",
+    "except CrackError: say(\"Too thin!\"). else: catch()."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Ak sa nič nepokazilo",
+      "hints": [
+        "`else:` za `except` beží, len keď sa nič nepokazilo.",
+        "except CrackError: say(\"Too thin!\"). else: catch()."
+      ]
+    }
+  }
+}

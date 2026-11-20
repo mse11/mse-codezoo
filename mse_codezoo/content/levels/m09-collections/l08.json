@@ -1,0 +1,94 @@
+{
+  "id": "m09-l08",
+  "title": "Count each kind",
+  "module": "collections",
+  "concepts": [
+    "dictionaries"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BCBCB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "3"
+      }
+    ]
+  },
+  "constraints": {
+    "maxLines": 8,
+    "mustUse": [
+      "Dict"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of"
+  ],
+  "hints": [
+    "counts = {} is an empty dictionary. counts.get(kind, 0) is 0 the first time.",
+    "counts[kind] = counts.get(kind, 0) + 1, then say(counts[\"banana\"])."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Spočítaj každý druh",
+      "hints": [
+        "counts = {} je prázdny slovník. counts.get(kind, 0) je prvýkrát 0.",
+        "counts[kind] = counts.get(kind, 0) + 1, potom say(counts[\"banana\"])."
+      ]
+    }
+  }
+}

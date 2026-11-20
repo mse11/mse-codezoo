@@ -1,0 +1,104 @@
+{
+  "id": "m09-l07",
+  "title": "Which kind is missing?",
+  "module": "collections",
+  "concepts": [
+    "sets"
+  ],
+  "animal": "beaver",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".OPO"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "{'birch'}"
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".LLO"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "{'pine'}"
+      }
+    }
+  ],
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "Set"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "build",
+    "inventory"
+  ],
+  "hints": [
+    "A set like {\"oak\", \"pine\", \"birch\"} keeps each kind once.",
+    "need - set(inventory()) is what you need but don't have."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Ktorý druh chýba?",
+      "hints": [
+        "Množina ako {\"oak\", \"pine\", \"birch\"} má každý druh raz.",
+        "need - set(inventory()) je to, čo treba, ale nemáš."
+      ]
+    }
+  }
+}

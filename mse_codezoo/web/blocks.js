@@ -21,6 +21,10 @@ const COLOURS = {
   sensor: "#5CB1D6",
   note: "#8E9A82",
   raw: "#7A7A7A",
+  func: "#995BA5",
+  error: "#D65C5C",
+  list: "#745BA5",
+  trick: "#E6732E",
 };
 
 const MATH_OPS = ["+", "-", "*", "/", "//", "%", "**"];
@@ -28,6 +32,14 @@ const COMPARE_OPS = ["==", "!=", "<", "<=", ">", ">="];
 const CHANGE_OPS = ["+=", "-=", "*="];
 const SENSORS = ["is_blocked", "item_here", "item_ahead"];
 const TEXT_METHODS = ["upper", "lower", "title", "capitalize", "strip"];
+const TRICK_STATEMENTS = ["swing", "climb", "slide", "hide"]; // no inputs
+const TRICK_VALUES = ["sniff", "inventory", "guard_ahead"];
+const BUILTINS = new Set([
+  "print", "range", "len", "abs", "min", "max", "int", "float", "str", "bool", "round", "type",
+  "list", "tuple", "dict", "set", "sorted", "sum", "enumerate", "zip", "reversed", "any", "all",
+  "isinstance",
+]);
+const LIST_SLOTS = ["A", "B", "C", "D"];
 
 // level.unlockedBlocks name -> toolbox entry (with default values as shadow blocks)
 const num = (value) => ({ shadow: { type: "cz_number", fields: { NUM: value } } });
@@ -59,6 +71,30 @@ const PALETTE = {
   str: { type: "cz_str", inputs: { VALUE: num(3) } },
   text_method: { type: "cz_text_method", inputs: { VALUE: txt("yum") } },
   comment: { type: "cz_comment" },
+  break: { type: "cz_break" },
+  continue: { type: "cz_continue" },
+  def: { type: "cz_def" },
+  call: { type: "cz_call" },
+  return: { type: "cz_return" },
+  try: { type: "cz_try" },
+  raise: { type: "cz_raise", inputs: { MSG: txt("oops") } },
+  for_each: { type: "cz_for_each" },
+  list: { type: "cz_list", inputs: { A: num(1), B: num(2) } },
+  append: { type: "cz_append" },
+  len: { type: "cz_len" },
+  index: { type: "cz_index", inputs: { INDEX: num(0) } },
+  get: { type: "cz_get", inputs: { KEY: txt("oak"), DEFAULT: num(0) } },
+  items: { type: "cz_items" },
+  import: { type: "cz_import" },
+  global: { type: "cz_global" },
+  swing: { type: "cz_trick", fields: { TRICK: "swing" } },
+  climb: { type: "cz_trick", fields: { TRICK: "climb" } },
+  slide: { type: "cz_trick", fields: { TRICK: "slide" } },
+  hide: { type: "cz_trick", fields: { TRICK: "hide" } },
+  build: { type: "cz_build", inputs: { LOG: txt("oak") } },
+  inventory: { type: "cz_trick_value", fields: { TRICK: "inventory" } },
+  sniff: { type: "cz_trick_value", fields: { TRICK: "sniff" } },
+  guard_ahead: { type: "cz_trick_value", fields: { TRICK: "guard_ahead" } },
 };
 
 const statement = { previousStatement: null, nextStatement: null };
@@ -184,6 +220,177 @@ export function defineBlocks() {
       colour: COLOURS.raw,
       tooltip: t("Code that has no block yet. It is kept exactly as typed."),
       ...statement,
+    },
+    // --- phase 3: loops II, functions, errors, collections, tricks ---
+    { type: "cz_break", message0: t("stop the loop"), colour: COLOURS.loop, tooltip: `break · ${t("Leave the loop right now.")}`, previousStatement: null },
+    { type: "cz_continue", message0: t("skip to the next turn"), colour: COLOURS.loop, tooltip: `continue · ${t("Jump to the next turn of the loop.")}`, previousStatement: null },
+    {
+      type: "cz_def",
+      message0: t("teach %1 with inputs %2"),
+      args0: [
+        { type: "field_input", name: "NAME", text: "my_trick" },
+        { type: "field_input", name: "PARAMS", text: "" },
+      ],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.func,
+      tooltip: `def · ${t("Teach a new command. Its inputs are names, split by commas.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_call",
+      message0: t("do %1 %2 %3"),
+      args0: [{ type: "field_input", name: "NAME", text: "my_trick" }, { type: "input_value", name: "A" }, { type: "input_value", name: "B" }],
+      inputsInline: true,
+      colour: COLOURS.func,
+      tooltip: t("Use a command you taught with `def`."),
+      ...statement,
+    },
+    {
+      type: "cz_call_value",
+      message0: t("answer of %1 %2 %3"),
+      args0: [{ type: "field_input", name: "NAME", text: "my_trick" }, { type: "input_value", name: "A" }, { type: "input_value", name: "B" }],
+      inputsInline: true,
+      colour: COLOURS.func,
+      tooltip: t("What a command you taught gives back."),
+      ...value,
+    },
+    {
+      type: "cz_return",
+      message0: t("give back %1"),
+      args0: [{ type: "input_value", name: "VALUE" }],
+      inputsInline: true,
+      colour: COLOURS.func,
+      tooltip: `return · ${t("End the command and give back a value.")}`,
+      previousStatement: null,
+    },
+    {
+      type: "cz_try",
+      message0: t("try"),
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      message2: t("if %1 happens (call it %2)"),
+      args2: [{ type: "field_input", name: "KIND", text: "CrackError" }, { type: "field_input", name: "AS", text: "" }],
+      message3: "%1",
+      args3: [{ type: "input_statement", name: "EXCEPT" }],
+      colour: COLOURS.error,
+      tooltip: `try / except · ${t("Try something; if that error happens, do the other blocks instead.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_raise",
+      message0: t("raise %1 %2"),
+      args0: [{ type: "field_input", name: "KIND", text: "ValueError" }, { type: "input_value", name: "MSG" }],
+      inputsInline: true,
+      colour: COLOURS.error,
+      tooltip: `raise · ${t("Stop with an error of your own.")}`,
+      previousStatement: null,
+    },
+    {
+      type: "cz_for_each",
+      message0: t("for each %1 in %2"),
+      args0: [{ type: "field_input", name: "VAR", text: "item" }, { type: "input_value", name: "LIST" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      inputsInline: true,
+      colour: COLOURS.loop,
+      tooltip: `for … in · ${t("Do the blocks inside once for every item.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_append",
+      message0: t("add %1 to the list %2"),
+      args0: [{ type: "input_value", name: "VALUE" }, { type: "field_input", name: "VAR", text: "found" }],
+      inputsInline: true,
+      colour: COLOURS.list,
+      tooltip: `.append() · ${t("Put one more item at the end of a list.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_import",
+      message0: t("from %1 bring %2"),
+      args0: [{ type: "field_input", name: "MODULE", text: "tricks" }, { type: "field_input", name: "NAMES", text: "hop" }],
+      colour: COLOURS.func,
+      tooltip: `from … import · ${t("Bring commands from a helper file.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_global",
+      message0: t("change the outside %1"),
+      args0: [{ type: "field_input", name: "NAMES", text: "score" }],
+      colour: COLOURS.variable,
+      tooltip: `global · ${t("Let this command change a variable from outside it.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_trick",
+      message0: "%1",
+      args0: [{ type: "field_dropdown", name: "TRICK", options: TRICK_STATEMENTS.map((name) => [name, name]) }],
+      colour: COLOURS.trick,
+      tooltip: t("The animal's own trick."),
+      ...statement,
+    },
+    {
+      type: "cz_build",
+      message0: t("build %1"),
+      args0: [{ type: "input_value", name: "LOG" }],
+      inputsInline: true,
+      colour: COLOURS.trick,
+      tooltip: `build() · ${t("Lay a log into the water ahead.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_trick_value",
+      message0: "%1",
+      args0: [{ type: "field_dropdown", name: "TRICK", options: TRICK_VALUES.map((name) => [name, name]) }],
+      colour: COLOURS.trick,
+      tooltip: t("The animal's own trick."),
+      ...value,
+    },
+    {
+      type: "cz_list",
+      message0: "[ %1 %2 %3 %4 ]",
+      args0: LIST_SLOTS.map((name) => ({ type: "input_value", name })),
+      inputsInline: true,
+      colour: COLOURS.list,
+      tooltip: t("A list of things. Empty sockets are left out."),
+      ...value,
+    },
+    {
+      type: "cz_len",
+      message0: t("how many in %1"),
+      args0: [{ type: "input_value", name: "VALUE" }],
+      inputsInline: true,
+      colour: COLOURS.list,
+      tooltip: `len() · ${t("How many items, or letters in a text.")}`,
+      ...value,
+    },
+    {
+      type: "cz_index",
+      message0: "%1 [ %2 ]",
+      args0: [{ type: "input_value", name: "VALUE" }, { type: "input_value", name: "INDEX" }],
+      inputsInline: true,
+      colour: COLOURS.list,
+      tooltip: t("One item: by its position in a list, or by its key in a dictionary."),
+      ...value,
+    },
+    {
+      type: "cz_get",
+      message0: t("%1 get %2 or %3"),
+      args0: [{ type: "input_value", name: "VALUE" }, { type: "input_value", name: "KEY" }, { type: "input_value", name: "DEFAULT" }],
+      inputsInline: true,
+      colour: COLOURS.list,
+      tooltip: `.get() · ${t("The value for a key, or the other value when the key is missing.")}`,
+      ...value,
+    },
+    {
+      type: "cz_items",
+      message0: t("pairs in %1"),
+      args0: [{ type: "input_value", name: "VALUE" }],
+      inputsInline: true,
+      colour: COLOURS.list,
+      tooltip: `.items() · ${t("Every key with its value.")}`,
+      ...value,
     },
     // --- values ---
     {
@@ -465,10 +672,41 @@ function exprState(expr, context) {
       if (expr.func === "str" && expr.args.length === 1 && noKeywords(expr)) {
         return { ...base, type: "cz_str", inputs: { VALUE: input(expr.args[0], context) } };
       }
+      if (expr.func === "len" && expr.args.length === 1 && noKeywords(expr)) {
+        return { ...base, type: "cz_len", inputs: { VALUE: input(expr.args[0], context) } };
+      }
+      const trick = TRICK_VALUES.find((name) => context.names[name] === expr.func);
+      if (trick && expr.args.length === 0 && noKeywords(expr)) {
+        return { ...base, type: "cz_trick_value", fields: { TRICK: trick } };
+      }
+      if (isUserCall(expr, context)) {
+        return withArgs({ ...base, type: "cz_call_value", fields: { NAME: expr.func } }, expr.args, context);
+      }
       break;
     }
+    case "List":
+      if (expr.elts.length <= LIST_SLOTS.length && expr.elts.every((e) => e.type !== "Starred")) {
+        const inputs = Object.fromEntries(expr.elts.map((e, i) => [LIST_SLOTS[i], input(e, context)]));
+        return { ...base, type: "cz_list", inputs };
+      }
+      break;
+    case "Subscript":
+      if (expr.index.type !== "Slice") {
+        return { ...base, type: "cz_index", inputs: { VALUE: input(expr.value, context), INDEX: input(expr.index, context) } };
+      }
+      break;
     case "MethodCall":
-      if (TEXT_METHODS.includes(expr.method) && expr.args.length === 0) {
+      if (expr.method === "get" && expr.args.length === 2 && noKeywords(expr)) {
+        return {
+          ...base,
+          type: "cz_get",
+          inputs: { VALUE: input(expr.obj, context), KEY: input(expr.args[0], context), DEFAULT: input(expr.args[1], context) },
+        };
+      }
+      if (expr.method === "items" && expr.args.length === 0 && noKeywords(expr)) {
+        return { ...base, type: "cz_items", inputs: { VALUE: input(expr.obj, context) } };
+      }
+      if (TEXT_METHODS.includes(expr.method) && expr.args.length === 0 && noKeywords(expr)) {
         return {
           ...base,
           type: "cz_text_method",
@@ -485,6 +723,20 @@ function exprState(expr, context) {
     data: JSON.stringify({ raw: expr }),
   };
 }
+
+// A call to a command the learner taught (not an animal action, not a Python builtin).
+function isUserCall(call, context) {
+  const actions = new Set(Object.values(context.names));
+  return !actions.has(call.func) && !BUILTINS.has(call.func) && call.args.length <= 2 && noKeywords(call)
+    && call.args.every((a) => a.type !== "Starred");
+}
+
+function withArgs(state, args, context) {
+  if (!args.length) return state;
+  return { ...state, inputs: Object.fromEntries(args.map((a, i) => [["A", "B"][i], input(a, context)])) };
+}
+
+const simpleName = (node) => node && node.type === "Name";
 
 function blockState(stmt, context) {
   const { names } = context;
@@ -510,9 +762,60 @@ function blockState(stmt, context) {
     if (args.length === 0 && func === names.grab) return { ...base, type: "cz_grab" };
     if (func === names.say && args.length === 1) return { ...base, type: "cz_say", inputs: { TEXT: input(args[0], context) } };
     if (func === "print" && args.length === 1) return { ...base, type: "cz_print", inputs: { TEXT: input(args[0], context) } };
+    const trick = TRICK_STATEMENTS.find((t) => names[t] === func);
+    if (trick && args.length === 0) return { ...base, type: "cz_trick", fields: { TRICK: trick } };
+    if (func === names.build && args.length === 1) return { ...base, type: "cz_build", inputs: { LOG: input(args[0], context) } };
+    if (isUserCall(stmt.value, context)) return withArgs({ ...base, type: "cz_call", fields: { NAME: func } }, args, context);
+  }
+  if (
+    stmt.type === "ExprStmt" && stmt.value.type === "MethodCall" && stmt.value.method === "append"
+    && simpleName(stmt.value.obj) && stmt.value.args.length === 1 && noKeywords(stmt.value)
+  ) {
+    return { ...base, type: "cz_append", fields: { VAR: stmt.value.obj.name }, inputs: { VALUE: input(stmt.value.args[0], context) } };
+  }
+  if (stmt.type === "Break") return { ...base, type: "cz_break" };
+  if (stmt.type === "Continue") return { ...base, type: "cz_continue" };
+  if (stmt.type === "Return") {
+    return withInputs({ ...base, type: "cz_return" }, { VALUE: stmt.value ? input(stmt.value, context) : undefined });
+  }
+  if (stmt.type === "FunctionDef" && stmt.params.every((p) => p.default == null)) {
+    return withInputs(
+      { ...base, type: "cz_def", fields: { NAME: stmt.name, PARAMS: stmt.params.map((p) => p.name).join(", ") } },
+      { DO: body(stmt.body) },
+    );
+  }
+  if (
+    stmt.type === "Try" && stmt.handlers.length === 1 && !stmt.orelse.length && !stmt.finalbody.length
+    && (stmt.handlers[0].kind == null || simpleName(stmt.handlers[0].kind))
+  ) {
+    const handler = stmt.handlers[0];
+    return withInputs(
+      { ...base, type: "cz_try", fields: { KIND: handler.kind ? handler.kind.name : "", AS: handler.name || "" } },
+      { DO: body(stmt.body), EXCEPT: body(handler.body) },
+    );
+  }
+  if (
+    stmt.type === "Raise" && stmt.exc && stmt.exc.type === "Call" && stmt.exc.args.length <= 1
+    && noKeywords(stmt.exc)
+  ) {
+    return withInputs(
+      { ...base, type: "cz_raise", fields: { KIND: stmt.exc.func } },
+      { MSG: stmt.exc.args.length ? input(stmt.exc.args[0], context) : undefined },
+    );
+  }
+  if (stmt.type === "Import" && stmt.names.length) {
+    return { ...base, type: "cz_import", fields: { MODULE: stmt.module, NAMES: stmt.names.join(", ") } };
+  }
+  if (stmt.type === "Global") return { ...base, type: "cz_global", fields: { NAMES: stmt.names.join(", ") } };
+  if (stmt.type === "For" && simpleName(stmt.target) && !(stmt.iter.type === "Call" && stmt.iter.func === "range")) {
+    return withInputs(
+      { ...base, type: "cz_for_each", fields: { VAR: stmt.target.name } },
+      { LIST: input(stmt.iter, context), DO: body(stmt.body) },
+    );
   }
   if (
     stmt.type === "For" &&
+    simpleName(stmt.target) &&
     stmt.iter.type === "Call" &&
     stmt.iter.func === "range" &&
     stmt.iter.args.length === 1 &&
@@ -533,10 +836,10 @@ function blockState(stmt, context) {
       { COND: input(stmt.test, context), DO: body(stmt.body), ELSE: stmt.orelse.length ? body(stmt.orelse) : undefined },
     );
   }
-  if (stmt.type === "Assign") {
+  if (stmt.type === "Assign" && simpleName(stmt.target)) {
     return { ...base, type: "cz_set", fields: { VAR: stmt.target.name }, inputs: { VALUE: input(stmt.value, context) } };
   }
-  if (stmt.type === "AugAssign" && CHANGE_OPS.includes(`${stmt.op}=`)) {
+  if (stmt.type === "AugAssign" && simpleName(stmt.target) && CHANGE_OPS.includes(`${stmt.op}=`)) {
     return {
       ...base,
       type: "cz_change",
@@ -663,7 +966,35 @@ function exprOf(block, names) {
         obj: exprAt(block, "VALUE", "", names),
         method: block.getFieldValue("METHOD"),
         args: [],
+        keywords: [],
       };
+    case "cz_len":
+      return { type: "Call", id, func: "len", args: [exprAt(block, "VALUE", "", names)], keywords: [] };
+    case "cz_trick_value": {
+      const trick = block.getFieldValue("TRICK");
+      return { type: "Call", id, func: names[trick] || trick, args: [], keywords: [] };
+    }
+    case "cz_call_value":
+      return { type: "Call", id, func: safeName(block.getFieldValue("NAME")), args: callArgs(block, names), keywords: [] };
+    case "cz_list":
+      return {
+        type: "List",
+        id,
+        elts: LIST_SLOTS.map((slot) => block.getInputTargetBlock(slot)).filter(Boolean).map((child) => exprOf(child, names)),
+      };
+    case "cz_index":
+      return { type: "Subscript", id, value: exprAt(block, "VALUE", "", names), index: exprAt(block, "INDEX", 0, names) };
+    case "cz_get":
+      return {
+        type: "MethodCall",
+        id,
+        obj: exprAt(block, "VALUE", null, names),
+        method: "get",
+        args: [exprAt(block, "KEY", "", names), exprAt(block, "DEFAULT", 0, names)],
+        keywords: [],
+      };
+    case "cz_items":
+      return { type: "MethodCall", id, obj: exprAt(block, "VALUE", null, names), method: "items", args: [], keywords: [] };
     case "cz_raw_value": {
       const data = readData(block);
       if (data.raw) return reId(data.raw, id);
@@ -734,6 +1065,94 @@ function blockToStmt(block, names) {
     case "cz_comment":
       stmt = { type: "Comment", id, text: block.getFieldValue("TEXT") };
       break;
+    case "cz_break":
+      stmt = { type: "Break", id };
+      break;
+    case "cz_continue":
+      stmt = { type: "Continue", id };
+      break;
+    case "cz_def":
+      stmt = {
+        type: "FunctionDef",
+        id,
+        name: safeName(block.getFieldValue("NAME")),
+        params: nameList(block.getFieldValue("PARAMS")).map((param, i) => ({ type: "Param", id: `${id}.p${i}`, name: param, default: null })),
+        body: body("DO"),
+      };
+      break;
+    case "cz_call":
+      stmt = {
+        type: "ExprStmt",
+        id,
+        value: { type: "Call", id: `${id}.call`, func: safeName(block.getFieldValue("NAME")), args: callArgs(block, names), keywords: [] },
+      };
+      break;
+    case "cz_return": {
+      const child = block.getInputTargetBlock("VALUE");
+      stmt = { type: "Return", id, value: child ? exprOf(child, names) : null };
+      break;
+    }
+    case "cz_try": {
+      const kind = block.getFieldValue("KIND").trim();
+      const as = block.getFieldValue("AS").trim();
+      stmt = {
+        type: "Try",
+        id,
+        body: body("DO"),
+        handlers: [
+          {
+            type: "ExceptHandler",
+            id: `${id}.except`,
+            kind: kind ? name(`${id}.kind`, kind) : null,
+            name: as ? safeName(as) : null,
+            body: body("EXCEPT"),
+          },
+        ],
+        orelse: [],
+        finalbody: [],
+      };
+      break;
+    }
+    case "cz_raise": {
+      const child = block.getInputTargetBlock("MSG");
+      stmt = {
+        type: "Raise",
+        id,
+        exc: { type: "Call", id: `${id}.exc`, func: safeName(block.getFieldValue("KIND")), args: child ? [exprOf(child, names)] : [], keywords: [] },
+      };
+      break;
+    }
+    case "cz_for_each":
+      stmt = { type: "For", id, target: name(`${id}.var`, block.getFieldValue("VAR")), iter: exprAt(block, "LIST", null, names), body: body("DO") };
+      break;
+    case "cz_append":
+      stmt = {
+        type: "ExprStmt",
+        id,
+        value: {
+          type: "MethodCall",
+          id: `${id}.call`,
+          obj: name(`${id}.var`, block.getFieldValue("VAR")),
+          method: "append",
+          args: [exprAt(block, "VALUE", null, names)],
+          keywords: [],
+        },
+      };
+      break;
+    case "cz_import":
+      stmt = { type: "Import", id, module: safeName(block.getFieldValue("MODULE")), names: nameList(block.getFieldValue("NAMES")) };
+      break;
+    case "cz_global":
+      stmt = { type: "Global", id, names: nameList(block.getFieldValue("NAMES")) };
+      break;
+    case "cz_trick": {
+      const trick = block.getFieldValue("TRICK");
+      stmt = call(id, names[trick] || trick);
+      break;
+    }
+    case "cz_build":
+      stmt = call(id, names.build || "build", [exprAt(block, "LOG", "oak", names)]);
+      break;
     case "cz_raw":
       return data.raw ? reId(data.raw, id) : null;
     default:
@@ -748,6 +1167,15 @@ const KEYWORDS = new Set([
   "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in",
   "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
 ]);
+
+// "a, b" -> ["a", "b"]: the names typed into a field, each made safe
+function nameList(text) {
+  return String(text).split(",").map((part) => part.trim()).filter(Boolean).map(safeName);
+}
+
+function callArgs(block, names) {
+  return ["A", "B"].map((slot) => block.getInputTargetBlock(slot)).filter(Boolean).map((child) => exprOf(child, names));
+}
 
 function safeName(text) {
   const value = String(text).trim();
