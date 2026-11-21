@@ -33,11 +33,13 @@ const CHANGE_OPS = ["+=", "-=", "*="];
 const SENSORS = ["is_blocked", "item_here", "item_ahead"];
 const TEXT_METHODS = ["upper", "lower", "title", "capitalize", "strip"];
 const TRICK_STATEMENTS = ["swing", "climb", "slide", "hide"]; // no inputs
+// tricks with one number: the bee's fly(2), the octopus's stretch(3) (await reach(3) is a value)
+const TRICK_NUMBER = ["fly", "stretch"];
 const TRICK_VALUES = ["sniff", "inventory", "guard_ahead"];
 const BUILTINS = new Set([
   "print", "range", "len", "abs", "min", "max", "int", "float", "str", "bool", "round", "type",
   "list", "tuple", "dict", "set", "sorted", "sum", "enumerate", "zip", "reversed", "any", "all",
-  "isinstance",
+  "isinstance", "map", "filter", "iter", "next", "super", "input", "open", "issubclass", "callable",
 ]);
 const LIST_SLOTS = ["A", "B", "C", "D"];
 
@@ -95,6 +97,14 @@ const PALETTE = {
   inventory: { type: "cz_trick_value", fields: { TRICK: "inventory" } },
   sniff: { type: "cz_trick_value", fields: { TRICK: "sniff" } },
   guard_ahead: { type: "cz_trick_value", fields: { TRICK: "guard_ahead" } },
+  // phase 4
+  yield: { type: "cz_yield", inputs: { VALUE: num(1) } },
+  class: { type: "cz_class" },
+  async_def: { type: "cz_async_def" },
+  await: { type: "cz_await" },
+  fly: { type: "cz_trick_number", fields: { TRICK: "fly" }, inputs: { N: num(2) } },
+  stretch: { type: "cz_trick_number", fields: { TRICK: "stretch" }, inputs: { N: num(0) } },
+  reach: { type: "cz_reach", inputs: { N: num(0) } },
 };
 
 const statement = { previousStatement: null, nextStatement: null };
@@ -219,6 +229,81 @@ export function defineBlocks() {
       args0: [{ type: "field_label_serializable", name: "TEXT", text: "code" }],
       colour: COLOURS.raw,
       tooltip: t("Code that has no block yet. It is kept exactly as typed."),
+      ...statement,
+    },
+    // --- phase 4: generators, classes, async, outlines ---
+    {
+      type: "cz_yield",
+      message0: t("hand out %1"),
+      args0: [{ type: "input_value", name: "VALUE" }],
+      inputsInline: true,
+      colour: COLOURS.func,
+      tooltip: `yield · ${t("Hand out one value and pause until the next one is asked for.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_await",
+      message0: t("wait for %1"),
+      args0: [{ type: "input_value", name: "VALUE" }],
+      inputsInline: true,
+      colour: COLOURS.loop,
+      tooltip: `await · ${t("Wait here; other tasks go on meanwhile.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_reach",
+      message0: t("await reach with arm %1"),
+      args0: [{ type: "input_value", name: "N" }],
+      inputsInline: true,
+      output: null,
+      colour: COLOURS.trick,
+      tooltip: `await reach() · ${t("Stretch an arm (0-7) and bring back what is there.")}`,
+    },
+    {
+      type: "cz_trick_number",
+      message0: "%1 %2",
+      args0: [dropdown("TRICK", TRICK_NUMBER), { type: "input_value", name: "N" }],
+      inputsInline: true,
+      colour: COLOURS.trick,
+      tooltip: t("The animal's own trick."),
+      ...statement,
+    },
+    {
+      type: "cz_class",
+      message0: t("class %1 built on %2"),
+      args0: [
+        { type: "field_input", name: "NAME", text: "Bee" },
+        { type: "field_input", name: "BASES", text: "" },
+      ],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.list,
+      tooltip: `class · ${t("A new kind of object. Its methods go inside.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_async_def",
+      message0: t("teach async %1 with inputs %2"),
+      args0: [
+        { type: "field_input", name: "NAME", text: "arm" },
+        { type: "field_input", name: "PARAMS", text: "" },
+      ],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.loop,
+      tooltip: `async def · ${t("A command that can wait with await while others go on.")}`,
+      ...statement,
+    },
+    {
+      // code-first modules: the first line as code (decorators, `with`, type hints...),
+      // the body as blocks
+      type: "cz_outline",
+      message0: "%1",
+      args0: [{ type: "field_label_serializable", name: "TEXT", text: "code" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.func,
+      tooltip: t("The first line is kept exactly as typed; the inside is blocks."),
       ...statement,
     },
     // --- phase 3: loops II, functions, errors, collections, tricks ---
@@ -617,6 +702,13 @@ function input(expr, context) {
 
 function exprState(expr, context) {
   const base = { id: expr.id };
+  const reach = context.names.reach;
+  if (
+    expr.type === "Await" && reach && expr.value.type === "Call" && expr.value.func === reach
+    && expr.value.args.length === 1 && !expr.value.keywords.length
+  ) {
+    return { ...base, type: "cz_reach", inputs: { N: input(expr.value.args[0], context) } };
+  }
   switch (expr.type) {
     case "Const":
       if (typeof expr.value === "number") return { ...base, type: "cz_number", fields: { NUM: expr.value } };
@@ -778,11 +870,52 @@ function blockState(stmt, context) {
   if (stmt.type === "Return") {
     return withInputs({ ...base, type: "cz_return" }, { VALUE: stmt.value ? input(stmt.value, context) : undefined });
   }
-  if (stmt.type === "FunctionDef" && stmt.params.every((p) => p.default == null)) {
+  const plainDef = stmt.type === "FunctionDef" && !stmt.decorators?.length && !stmt.returns
+    && !stmt.type_params?.length
+    && stmt.params.every((p) => p.default == null && (p.kind || "plain") === "plain" && !p.annotation);
+  if (plainDef) {
     return withInputs(
-      { ...base, type: "cz_def", fields: { NAME: stmt.name, PARAMS: stmt.params.map((p) => p.name).join(", ") } },
+      {
+        ...base,
+        type: stmt.is_async ? "cz_async_def" : "cz_def",
+        fields: { NAME: stmt.name, PARAMS: stmt.params.map((p) => p.name).join(", ") },
+      },
       { DO: body(stmt.body) },
     );
+  }
+  if (
+    stmt.type === "ClassDef" && !stmt.decorators?.length && !stmt.keywords?.length
+    && !stmt.type_params?.length && stmt.bases.every(simpleName)
+  ) {
+    return withInputs(
+      { ...base, type: "cz_class", fields: { NAME: stmt.name, BASES: stmt.bases.map((b) => b.name).join(", ") } },
+      { DO: body(stmt.body) },
+    );
+  }
+  if (["FunctionDef", "ClassDef", "With"].includes(stmt.type)) {
+    const { body: inner, ...head } = stmt;
+    return withInputs(
+      {
+        ...base,
+        type: "cz_outline",
+        fields: { TEXT: outlineLabel(stmt, context) },
+        data: JSON.stringify({ head, ...(stmt.comment != null ? { comment: stmt.comment } : {}) }),
+      },
+      { DO: body(inner) },
+    );
+  }
+  if (stmt.type === "ExprStmt" && stmt.value.type === "Yield" && stmt.value.value) {
+    return { ...base, type: "cz_yield", inputs: { VALUE: input(stmt.value.value, context) } };
+  }
+  if (stmt.type === "ExprStmt" && stmt.value.type === "Await") {
+    return { ...base, type: "cz_await", inputs: { VALUE: input(stmt.value.value, context) } };
+  }
+  if (
+    stmt.type === "ExprStmt" && stmt.value.type === "Call" && noKeywords(stmt.value)
+    && stmt.value.args.length === 1
+  ) {
+    const trick = TRICK_NUMBER.find((name) => names[name] === stmt.value.func);
+    if (trick) return { ...base, type: "cz_trick_number", fields: { TRICK: trick }, inputs: { N: input(stmt.value.args[0], context) } };
   }
   if (
     stmt.type === "Try" && stmt.handlers.length === 1 && !stmt.orelse.length && !stmt.finalbody.length
@@ -855,6 +988,25 @@ function blockState(stmt, context) {
     fields: { TEXT: rawLabel(stmt, context, false) },
     data: JSON.stringify({ raw: stmt }),
   };
+}
+
+// "@sneaky · def sneak():": the decorators and the header line of a statement with a body
+function outlineLabel(stmt, { sourceText, positions }) {
+  const span = positions && positions[stmt.id];
+  if (!span || !sourceText) return stmt.type === "With" ? "with …:" : `${stmt.name}`;
+  const lines = sourceText.split("\n").slice(span.line - 1, span.end_line);
+  const decorators = [];
+  let head = "";
+  for (const line of lines) {
+    const text = line.trim();
+    if (text.startsWith("@")) decorators.push(text);
+    else {
+      head = text;
+      break;
+    }
+  }
+  const label = [...decorators, head].join(" · ");
+  return label.length > 60 ? `${label.slice(0, 59)}…` : label;
 }
 
 function rawLabel(node, { sourceText, positions }, isValue) {
@@ -976,6 +1128,12 @@ function exprOf(block, names) {
     }
     case "cz_call_value":
       return { type: "Call", id, func: safeName(block.getFieldValue("NAME")), args: callArgs(block, names), keywords: [] };
+    case "cz_reach":
+      return {
+        type: "Await",
+        id,
+        value: { type: "Call", id: `${id}.call`, func: names.reach || "reach", args: [exprAt(block, "N", 0, names)], keywords: [] },
+      };
     case "cz_list":
       return {
         type: "List",
@@ -1155,6 +1313,51 @@ function blockToStmt(block, names) {
       break;
     case "cz_raw":
       return data.raw ? reId(data.raw, id) : null;
+    case "cz_outline":
+      if (!data.head) return null;
+      stmt = { ...reId(data.head, id), body: body("DO") };
+      break;
+    case "cz_yield":
+      stmt = {
+        type: "ExprStmt",
+        id,
+        value: { type: "Yield", id: `${id}.yield`, value: exprAt(block, "VALUE", 1, names) },
+      };
+      break;
+    case "cz_await":
+      stmt = {
+        type: "ExprStmt",
+        id,
+        value: { type: "Await", id: `${id}.await`, value: exprAt(block, "VALUE", 1, names) },
+      };
+      break;
+    case "cz_trick_number": {
+      const trick = block.getFieldValue("TRICK");
+      stmt = call(id, names[trick] || trick, [exprAt(block, "N", 1, names)]);
+      break;
+    }
+    case "cz_class":
+      stmt = {
+        type: "ClassDef",
+        id,
+        name: safeName(block.getFieldValue("NAME")),
+        bases: nameList(block.getFieldValue("BASES")).map((base, i) => name(`${id}.b${i}`, base)),
+        keywords: [],
+        body: body("DO"),
+        decorators: [],
+        type_params: [],
+      };
+      break;
+    case "cz_async_def":
+      stmt = {
+        type: "FunctionDef",
+        id,
+        name: safeName(block.getFieldValue("NAME")),
+        params: nameList(block.getFieldValue("PARAMS")).map((param, i) => ({ type: "Param", id: `${id}.p${i}`, name: param, default: null })),
+        body: body("DO"),
+        is_async: true,
+      };
+      break;
     default:
       return null;
   }

@@ -6,6 +6,7 @@ Standard library only: the engine must stay importable in Pyodide.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from mse_codezoo import ir
 from mse_codezoo.goals import PSEUDO_CONCEPTS, goal_errors
 from mse_codezoo.i18n import LANGS, current
 from mse_codezoo.lang_python import parse
+from mse_codezoo.versions import parse_version, readable
 from mse_codezoo.world import TERRAIN, TRICKS, Pack, World
 
 CONTENT_DIR = Path(__file__).parent / "content"
@@ -22,6 +24,30 @@ ANIMALS_DIR = CONTENT_DIR / "animals"
 
 REQUIRED_KEYS = ("id", "module", "concepts", "world", "goal")
 DEFAULT_ANIMAL = "monkey"
+
+
+# `{B}`, `{B.few}`, `{B.many}` in a title or hint: the item on tile B, named by the animal
+# that plays, in the current language (`few` and `many` are the plural forms of the pack)
+ITEM_PLACEHOLDER = re.compile(r"\{([A-Z])(?:\.(one|few|many))?\}")
+
+
+def fill_items(text: str, pack: Pack) -> str:
+    """Put the animal's own item names into a title or hint: "One {B}" -> "One flower"."""
+
+    def name(match: re.Match[str]) -> str:
+        tile, form = match[1], match[2] or "one"
+        forms = pack._names().get("items", {}).get(tile)
+        if not forms:
+            item = pack.item_name(tile)
+            forms = {"one": item, "many": item if item.endswith("s") else item + "s"}
+        if form == "few":
+            return forms.get("few") or forms.get("many") or forms["one"]
+        return forms.get(form) or forms["one"]
+
+    filled = ITEM_PLACEHOLDER.sub(name, text)
+    if text.startswith("{") and filled:
+        filled = filled[0].upper() + filled[1:]
+    return filled
 
 
 class LevelError(Exception):
@@ -46,6 +72,7 @@ class Level:
     signature: bool = False  # uses the animal's own tricks, so only that animal plays it
     files: dict[str, str] = field(default_factory=dict)  # helper files: {"tricks": "def ..."}
     i18n: dict[str, dict[str, Any]] = field(default_factory=dict)  # lang -> title, hints
+    min_python: tuple[int, int] | None = None  # a release island: "minPython": "3.12"
     path: Path | None = None
 
     def _text(self, key: str, default: Any) -> Any:
@@ -53,12 +80,22 @@ class Level:
 
     @property
     def shown_title(self) -> str:
-        """The title in the current language."""
-        return self._text("title", self.title)
+        """The title in the current language, for the level's own animal."""
+        return self.title_for(None)
 
     @property
     def shown_hints(self) -> list[str]:
-        return list(self._text("hints", self.hints))
+        return [fill_items(h, load_pack(self.animal)) for h in self._text("hints", self.hints)]
+
+    def title_for(self, animal: str | None) -> str:
+        """The title in the current language, with the items of ``animal`` (if it can play
+        the level; else of the level's own animal)."""
+        name = animal if animal and not self.signature else self.animal
+        try:
+            pack = load_pack(name)
+        except LevelError:
+            pack = load_pack(self.animal)
+        return fill_items(self._text("title", self.title), pack)
 
     def worlds(self) -> list[tuple[dict[str, Any], dict[str, Any]]]:
         """(world spec, goal) for the main world and every variant."""
@@ -87,6 +124,7 @@ class Level:
             signature=bool(data.get("signature", False)),
             files=dict(data.get("files", {})),
             i18n=dict(data.get("i18n", {})),
+            min_python=parse_version(data.get("minPython")),
             path=path,
         )
 
@@ -226,6 +264,14 @@ def validate_level_data(
     ]
     if unknown:
         report.errors.append(f"constraints.mustUse has unknown node types: {', '.join(unknown)}")
+
+    try:
+        need = parse_version(data.get("minPython"))
+    except ValueError as exc:
+        report.errors.append(f"minPython: {exc}")
+        need = None
+    if need is not None and not readable(need):
+        return report  # this computer's Python can't read the island's code
 
     starter = data.get("starter", "")
     if not isinstance(starter, str):

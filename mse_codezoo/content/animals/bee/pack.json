@@ -1,0 +1,66 @@
+{
+  "id": "bee",
+  "animal": "bee",
+  "world": "meadow",
+  "emoji": "🐝",
+  "tricks": [
+    "fly"
+  ],
+  "actions": {
+    "step": "step",
+    "turn_left": "turn_left",
+    "turn_right": "turn_right",
+    "grab": "grab",
+    "say": "say",
+    "is_blocked": "is_blocked",
+    "item_here": "item_here",
+    "item_ahead": "item_ahead",
+    "fly": "fly"
+  },
+  "items": {
+    "B": "flower",
+    "C": "clover",
+    "R": "nettle"
+  },
+  "names": {
+    "en": {
+      "animal": "bee",
+      "world": "meadow",
+      "items": {
+        "B": {
+          "one": "flower",
+          "many": "flowers"
+        },
+        "C": {
+          "one": "clover",
+          "many": "clovers"
+        },
+        "R": {
+          "one": "nettle",
+          "many": "nettles"
+        }
+      }
+    },
+    "sk": {
+      "animal": "včela",
+      "world": "lúka",
+      "items": {
+        "B": {
+          "one": "kvet",
+          "few": "kvety",
+          "many": "kvetov"
+        },
+        "C": {
+          "one": "ďatelina",
+          "few": "ďateliny",
+          "many": "ďatelín"
+        },
+        "R": {
+          "one": "žihľava",
+          "few": "žihľavy",
+          "many": "žihľav"
+        }
+      }
+    }
+  }
+}

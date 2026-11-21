@@ -1,6 +1,6 @@
 {
   "id": "m04-l12",
-  "title": "Banana report (boss)",
+  "title": "{B} report (boss)",
   "module": "text",
   "concepts": [
     "text",
@@ -63,7 +63,7 @@
   "mode": "both_editable",
   "i18n": {
     "sk": {
-      "title": "Banánová správa (boss)",
+      "title": "Správa: {B.few} (boss)",
       "hints": [
         "Spočítaj banány a vetu poskladaj f-reťazcom.",
         "name = \"Momo\"; ...; say(f\"{name.upper()} has {count} bananas\")"

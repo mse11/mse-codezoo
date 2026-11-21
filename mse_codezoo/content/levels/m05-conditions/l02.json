@@ -1,6 +1,6 @@
 {
   "id": "m05-l02",
-  "title": "Ripe or rotten",
+  "title": "{B} or {R}?",
   "module": "conditions",
   "concepts": [
     "if",
@@ -86,7 +86,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Zrelý alebo zhnitý",
+      "title": "{B} alebo {R}?",
       "hints": [
         "item_here() povie, čo leží na políčku: \"banana\" alebo \"rotten\".",
         "if item_here() == \"banana\": grab(). Dve = porovnávajú."

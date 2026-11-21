@@ -7,6 +7,7 @@ Standard library only.
 
 from __future__ import annotations
 
+import inspect
 import itertools
 import types
 import typing
@@ -14,7 +15,7 @@ from collections.abc import Iterator
 from dataclasses import MISSING, dataclass, field, fields
 from typing import Any
 
-IR_VERSION = 3  # bump when the JSON shape changes in a way old clients can't read
+IR_VERSION = 4  # bump when the JSON shape changes in a way old clients can't read
 
 
 @dataclass(kw_only=True)
@@ -49,9 +50,10 @@ class Name(Expr):
 
 @dataclass(kw_only=True)
 class Keyword(Node):
-    """A named argument, like ``end=""`` in ``print(x, end="")``."""
+    """A named argument, like ``end=""`` in ``print(x, end="")``; a ``name`` of ``None``
+    is a ``**options`` merge."""
 
-    name: str
+    name: str | None
     value: Expr
 
 
@@ -121,13 +123,62 @@ class CompFor(Node):
 
 @dataclass(kw_only=True)
 class Comprehension(Expr):
-    """``[elt for ...]`` (kind ``list``), ``{elt for ...}`` (``set``) or
-    ``{elt: value for ...}`` (``dict``)."""
+    """``[elt for ...]`` (kind ``list``), ``{elt for ...}`` (``set``),
+    ``{elt: value for ...}`` (``dict``) or ``(elt for ...)`` (``generator``)."""
 
     kind: str
     elt: Expr
     value: Expr | None = None
     generators: list[CompFor] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Param(Node):
+    """One input of a function, with an optional default: ``height=2``.
+
+    ``kind`` is ``plain``, ``args`` (``*args``), ``kwargs`` (``**kwargs``) or ``kwonly``
+    (after ``*``). ``annotation`` is a type hint, kept as written and never run."""
+
+    name: str
+    default: Expr | None = None
+    kind: str = "plain"
+    annotation: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class Lambda(Expr):
+    """``lambda log: log.length``"""
+
+    params: list[Param] = field(default_factory=list)
+    body: Expr
+
+
+@dataclass(kw_only=True)
+class Yield(Expr):
+    """``yield drop``: hand one value out and pause until asked for the next."""
+
+    value: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class YieldFrom(Expr):
+    """``yield from nectar()``: hand out every value of another generator."""
+
+    value: Expr
+
+
+@dataclass(kw_only=True)
+class Await(Expr):
+    """``await reach(3)``: wait here; other tasks run meanwhile."""
+
+    value: Expr
+
+
+@dataclass(kw_only=True)
+class TString(Expr):
+    """A template string ``t"..."`` (Python 3.14): text parts and ``FormattedValue`` parts."""
+
+    parts: list[Expr] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -263,18 +314,150 @@ class Continue(Stmt):
 
 
 @dataclass(kw_only=True)
-class Param(Node):
-    """One input of a function, with an optional default: ``height=2``."""
-
-    name: str
-    default: Expr | None = None
-
-
-@dataclass(kw_only=True)
 class FunctionDef(Stmt):
+    """``def`` (or ``async def``), with decorators applied from the bottom up."""
+
     name: str
     params: list[Param] = field(default_factory=list)
     body: list[Stmt] = field(default_factory=list)
+    decorators: list[Expr] = field(default_factory=list)
+    is_async: bool = False
+    returns: Expr | None = None
+    type_params: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class ClassDef(Stmt):
+    """``class Worker(Bee):``"""
+
+    name: str
+    bases: list[Expr] = field(default_factory=list)
+    keywords: list[Keyword] = field(default_factory=list)
+    body: list[Stmt] = field(default_factory=list)
+    decorators: list[Expr] = field(default_factory=list)
+    type_params: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class AnnAssign(Stmt):
+    """``length: float = 2.5``; the type hint is kept as written and never run."""
+
+    target: Expr
+    annotation: Expr
+    value: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class WithItem(Node):
+    """``open("log.txt") as file`` in a ``with``; ``target`` may be missing."""
+
+    context: Expr
+    target: Expr | None = None
+
+
+@dataclass(kw_only=True)
+class With(Stmt):
+    """``with a, b as c:`` (or ``async with``): everything is put back afterwards."""
+
+    items: list[WithItem] = field(default_factory=list)
+    body: list[Stmt] = field(default_factory=list)
+    is_async: bool = False
+
+
+@dataclass(kw_only=True)
+class Nonlocal(Stmt):
+    names: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class TypeAlias(Stmt):
+    """``type Stack = list[int]`` (Python 3.12)."""
+
+    name: str
+    type_params: list[str] = field(default_factory=list)
+    value: Expr
+
+
+@dataclass(kw_only=True)
+class Pattern(Node):
+    """One shape a ``case`` can match."""
+
+
+@dataclass(kw_only=True)
+class PatternValue(Pattern):
+    """A literal or a dotted name: ``case "paw":``, ``case None:``."""
+
+    value: Expr
+
+
+@dataclass(kw_only=True)
+class PatternCapture(Pattern):
+    """``case size:`` catches anything into ``size``; a ``name`` of ``None`` is ``_``."""
+
+    name: str | None = None
+
+
+@dataclass(kw_only=True)
+class PatternSequence(Pattern):
+    """``case ("paw", size):`` or ``case [first, *rest]:``."""
+
+    patterns: list[Pattern] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class PatternStar(Pattern):
+    """``*rest`` inside a sequence pattern."""
+
+    name: str | None = None
+
+
+@dataclass(kw_only=True)
+class PatternOr(Pattern):
+    """``case "paw" | "claw":``"""
+
+    patterns: list[Pattern] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class PatternAs(Pattern):
+    """``case ("paw", _) as print:``"""
+
+    pattern: Pattern
+    name: str
+
+
+@dataclass(kw_only=True)
+class PatternMapping(Pattern):
+    """``case {"kind": "paw", **rest}:``"""
+
+    keys: list[Expr] = field(default_factory=list)
+    patterns: list[Pattern] = field(default_factory=list)
+    rest: str | None = None
+
+
+@dataclass(kw_only=True)
+class PatternClass(Pattern):
+    """``case Footprint(kind="paw", size=s):``"""
+
+    cls: Expr
+    patterns: list[Pattern] = field(default_factory=list)
+    kwd_names: list[str] = field(default_factory=list)
+    kwd_patterns: list[Pattern] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class MatchCase(Node):
+    pattern: Pattern
+    guard: Expr | None = None
+    body: list[Stmt] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Match(Stmt):
+    """``match footprint:`` with its ``case`` parts."""
+
+    subject: Expr
+    cases: list[MatchCase] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -298,10 +481,13 @@ class ExceptHandler(Node):
 
 @dataclass(kw_only=True)
 class Try(Stmt):
+    """``try`` / ``except``; ``star`` marks ``except*`` for exception groups."""
+
     body: list[Stmt] = field(default_factory=list)
     handlers: list[ExceptHandler] = field(default_factory=list)
     orelse: list[Stmt] = field(default_factory=list)
     finalbody: list[Stmt] = field(default_factory=list)
+    star: bool = False
 
 
 @dataclass(kw_only=True)
@@ -324,10 +510,12 @@ class Delete(Stmt):
 
 @dataclass(kw_only=True)
 class Import(Stmt):
-    """``import tricks`` (no ``names``) or ``from tricks import climb_tree, HEIGHT``."""
+    """``import tricks`` (no ``names``) or ``from tricks import climb_tree, HEIGHT``;
+    ``lazy`` marks ``lazy import`` (Python 3.15)."""
 
     module: str
     names: list[str] = field(default_factory=list)
+    lazy: bool = False
 
 
 @dataclass(kw_only=True)
@@ -369,6 +557,11 @@ NODE_TYPES: dict[str, type[Node]] = {
         Starred,
         CompFor,
         Comprehension,
+        Lambda,
+        Yield,
+        YieldFrom,
+        Await,
+        TString,
         BinOp,
         UnaryOp,
         Compare,
@@ -388,6 +581,22 @@ NODE_TYPES: dict[str, type[Node]] = {
         Continue,
         Param,
         FunctionDef,
+        ClassDef,
+        AnnAssign,
+        WithItem,
+        With,
+        Nonlocal,
+        TypeAlias,
+        PatternValue,
+        PatternCapture,
+        PatternSequence,
+        PatternStar,
+        PatternOr,
+        PatternAs,
+        PatternMapping,
+        PatternClass,
+        MatchCase,
+        Match,
         Return,
         Global,
         ExceptHandler,
@@ -465,7 +674,7 @@ def _load(value: Any) -> Any:
 # --- JSON schema ---------------------------------------------------------------
 
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
-ABSTRACT_TYPES: dict[str, type[Node]] = {"Expr": Expr, "Stmt": Stmt}
+ABSTRACT_TYPES: dict[str, type[Node]] = {"Expr": Expr, "Stmt": Stmt, "Pattern": Pattern}
 
 
 def json_schema() -> dict[str, Any]:
@@ -504,7 +713,8 @@ def _node_schema(name: str, cls: type[Node]) -> dict[str, Any]:
         no_default = f.default is MISSING and f.default_factory is MISSING
         if no_default and f.name not in required:
             required.append(f.name)
-    doc = (cls.__doc__ or "").strip()
+    # Python 3.13+ strips docstring indentation itself; cleandoc gives the same text on 3.11
+    doc = inspect.cleandoc(cls.__doc__ or "")
     schema: dict[str, Any] = {
         "type": "object",
         "properties": properties,

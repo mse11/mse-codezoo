@@ -1,0 +1,94 @@
+{
+  "id": "m11-l03",
+  "title": "lambda sorts the logs",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "lambda",
+    "sorted"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "['pine', 'birch', 'oak']"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "Lambda"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`key=lambda log: log[1]` sorts by the size.",
+    "Then keep only the names with a comprehension."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "lambda zoradí polená",
+      "hints": [
+        "`key=lambda log: log[1]` zoradí podľa veľkosti.",
+        "Potom nechaj len mená pomocou komprehenzie."
+      ]
+    }
+  }
+}

@@ -11,10 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.14"]
+        python: ["3.11", "3.14", "3.15"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0  # setup-uv has no moving major tags since v8
         with:
           python-version: ${{ matrix.python }}
       - run: uv sync --locked
@@ -28,11 +28,13 @@ jobs:
     # in the browser: build the wheel, import it in Pyodide and solve every level there.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0  # setup-uv has no moving major tags since v8
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - run: uv build --wheel
       - run: npm install --no-save pyodide@0.29.5
       - run: node scripts/pyodide_smoke.mjs dist/
+      # the offline browser build: static files, the engine runs in Pyodide in the page
+      - run: uv run codezoo build-web site/

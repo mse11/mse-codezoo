@@ -1,0 +1,92 @@
+{
+  "id": "m12-l05",
+  "title": "A full basket (@property)",
+  "module": "objects",
+  "concepts": [
+    "property"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B.B.."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`@property` makes `basket.full` work without brackets.",
+    "Keep stepping until the basket is full."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Plný košík (@property)",
+      "hints": [
+        "`@property` urobí, že `basket.full` funguje bez zátvoriek.",
+        "Kráčaj, kým košík nie je plný."
+      ]
+    }
+  }
+}

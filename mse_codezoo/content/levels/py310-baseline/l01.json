@@ -1,0 +1,99 @@
+{
+  "id": "i310-l01",
+  "title": "match the footprint",
+  "module": "island-baseline",
+  "concepts": [
+    "match",
+    "case"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "small paw",
+      "run!",
+      "big paw: hide"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Match"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "hide"
+  ],
+  "hints": [
+    "`case (\"paw\", size)` matches a pair and catches the size.",
+    "`if size > 2` after a case is a guard."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "match na stopu",
+      "hints": [
+        "`case (\"paw\", size)` sa zhoduje s dvojicou a zachytí veľkosť.",
+        "`if size > 2` za case je stráž."
+      ]
+    }
+  }
+}

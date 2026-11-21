@@ -24,6 +24,7 @@ const AT_HOME = {
   type_mixup: "Sort objects at home into boxes and label them: is this a number, a word, or yes/no?",
   endless_recursion: "Russian dolls: open one, then the next, until the smallest. That is a base case!",
   uncaught_error: "Plan a “what if it goes wrong?” together: if it rains, we take an umbrella.",
+  grab_miss: "Put a toy on the floor and count the steps to it out loud before walking there.",
 };
 
 const PLAYER_KEY = "codezoo.player";

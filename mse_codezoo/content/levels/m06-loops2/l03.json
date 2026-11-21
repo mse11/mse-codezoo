@@ -1,6 +1,6 @@
 {
   "id": "m06-l03",
-  "title": "Skip the rotten ones",
+  "title": "Skip every {R}",
   "module": "loops-2",
   "concepts": [
     "for",
@@ -60,7 +60,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Preskoč zhnité",
+      "title": "Vynechaj: {R.few}",
       "hints": [
         "`continue` skočí rovno na ďalšie kolo cyklu.",
         "if item_here() == \"rotten\": continue. Potom grab()."

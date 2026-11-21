@@ -1,0 +1,91 @@
+{
+  "id": "m11-l08",
+  "title": "Sum without a list",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "generator expression"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "338350"
+  },
+  "constraints": {
+    "maxLines": 1,
+    "mustUse": [
+      "GeneratorExp"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`(n * n for n in ...)` makes the squares one at a time, without a big list."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Súčet bez zoznamu",
+      "hints": [
+        "`(n * n for n in ...)` robí štvorce po jednom, bez veľkého zoznamu."
+      ]
+    }
+  }
+}

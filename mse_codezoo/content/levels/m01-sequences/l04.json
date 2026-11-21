@@ -1,6 +1,6 @@
 {
   "id": "m01-l04",
-  "title": "Two bananas",
+  "title": "Two {B.many}",
   "module": "sequences",
   "concepts": [
     "call",
@@ -35,7 +35,7 @@
   "mode": "blocks_only",
   "i18n": {
     "sk": {
-      "title": "Dva banány",
+      "title": "Dva kusy: {B.few}",
       "hints": [
         "Cestou k druhému banánu chyť aj prvý.",
         "step(2), grab() a potom ešte raz."

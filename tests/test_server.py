@@ -114,6 +114,8 @@ def test_levels_list(base_url):
         "animal": "monkey",
         "signature": False,
         "worlds": 1,
+        "minPython": None,
+        "locked": None,
     }
     assert first in levels
 
@@ -135,7 +137,9 @@ def test_unknown_level_is_404(base_url):
 
 
 def test_parse(base_url):
-    status, data = get_json(base_url, "/api/parse", {"source": "step(1)\nclass Jump:\n    pass\n"})
+    status, data = get_json(
+        base_url, "/api/parse", {"source": "step(1)\nasync for j in jumps:\n    pass\n"}
+    )
     assert status == 200
     assert data["ok"] is True
     assert PROGRAM_SCHEMA.is_valid(data["program"])
@@ -313,14 +317,14 @@ def test_unknown_profile_progress_is_404_shaped(base_url):
 def test_language_from_query_and_body(base_url):
     status, level = get_json(base_url, "/api/levels/m05-l02?lang=sk")
     assert status == 200
-    assert level["title"] == "Zrelý alebo zhnitý"
+    assert level["title"] == "Banán alebo zhnitý banán?"
     assert level["pack"]["animalName"] == "opička"
     status, data = get_json(
         base_url, "/api/run", {"level": "m01-l03", "source": "step(5)\n", "lang": "sk"}
     )
     assert data["check"]["message"] == "Bum! Tu stojí skala, ďalej sa nedá."
     _, english = get_json(base_url, "/api/levels/m05-l02")
-    assert english["title"] == "Ripe or rotten"
+    assert english["title"] == "Banana or rotten banana?"
 
 
 def test_run_in_another_world(base_url):

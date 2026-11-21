@@ -39,6 +39,7 @@ MISTAKE_KINDS = {
     "type_mixup": "mixes up numbers, text and yes/no values",
     "endless_recursion": "functions that call themselves without stopping",
     "uncaught_error": "errors that no `except` catches",
+    "grab_miss": "grabs on the wrong square",
 }
 ERROR_KINDS = {  # LearnerError.kind (or "syntax") -> mistake kind
     "bump": "bump",
@@ -144,7 +145,7 @@ def _hash_pin(pin: str, salt: str) -> str:
 
 
 def classify_mistakes(
-    solved: bool, stars: list[tuple[bool, str]], error_kind: str | None
+    solved: bool, stars: list[tuple[bool, str]], error_kind: str | None, missed: bool = False
 ) -> list[str]:
     """Turn a run's outcome into mistake kinds for the grown-up report.
 
@@ -156,7 +157,7 @@ def classify_mistakes(
         if error_kind in ERROR_KINDS:
             kinds.append(ERROR_KINDS[error_kind])
     elif not solved:
-        kinds.append("not_finished")
+        kinds.append("grab_miss" if missed else "not_finished")
     if solved and len(stars) >= 3:
         if not stars[1][0]:
             kinds.append("too_long")

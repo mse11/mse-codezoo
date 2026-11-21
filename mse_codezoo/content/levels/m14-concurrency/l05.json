@@ -1,0 +1,97 @@
+{
+  "id": "m14-l05",
+  "title": "Waiting in line (Queue)",
+  "module": "concurrency",
+  "concepts": [
+    "asyncio.Queue"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "ate one",
+      "ate two",
+      "ate three"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "AsyncFunction",
+      "Await"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "The eater waits at `await basket.get()` until the picker puts something in.",
+    "`None` in the basket means: no more fruit."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Čakanie v rade (Queue)",
+      "hints": [
+        "Jedák čaká pri `await basket.get()`, kým zberač niečo nevloží.",
+        "`None` v košíku znamená: už nič nebude."
+      ]
+    }
+  }
+}

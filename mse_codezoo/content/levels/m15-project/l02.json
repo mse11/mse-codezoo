@@ -1,0 +1,106 @@
+{
+  "id": "m15-l02",
+  "title": "Numbers from input",
+  "module": "first-project",
+  "concepts": [
+    "input",
+    "int"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ],
+    "inputs": [
+      "2"
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        "....B"
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "inputs": [
+        "4"
+      ]
+    }
+  ],
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`input()` always gives text; `int(...)` turns \"2\" into 2."
+  ],
+  "mode": "code_first",
+  "starter": "steps = input(\"How many steps? \")\nstep(steps)\ngrab()\n",
+  "i18n": {
+    "sk": {
+      "title": "Čísla zo vstupu",
+      "hints": [
+        "`input()` dá vždy text; `int(...)` zmení \"2\" na 2."
+      ]
+    }
+  }
+}

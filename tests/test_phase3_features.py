@@ -109,9 +109,10 @@ def test_each_animal_has_only_its_own_tricks():
 
 
 def test_core_levels_are_for_every_animal_and_signature_levels_for_one():
-    assert set(animal_names()) == {"monkey", "penguin", "beaver", "fox"}
+    animals = {"monkey", "penguin", "beaver", "fox", "octopus", "bee"}
+    assert set(animal_names()) == animals
     signature = [level for level in LEVELS if level.signature]
-    assert {level.animal for level in signature} == {"monkey", "penguin", "beaver", "fox"}
+    assert {level.animal for level in signature} == animals
     for level in LEVELS:
         assert core_animals(level) == ([level.animal] if level.signature else animal_names())
 
@@ -213,7 +214,7 @@ def test_every_card_has_its_own_code():
     codes = [card.code for card in cards]
     assert len(codes) == len(set(codes))
     assert all(re.fullmatch(r"[A-Z]+-[A-Z]+-\d\d", code) for code in codes)
-    assert len({card.animal for card in cards}) == 4
+    assert len({card.animal for card in cards}) == 6
 
 
 def test_card_codes_forgive_spaces_case_and_the_qr_prefix():

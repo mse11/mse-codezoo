@@ -1,10 +1,12 @@
-// Level editor prototype: paint a world, write a reference solution, let the engine test it,
-// then download the level JSON and its solution file for mse_codezoo/content/levels/.
-// The engine checks the level exactly like `codezoo levels validate` does.
+// Level editor: paint one or more worlds, write a reference solution, let the engine test
+// it exactly like `codezoo levels validate`, then play it, share it as a link, keep it in
+// this browser, or download the level JSON and solution for mse_codezoo/content/levels/.
+// Shared levels only ever run in the zoo's own interpreter, like every other level.
 
 import { api } from "./api.js";
 import { initialLang, setLang, t, translatePage } from "./i18n.js";
 import { EMOJI } from "./stage.js";
+import { encodeShare } from "./share.js";
 
 const $ = (id) => document.getElementById(id);
 setLang(initialLang());
@@ -17,27 +19,34 @@ const TERRAIN = [
 ];
 const MODULES = [
   "sequences", "loops-1", "variables", "text", "conditions", "loops-2", "functions", "errors",
-  "collections", "recursion",
+  "collections", "recursion", "comprehensions-and-generators", "objects", "decorators",
+  "concurrency", "first-project",
 ];
+const RELEASES = ["", "3.12", "3.13", "3.14", "3.15"];
 const BLOCKS = [
   "step", "turn_left", "turn_right", "grab", "say", "for_range", "while", "if", "if_else",
   "compare", "logic", "not", "is_blocked", "item_here", "item_ahead", "text", "number", "set",
   "change", "var", "math", "break", "continue", "def", "call", "return", "try", "raise",
-  "for_each", "list", "append", "len", "index",
+  "for_each", "list", "append", "len", "index", "yield", "class", "async_def", "await",
 ];
 const ARROW = { east: "▶", south: "▼", west: "◀", north: "▲" };
+const LIBRARY_KEY = "codezoo.my-levels";
 
-const state = {
-  animals: [],
-  tool: "#",
-  width: 6,
-  height: 3,
-  cells: [], // rows of tile characters
-  up: {}, // "x,y" -> item letter sitting on terrain (a coconut up a tree)
-  start: [0, 0],
-  flag: null,
-};
+function blankWorld(width = 6, height = 3) {
+  return {
+    cells: Array.from({ length: height }, () => Array.from({ length: width }, () => ".")),
+    up: {}, // "x,y" -> item letter sitting on terrain (a coconut up a tree)
+    start: [0, 0],
+    facing: "east",
+    flag: null,
+    inputs: "",
+    data: "",
+    noGil: false,
+  };
+}
 
+const state = { animals: [], tool: "#", worlds: [blankWorld()], current: 0 };
+const world = () => state.worlds[state.current];
 const pack = () => state.animals.find((a) => a.id === $("animal").value) || state.animals[0];
 
 function el(tag, attrs = {}, ...children) {
@@ -47,17 +56,38 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+// --- worlds -----------------------------------------------------------------------------
+
 function resize() {
   const width = Math.max(1, Math.min(16, Number($("width").value) || 1));
   const height = Math.max(1, Math.min(12, Number($("height").value) || 1));
-  state.cells = Array.from({ length: height }, (_, y) =>
-    Array.from({ length: width }, (_, x) => state.cells[y]?.[x] ?? "."),
-  );
-  state.width = width;
-  state.height = height;
-  state.start = [Math.min(state.start[0], width - 1), Math.min(state.start[1], height - 1)];
-  if (state.flag && (state.flag[0] >= width || state.flag[1] >= height)) state.flag = null;
+  for (const w of state.worlds) {
+    w.cells = Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => w.cells[y]?.[x] ?? "."));
+    w.start = [Math.min(w.start[0], width - 1), Math.min(w.start[1], height - 1)];
+    if (w.flag && (w.flag[0] >= width || w.flag[1] >= height)) w.flag = null;
+  }
   render();
+}
+
+function showWorld(index) {
+  state.current = index;
+  const w = world();
+  $("facing").value = w.facing;
+  $("inputs").value = w.inputs;
+  $("data").value = w.data;
+  $("no-gil").checked = w.noGil;
+  render();
+}
+
+function renderTabs() {
+  $("world-tabs").replaceChildren(
+    ...state.worlds.map((_, i) => {
+      const button = el("button", { type: "button", class: "small", "aria-pressed": String(i === state.current) }, `${t("World")} ${i + 1}`);
+      button.addEventListener("click", () => showWorld(i));
+      return button;
+    }),
+  );
+  $("remove-world").disabled = state.worlds.length < 2;
 }
 
 function tools() {
@@ -80,61 +110,99 @@ function tools() {
       return button;
     }),
   );
-  $("goal-item").replaceChildren(...items.map(([tile, id]) => el("option", { value: tile }, `${EMOJI[id] || ""} ${id}`)));
+  const options = items.map(([tile, id]) => el("option", { value: tile }, `${EMOJI[id] || ""} ${id}`));
+  $("goal-item").replaceChildren(...options);
+  $("goal-avoid").replaceChildren(el("option", { value: "" }, "—"), ...options.map((o) => o.cloneNode(true)));
 }
 
 function paint(x, y) {
+  const w = world();
   const tool = state.tool;
-  if (tool === "start") state.start = [x, y];
-  else if (tool === "flag") state.flag = [x, y];
-  else if (/^[A-Z]$/.test(tool) && state.cells[y][x] === "t") state.up[`${x},${y}`] = tool;
+  if (tool === "start") w.start = [x, y];
+  else if (tool === "flag") w.flag = [x, y];
+  else if (/^[A-Z]$/.test(tool) && w.cells[y][x] === "t") w.up[`${x},${y}`] = tool;
   else {
-    state.cells[y][x] = tool;
-    delete state.up[`${x},${y}`];
+    w.cells[y][x] = tool;
+    delete w.up[`${x},${y}`];
   }
   render();
 }
 
 function render() {
+  const w = world();
   const grid = $("grid");
-  grid.style.gridTemplateColumns = `repeat(${state.width}, minmax(24px, 56px))`;
+  const width = w.cells[0].length;
+  grid.style.gridTemplateColumns = `repeat(${width}, minmax(24px, 56px))`;
   const terrainClass = Object.fromEntries(TERRAIN.map(([tile, , name]) => [tile, name]));
   const items = pack()?.items || {};
   const cells = [];
-  for (let y = 0; y < state.height; y++) {
-    for (let x = 0; x < state.width; x++) {
-      const tile = state.cells[y][x];
+  w.cells.forEach((row, y) =>
+    row.forEach((tile, x) => {
       const classes = ["cell", (x + y) % 2 ? "alt" : "", tile === "#" ? "wall" : terrainClass[tile] || ""];
       let mark = tile === "#" ? "🪨" : items[tile] ? EMOJI[items[tile]] || tile : TERRAIN.find((e) => e[0] === tile)?.[1] || "";
-      if (state.up[`${x},${y}`]) mark += EMOJI[items[state.up[`${x},${y}`]]] || "";
-      if (state.flag && state.flag[0] === x && state.flag[1] === y) mark += "🏁";
-      if (state.start[0] === x && state.start[1] === y) mark = `${pack()?.emoji || "🐾"}${ARROW[$("facing").value]}`;
-      const cell = el("div", { class: classes.join(" "), "data-x": x, "data-y": y }, mark);
-      cells.push(cell);
-    }
-  }
+      if (w.up[`${x},${y}`]) mark += EMOJI[items[w.up[`${x},${y}`]]] || "";
+      if (w.flag && w.flag[0] === x && w.flag[1] === y) mark += "🏁";
+      if (w.start[0] === x && w.start[1] === y) mark = `${pack()?.emoji || "🐾"}${ARROW[w.facing]}`;
+      cells.push(el("div", { class: classes.join(" "), "data-x": x, "data-y": y }, mark));
+    }),
+  );
   grid.replaceChildren(...cells);
+  renderTabs();
   $("json").textContent = JSON.stringify(levelData(), null, 2);
 }
+
+// --- the level as JSON -------------------------------------------------------------------
 
 function countLines(text) {
   return text.split("\n").filter((line) => line.trim() && !line.trim().startsWith("#")).length;
 }
 
+const lines = (text) => text.split("\n").map((s) => s.trim()).filter(Boolean);
+
+// "scores.txt\n---\nBea 5" (more files: repeat) -> {"scores.txt": "Bea 5\n"}
+function parseFiles(text) {
+  const files = {};
+  const parts = text.split(/^---$/m);
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    const name = parts[i].trim().split("\n").pop()?.trim();
+    if (name) files[name] = parts[i + 1].replace(/^\n/, "");
+  }
+  return files;
+}
+
+function formatFiles(files) {
+  return Object.entries(files || {}).map(([name, text]) => `${name}\n---\n${text}`).join("\n---\n");
+}
+
+function worldSpec(w) {
+  const spec = { tiles: w.cells.map((row) => row.join("")), start: [...w.start, w.facing] };
+  const up = Object.entries(w.up).map(([key, tile]) => [...key.split(",").map(Number), tile]);
+  if (up.length) spec.items = up;
+  if (w.inputs.trim()) spec.inputs = w.inputs.split("\n").filter((line, i, all) => line || i < all.length - 1);
+  const files = parseFiles(w.data);
+  if (Object.keys(files).length) spec.data = files;
+  if (w.noGil) spec.gil = false;
+  return spec;
+}
+
+function goalFor(w) {
+  const type = $("goal-type").value;
+  let goal;
+  if (type === "reach") goal = { type, at: w.flag || [w.cells[0].length - 1, w.cells.length - 1] };
+  else if (type === "say" || type === "print") goal = { type, text: $("goal-text").value };
+  else if (type === "file") goal = { type, name: $("goal-file").value.trim() || "scores.txt", text: $("goal-text").value };
+  else {
+    goal = { type, item: $("goal-item").value || "B" };
+    if ($("goal-avoid").value) goal.avoid = $("goal-avoid").value;
+  }
+  const within = Number($("within").value);
+  return within > 0 ? { type: "all", goals: [goal, { type: "time", within }] } : goal;
+}
+
 function levelData() {
   const animal = pack();
-  const tiles = state.cells.map((row) => row.join(""));
-  const usesTerrain = tiles.some((row) => /[~t\-o]/.test(row));
-  const world = { tiles, start: [...state.start, $("facing").value] };
-  const up = Object.entries(state.up).map(([key, tile]) => [...key.split(",").map(Number), tile]);
-  if (up.length) world.items = up;
-  const type = $("goal-type").value;
-  const goal =
-    type === "reach"
-      ? { type, at: state.flag || [state.width - 1, state.height - 1] }
-      : type === "say"
-        ? { type, text: $("goal-text").value }
-        : { type, item: $("goal-item").value || "B" };
+  const usesTerrain = state.worlds.some((w) => w.cells.some((row) => row.some((tile) => /[~t\-o]/.test(tile))));
+  const [first, ...others] = state.worlds;
   const mustUse = $("must-use").value.split(",").map((s) => s.trim()).filter(Boolean);
   const data = {
     id: $("level-id").value.trim() || "my-l01",
@@ -142,33 +210,117 @@ function levelData() {
     module: $("module").value,
     concepts: [$("module").value],
     animal: animal?.id || "monkey",
-    world,
-    goal,
+    world: worldSpec(first),
+    goal: goalFor(first),
     constraints: { maxLines: Math.max(1, countLines($("solution").value)), mustUse },
     unlockedBlocks: [...BLOCKS, ...(usesTerrain ? animal?.tricks || [] : [])],
-    hints: $("hints").value.split("\n").map((s) => s.trim()).filter(Boolean),
+    hints: lines($("hints").value),
     mode: "both_editable",
   };
+  if (others.length) {
+    data.variants = others.map((w) => {
+      const variant = worldSpec(w);
+      if ($("goal-type").value === "reach" && w.flag) variant.goal = goalFor(w);
+      return variant;
+    });
+  }
+  if ($("min-python").value) data.minPython = $("min-python").value;
   if (usesTerrain) data.signature = true;
   if ($("starter").value.trim()) data.starter = $("starter").value;
+  const sk = {};
+  if ($("title-sk").value.trim()) sk.title = $("title-sk").value.trim();
+  const hintsSk = lines($("hints-sk").value);
+  if (hintsSk.length) sk.hints = hintsSk;
+  if (Object.keys(sk).length) data.i18n = { sk };
   return data;
 }
 
+// --- test, play, share, keep, download, open ------------------------------------------------
+
+function report(ok, message, errors = []) {
+  $("report").className = `report ${ok ? "ok" : "err"}`;
+  $("report").replaceChildren(message, ...(errors.length ? [el("ul", {}, ...errors.map((e) => el("li", {}, e)))] : []));
+}
+
 async function test() {
-  const report = $("report");
-  report.className = "report";
-  report.textContent = t("Testing…");
+  $("report").className = "report";
+  $("report").textContent = t("Testing…");
   try {
     const result = await api.checkLevel(levelData(), $("solution").value);
-    report.className = `report ${result.ok ? "ok" : "err"}`;
-    report.replaceChildren(
-      result.ok ? t("The solution earns every star, in every world and for every animal that can play it.") : t("Not yet:"),
-      ...(result.ok ? [] : [el("ul", {}, ...result.errors.map((e) => el("li", {}, e)))]),
-    );
+    if (result.ok) report(true, t("The solution earns every star, in every world and for every animal that can play it."));
+    else report(false, t("Not yet:"), result.errors);
+    return result.ok;
   } catch (error) {
-    report.className = "report err";
-    report.textContent = error.message;
+    report(false, error.message);
+    return false;
   }
+}
+
+function shareLink() {
+  const url = new URL("index.html", location.href);
+  url.hash = `play=${encodeShare({ level: levelData() })}`;
+  return url.href;
+}
+
+async function play() {
+  if (await test()) window.open(shareLink(), "_blank");
+}
+
+async function share() {
+  if (!(await test())) return;
+  const link = shareLink();
+  try {
+    await navigator.clipboard.writeText(link);
+    report(true, t("The link is copied. Whoever opens it plays the level; nothing is uploaded."));
+  } catch {
+    report(true, link);
+  }
+}
+
+function readLibrary() {
+  try {
+    return JSON.parse(localStorage.getItem(LIBRARY_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeLibrary(library) {
+  try {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
+  } catch {
+    report(false, t("This browser can't keep levels; download them instead."));
+  }
+}
+
+function keep() {
+  const library = readLibrary();
+  const data = levelData();
+  library[data.id] = { level: data, solution: $("solution").value };
+  writeLibrary(library);
+  renderLibrary();
+  $("library-box").open = true;
+}
+
+function renderLibrary() {
+  const library = readLibrary();
+  const entries = Object.values(library);
+  $("library").replaceChildren(
+    ...(entries.length
+      ? entries.map(({ level, solution }) => {
+          const edit = el("button", { type: "button", class: "small" }, t("Edit"));
+          edit.addEventListener("click", () => load(level, solution));
+          const forget = el("button", { type: "button", class: "small" }, t("Forget"));
+          forget.addEventListener("click", () => {
+            const next = readLibrary();
+            delete next[level.id];
+            writeLibrary(next);
+            renderLibrary();
+          });
+          return el("li", {}, `${level.id} · ${level.title} `, edit, " ", forget);
+        })
+      : [el("li", { class: "note" }, t("No levels kept yet."))]),
+  );
 }
 
 function save(name, text, type) {
@@ -187,43 +339,70 @@ function download() {
   save(`${name}.solution.py`, $("solution").value, "text/x-python");
 }
 
+function worldFrom(spec) {
+  const rows = typeof spec.tiles === "string" ? spec.tiles.split("\n") : spec.tiles;
+  return {
+    cells: rows.map((row) => [...row]),
+    up: Object.fromEntries((spec.items || []).map(([x, y, tile]) => [`${x},${y}`, tile])),
+    start: spec.start.slice(0, 2),
+    facing: spec.start[2],
+    flag: null,
+    inputs: (spec.inputs || []).join("\n"),
+    data: formatFiles(spec.data),
+    noGil: spec.gil === false,
+  };
+}
+
+function load(data, solution) {
+  const goals = data.goal.type === "all" ? data.goal.goals : [data.goal];
+  const main = goals.find((g) => g.type !== "time") || goals[0];
+  const time = goals.find((g) => g.type === "time");
+  state.worlds = [worldFrom(data.world), ...(data.variants || []).map(worldFrom)];
+  state.worlds[0].flag = main.at || null;
+  (data.variants || []).forEach((variant, i) => {
+    state.worlds[i + 1].flag = variant.goal?.at || main.at || null;
+  });
+  $("width").value = state.worlds[0].cells[0].length;
+  $("height").value = state.worlds[0].cells.length;
+  $("level-id").value = data.id;
+  $("title").value = data.title || data.id;
+  $("title-sk").value = data.i18n?.sk?.title || "";
+  $("hints-sk").value = (data.i18n?.sk?.hints || []).join("\n");
+  $("module").value = data.module;
+  $("min-python").value = data.minPython || "";
+  $("animal").value = data.animal || "monkey";
+  tools();
+  $("goal-type").value = ["collect_all", "reach", "say", "print", "file"].includes(main.type) ? main.type : "collect_all";
+  if (main.item) $("goal-item").value = main.item;
+  $("goal-avoid").value = main.avoid || "";
+  if (main.text) $("goal-text").value = main.text;
+  if (main.name) $("goal-file").value = main.name;
+  $("within").value = time ? time.within : "";
+  $("must-use").value = (data.constraints?.mustUse || []).join(", ");
+  $("hints").value = (data.hints || []).join("\n");
+  $("starter").value = data.starter || "";
+  if (solution !== undefined) $("solution").value = solution;
+  goalRows();
+  showWorld(0);
+}
+
 async function open(file) {
   try {
-    const data = JSON.parse(await file.text());
-    const rows = typeof data.world.tiles === "string" ? data.world.tiles.split("\n") : data.world.tiles;
-    state.cells = rows.map((row) => [...row]);
-    state.width = rows[0].length;
-    state.height = rows.length;
-    state.up = Object.fromEntries((data.world.items || []).map(([x, y, tile]) => [`${x},${y}`, tile]));
-    state.start = data.world.start.slice(0, 2);
-    $("facing").value = data.world.start[2];
-    $("width").value = state.width;
-    $("height").value = state.height;
-    $("level-id").value = data.id;
-    $("title").value = data.title || data.id;
-    $("module").value = data.module;
-    $("animal").value = data.animal || "monkey";
-    $("goal-type").value = ["collect_all", "reach", "say"].includes(data.goal.type) ? data.goal.type : "collect_all";
-    if (data.goal.item) $("goal-item").value = data.goal.item;
-    if (data.goal.text) $("goal-text").value = data.goal.text;
-    state.flag = data.goal.at || null;
-    $("must-use").value = (data.constraints?.mustUse || []).join(", ");
-    $("hints").value = (data.hints || []).join("\n");
-    $("starter").value = data.starter || "";
-    tools();
-    goalRows();
-    render();
+    load(JSON.parse(await file.text()));
   } catch (error) {
-    $("report").className = "report err";
-    $("report").textContent = t("That file is not a level: {message}", { message: error.message });
+    report(false, t("That file is not a level: {message}", { message: error.message }));
   }
 }
 
 function goalRows() {
   const type = $("goal-type").value;
   $("goal-item-row").hidden = type !== "collect_all";
-  $("goal-text-row").hidden = type !== "say";
+  $("goal-avoid-row").hidden = type !== "collect_all";
+  $("goal-text-row").hidden = !["say", "print", "file"].includes(type);
+  $("goal-file-row").hidden = type !== "file";
 }
+
+// --- wiring --------------------------------------------------------------------------------
 
 let painting = false;
 $("grid").addEventListener("pointerdown", (event) => {
@@ -238,9 +417,27 @@ $("grid").addEventListener("pointerover", (event) => {
 });
 window.addEventListener("pointerup", () => (painting = false));
 for (const id of ["width", "height"]) $(id).addEventListener("change", resize);
-for (const id of ["facing", "level-id", "title", "module", "goal-item", "goal-text", "must-use", "hints", "starter", "solution"]) {
-  $(id).addEventListener("input", render);
-}
+$("facing").addEventListener("input", () => {
+  world().facing = $("facing").value;
+  render();
+});
+$("inputs").addEventListener("input", () => {
+  world().inputs = $("inputs").value;
+  render();
+});
+$("data").addEventListener("input", () => {
+  world().data = $("data").value;
+  render();
+});
+$("no-gil").addEventListener("change", () => {
+  world().noGil = $("no-gil").checked;
+  render();
+});
+const fields = [
+  "level-id", "title", "title-sk", "module", "min-python", "goal-item", "goal-avoid", "goal-text",
+  "goal-file", "within", "must-use", "hints", "hints-sk", "starter", "solution",
+];
+for (const id of fields) $(id).addEventListener("input", render);
 $("animal").addEventListener("change", () => {
   tools();
   render();
@@ -249,7 +446,20 @@ $("goal-type").addEventListener("change", () => {
   goalRows();
   render();
 });
+$("add-world").addEventListener("click", () => {
+  const copy = structuredClone(world());
+  state.worlds.push(copy);
+  showWorld(state.worlds.length - 1);
+});
+$("remove-world").addEventListener("click", () => {
+  if (state.worlds.length < 2) return;
+  state.worlds.splice(state.current, 1);
+  showWorld(Math.max(0, state.current - 1));
+});
 $("test").addEventListener("click", test);
+$("play").addEventListener("click", play);
+$("share").addEventListener("click", share);
+$("keep").addEventListener("click", keep);
 $("download").addEventListener("click", download);
 $("open").addEventListener("change", (event) => event.target.files[0] && open(event.target.files[0]));
 
@@ -258,14 +468,15 @@ async function start() {
   state.animals = await api.animals();
   $("animal").replaceChildren(...state.animals.map((a) => el("option", { value: a.id }, `${a.emoji} ${a.animalName}`)));
   $("module").replaceChildren(...MODULES.map((m) => el("option", { value: m }, m)));
-  state.cells = [
-    [".", "B", ".", ".", ".", "."],
-    [".", ".", ".", ".", ".", "."],
-    [".", ".", ".", ".", ".", "."],
-  ];
+  $("min-python").replaceChildren(
+    ...RELEASES.map((v) => el("option", { value: v }, v ? `Python ${v}+` : t("any (3.11)"))),
+  );
+  state.worlds = [blankWorld()];
+  state.worlds[0].cells[0][1] = "B";
   tools();
   goalRows();
-  resize();
+  renderLibrary();
+  showWorld(0);
 }
 
 start();

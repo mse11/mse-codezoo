@@ -18,6 +18,7 @@ from mse_codezoo.game import (
     level_to_json,
     run_level,
     run_to_json,
+    skipped_reason,
     solution_errors,
 )
 from mse_codezoo.i18n import LANGS, use_lang
@@ -35,9 +36,21 @@ from mse_codezoo.levels import (
     validate_level,
 )
 from mse_codezoo.profiles import MAX_NAME, PICTURES, ProfileError, ProfileStore
+from mse_codezoo.versions import RELEASES, parse_version, version_text
 from mse_codezoo.world import World
 
 ProgramPath = click.Path(exists=True, dir_okay=False, path_type=Path)
+PYTHON_CHOICES = click.Choice([version_text(v) for v in RELEASES])
+
+
+def python_option(fn: Any) -> Any:
+    return click.option(
+        "--python",
+        "python",
+        type=PYTHON_CHOICES,
+        help="The Python release the program is written for (default: the newest this "
+        "computer can read). Newer syntax is refused with the release that brought it.",
+    )(fn)
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -105,7 +118,13 @@ def describe_event(event: dict[str, Any], world: World) -> str:
             return f"now facing {event['facing']}"
         case "grab":
             item = event["item"]
-            return f"grabbed a {world.pack.item_name(item)}" if item else "nothing to grab here"
+            if item:
+                return f"grabbed a {world.pack.item_name(item)}"
+            if event.get("near", "none") != "none":
+                where = event["near"]
+                target = world.pack.item_name(event.get("target"))
+                return f"nothing to grab here (the {target} is {where}, {event['distance']} away)"
+            return "nothing to grab here"
         case "say":
             return f'says "{event["text"]}"'
         case "bump":
@@ -144,7 +163,7 @@ def _short_path(path: Path) -> str:
 
 
 def _level_header(level: Level, animal: str | None) -> str:
-    return f"Level {level.id}: {level.shown_title} ({animal or level.animal})"
+    return f"Level {level.id}: {level.title_for(animal)} ({animal or level.animal})"
 
 
 # --- run / check / blocks ----------------------------------------------------------
@@ -161,8 +180,15 @@ def _level_header(level: Level, animal: str | None) -> str:
     type=click.Path(dir_okay=False, path_type=Path),
     help="Save the run as a .run.json file, for `codezoo replay` and `codezoo story export`.",
 )
+@python_option
 def run(
-    level: str, program: Path, animal: str | None, trace: bool, as_json: bool, save: Path | None
+    level: str,
+    program: Path,
+    animal: str | None,
+    trace: bool,
+    as_json: bool,
+    save: Path | None,
+    python: str | None,
 ) -> None:
     """Run PROGRAM headless in LEVEL (a level id like m01-l01, or a level file).
 
@@ -180,6 +206,8 @@ def run(
             click.echo(f"     |   {describe_event(event, world)}")
         if step.note:
             click.echo(f"     |   {step.note}")
+        if step.lane and step.lane != "main":
+            click.echo(f"     |   [{step.lane} @ {step.time:g}]")
         if any(e["type"] in ("move", "turn", "grab") for e in step.events):
             click.echo(_indent(world.render()))
 
@@ -192,6 +220,7 @@ def run(
             animal=animal,
             on_step=on_step if trace else None,
             modules=own_modules(program, source),
+            python=parse_version(python),
         )
     except LevelError as exc:
         raise click.ClickException(str(exc)) from None
@@ -235,6 +264,9 @@ def _echo_run(run: LevelRun, show_grid: bool) -> None:
         click.echo(f"line {line}: {error.message}", err=True)
     else:
         click.echo(f"Finished in {len(run.result.steps)} steps.")
+    if run.result.lanes:
+        lanes = ", ".join(lane for lane in run.result.lanes if lane != "main")
+        click.echo(f"Ran at the same time: {lanes}; done by tick {run.result.time:g}.")
 
 
 @main.command()
@@ -242,11 +274,20 @@ def _echo_run(run: LevelRun, show_grid: bool) -> None:
 @click.argument("program", type=ProgramPath)
 @click.option("--animal", help="Play as another animal (default: the level's animal).")
 @click.option("--profile", "player", help="Save the result to this player's progress.")
-def check(level: str, program: Path, animal: str | None, player: str | None) -> None:
+@python_option
+def check(
+    level: str, program: Path, animal: str | None, player: str | None, python: str | None
+) -> None:
     """Check PROGRAM against LEVEL's goal and constraints; print stars and hints."""
     lvl, source = _load(level, program)
     try:
-        result = run_level(lvl, source, animal=animal, modules=own_modules(program, source))
+        result = run_level(
+            lvl,
+            source,
+            animal=animal,
+            modules=own_modules(program, source),
+            python=parse_version(python),
+        )
     except LevelError as exc:
         raise click.ClickException(str(exc)) from None
     extras: list[str] = []
@@ -281,7 +322,9 @@ def _after_attempt(
     """Record the attempt; lines about new stickers and a practice suggestion."""
     store.record(player, attempt_from_run(result, source))
     levels = _all_levels()
-    lines = [f"New sticker: {s['emoji']} {s['name']}" for s in store.award(player, levels)]
+    solved = result.check is not None and result.check.solved
+    new = store.award(player, levels) if solved else []  # stickers only with a solved run
+    lines = [f"New sticker: {s['emoji']} {s['name']}" for s in new]
     suggestion = store.suggest(player, level, levels)
     if suggestion:
         lines.append(
@@ -764,6 +807,11 @@ def levels_list() -> None:
         try:
             level = load_level(path)
             only = f"  ({level.animal} only)" if level.signature else ""
+            if level.min_python:
+                skipped = skipped_reason(level)
+                only += f"  [Python {version_text(level.min_python)}+" + (
+                    ", locked here]" if skipped else "]"
+                )
             click.echo(f"{level.id:<10} {level.shown_title}{only}")
         except LevelError as exc:
             click.echo(f"{path.relative_to(LEVELS_DIR).as_posix():<10} (invalid: {exc})")
@@ -849,21 +897,98 @@ def levels_validate(paths: tuple[Path, ...], all_levels: bool) -> None:
     else:
         raise click.UsageError("give level paths or --all")
 
-    failed = 0
+    failed = skipped = 0
     for path in targets:
         shown = _short_path(path)
         errors = validate_level(path).errors
+        reason = None
         if not errors:
-            errors = solution_errors(load_level(path))
+            level = load_level(path)
+            reason = skipped_reason(level)
+            errors = [] if reason else solution_errors(level)
         if errors:
             failed += 1
             for error in errors:
                 click.echo(f"FAIL  {shown}: {error}", err=True)
+        elif reason:
+            skipped += 1
+            click.echo(f"skip  {shown}: its solution {reason}")
         else:
             click.echo(f"ok    {shown}")
-    click.echo(f"{len(targets) - failed}/{len(targets)} level(s) valid")
+    note = f" ({skipped} release-island level(s) not run on this Python)" if skipped else ""
+    click.echo(f"{len(targets) - failed}/{len(targets)} level(s) valid{note}")
     if failed:
         raise SystemExit(1)
+
+
+# --- graduation and the offline web build -----------------------------------------------
+
+GRADUATION_SHIM = """\
+# --- made by `codezoo graduate`: the zoo's commands, for plain Python -------------------
+# In the zoo these moved an animal. Here they print what the animal would do, so the
+# program runs in normal Python. Delete this part once your program doesn't need it.
+def _tell(what):
+    print(f"[{what}]")
+def step(n=1): _tell(f"step {n}")
+def turn_left(): _tell("turn left")
+def turn_right(): _tell("turn right")
+def grab(): _tell("grab")
+def say(text=""): print(text)
+# --- your program -----------------------------------------------------------------------
+"""
+
+
+@main.command()
+@click.argument("program", type=ProgramPath)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Write the real-Python version here (default: PROGRAM_real.py next to it).",
+)
+@click.option("--run", "run_it", is_flag=True, help="Then run it in this computer's Python.")
+def graduate(program: Path, output: Path | None, run_it: bool) -> None:
+    """Turn PROGRAM into a plain .py file that runs in normal Python (module 15).
+
+    The zoo's commands (step, say, ...) become small stand-ins that print what the animal
+    would do. Only use --run on your own programs: real Python can do anything a program
+    asks, unlike the zoo.
+    """
+    import subprocess
+
+    source = program.read_text(encoding="utf-8")
+    parsed = parse(source)
+    if not parsed.ok:
+        _echo_diagnostics(parsed)
+        raise SystemExit(1)
+    target = output or program.with_name(f"{program.stem}_real.py")
+    target.write_text(GRADUATION_SHIM + source, encoding="utf-8")
+    click.echo(f"Wrote {target}. Run it with: python {target}")
+    if run_it:
+        click.echo("--- running it in real Python ---")
+        finished = subprocess.run([sys.executable, str(target)], check=False)
+        raise SystemExit(finished.returncode)
+
+
+@main.command("build-web")
+@click.argument("output", type=click.Path(file_okay=False, path_type=Path))
+@click.option(
+    "--pyodide",
+    "pyodide_url",
+    default=None,
+    help="Where the page loads Pyodide from (a URL or a folder next to the page). "
+    "Default: the jsDelivr CDN; the page caches it after the first visit.",
+)
+def build_web(output: Path, pyodide_url: str | None) -> None:
+    """Build the offline web version into OUTPUT: static files for any web host.
+
+    The engine runs in the browser (Pyodide in a web worker); a service worker keeps
+    everything for offline use, and players' progress stays in the browser.
+    """
+    from mse_codezoo.webbuild import build
+
+    report = build(output, pyodide_url)
+    click.echo(report)
 
 
 # --- saved runs, storybook, cards, new worlds ------------------------------------------

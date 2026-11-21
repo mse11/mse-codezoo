@@ -13,13 +13,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from mse_codezoo import interpreter, ir
+from mse_codezoo import interpreter, ir, versions
 from mse_codezoo.feelings import Feeling, feeling
 from mse_codezoo.goals import CheckResult, check, goal_met
 from mse_codezoo.i18n import t
 from mse_codezoo.interpreter import RunResult, Step
 from mse_codezoo.lang_python import ParseResult, parse, print_program
-from mse_codezoo.levels import Level, core_animals, load_pack, solution_path
+from mse_codezoo.levels import Level, core_animals, fill_items, load_pack, solution_path
 from mse_codezoo.profiles import Attempt, classify_mistakes
 from mse_codezoo.world import Pack, World
 
@@ -36,6 +36,8 @@ class LevelRun:
     variant: int = 0  # which world was shown: 0 = the main one
     feeling: Feeling | None = None
     animal: str = ""
+    version: tuple[int, int] = versions.DEFAULT
+    locked: str | None = None  # why the level can't be played here
 
     def line_of(self, node_id: str | None) -> int | None:
         span = self.parsed.positions.get(node_id or "")
@@ -128,6 +130,8 @@ def _others_outcome(
     shown: int,
     max_steps: int,
     modules: Modules | None = None,
+    version: tuple[int, int] | None = None,
+    seed: int = 0,
 ) -> tuple[bool, str] | None:
     """Run the program in every world except the shown one; the first failure wins."""
     worlds = level.worlds()
@@ -138,8 +142,9 @@ def _others_outcome(
             continue
         world = World.from_spec(spec, pack)
         result = interpreter.run(
-            program, world.actions(), world.drain_events, max_steps, modules=modules
+            program, max_steps=max_steps, modules=modules, world=world, version=version, seed=seed
         )
+        world.printed = result.output
         ok, message = (False, result.error.message) if result.error else goal_met(goal, world)
         if not ok:
             return False, t(
@@ -148,6 +153,32 @@ def _others_outcome(
                 message=message,
             )
     return True, ""
+
+
+def level_version(level: Level, python: tuple[int, int] | None = None) -> tuple[int, int]:
+    """The Python release a level runs with: the learner's choice (or the newest this
+    computer reads), but never older than the level needs."""
+    version = python or versions.DEFAULT
+    return max(version, level.min_python) if level.min_python and not python else version
+
+
+def lock_reason(level: Level, python: tuple[int, int] | None = None) -> str | None:
+    """Why a release island can't be played here, or ``None`` when it can."""
+    need = level.min_python
+    if need is None:
+        return None
+    if not versions.readable(need):
+        return t(
+            "This island needs Python {need}, but this computer runs Python {host}.",
+            need=versions.version_text(need),
+            host=versions.version_text(versions.HOST),
+        )
+    if level_version(level, python) < need:
+        return t(
+            "This island needs Python {need}; choose Python {need} or newer to play it.",
+            need=versions.version_text(need),
+        )
+    return None
 
 
 def run_level(
@@ -160,11 +191,19 @@ def run_level(
     on_step: OnStep | None = None,
     seed: int = 0,
     modules: Modules | None = None,
+    python: tuple[int, int] | None = None,
 ) -> LevelRun:
     worlds = level.worlds()
     variant = variant if 0 <= variant < len(worlds) else 0
-    parsed = parse(source)
-    run = LevelRun(level, parsed, variant=variant)
+    version = level_version(level, python)
+    locked = lock_reason(level, python)
+    if locked is not None:
+        from mse_codezoo.lang_python import Diagnostic
+
+        parsed = ParseResult(None, [Diagnostic(1, 0, locked)])
+    else:
+        parsed = parse(source, version)
+    run = LevelRun(level, parsed, variant=variant, version=version, locked=locked)
     pack = load_pack(pick_animal(level, animal))
     run.animal = pack.id
     modules = level_modules(level, modules, pack)
@@ -178,15 +217,19 @@ def run_level(
     callback = (lambda step: on_step(step, world, parsed)) if on_step else None
     result = interpreter.run(
         parsed.program,
-        world.actions(),
-        world.drain_events,
-        max_steps,
+        max_steps=max_steps,
         on_step=callback,
         modules=modules,
+        world=world,
+        version=version,
+        seed=seed,
     )
+    world.printed = result.output
     also = None
     if result.ok and goal_met(goal, world)[0]:
-        also = _others_outcome(level, parsed.program, pack, variant, max_steps, modules)
+        also = _others_outcome(
+            level, parsed.program, pack, variant, max_steps, modules, version, seed
+        )
     run.world = world
     run.result = result
     run.check = check(goal, level.constraints, parsed.program, result, world, also=also)
@@ -217,6 +260,8 @@ def solution_errors(level: Level, source: str | None = None) -> list[str]:
             return [f"cannot read {path.name}: {exc}"]
     else:
         path = solution_path(level.path or Path("level.json"))
+    if level.min_python is not None and not versions.readable(level.min_python):
+        return []  # this computer's Python can't read it; see skipped_reason()
     errors: list[str] = []
     for animal in core_animals(level):
         if animal != level.animal:
@@ -251,6 +296,17 @@ def solution_errors(level: Level, source: str | None = None) -> list[str]:
     return errors
 
 
+def skipped_reason(level: Level) -> str | None:
+    """Why ``solution_errors`` can't check a level on this computer, if it can't."""
+    need = level.min_python
+    if need is not None and not versions.readable(need):
+        return (
+            f"needs Python {versions.version_text(need)} "
+            f"(this computer runs {versions.version_text(versions.HOST)})"
+        )
+    return None
+
+
 # --- JSON for clients (CLI --json, web server) -----------------------------------
 
 
@@ -263,6 +319,8 @@ def run_to_json(run: LevelRun) -> dict[str, Any]:
         "diagnostics": [vars(d) for d in run.parsed.diagnostics],
         "program": ir.to_dict(run.parsed.program) if run.parsed.program else None,
         "feeling": run.feeling.to_dict() if run.feeling else None,
+        "python": versions.version_text(run.version),
+        "locked": run.locked,
     }
     if run.result is None or run.world is None or run.check is None:
         data["ok"] = False
@@ -287,6 +345,9 @@ def run_to_json(run: LevelRun) -> dict[str, Any]:
         "output": run.result.output,
         "steps": [{**vars(step), "line": run.line_of(step.node_id)} for step in run.result.steps],
         "world": run.world.to_dict(),
+        "time": run.result.time,
+        "lanes": run.result.lanes,
+        "files": run.result.files,
         "check": {
             "solved": run.check.solved,
             "message": run.check.message,
@@ -301,7 +362,9 @@ def world_to_json(spec: dict[str, Any], pack: Pack) -> dict[str, Any]:
     return {**world.to_dict(), "walls": sorted([x, y] for x, y in world.walls)}
 
 
-def level_to_json(level: Level, animal: str | None = None) -> dict[str, Any]:
+def level_to_json(
+    level: Level, animal: str | None = None, python: tuple[int, int] | None = None
+) -> dict[str, Any]:
     """A level as a client draws it: the starting worlds plus goal, limits, blocks and hints.
 
     Titles, hints and names come in the current language (see ``i18n.use_lang``).
@@ -313,8 +376,11 @@ def level_to_json(level: Level, animal: str | None = None) -> dict[str, Any]:
     worlds = level.worlds()
     return {
         "id": level.id,
-        "title": level.shown_title,
+        "title": level.title_for(pack.id),
         "signature": level.signature,
+        "minPython": versions.version_text(level.min_python) if level.min_python else None,
+        "locked": lock_reason(level, python),
+        "python": versions.version_text(level_version(level, python)),
         "animals": core_animals(level),
         "files": level_modules(level, pack=pack),
         "module": level.module,
@@ -323,7 +389,10 @@ def level_to_json(level: Level, animal: str | None = None) -> dict[str, Any]:
         "goal": level.goal,
         "goals": [goal for _spec, goal in worlds],
         "constraints": level.constraints,
-        "hints": [reskin_text(h, own, pack, current()) for h in level.shown_hints],
+        "hints": [
+            fill_items(reskin_text(h, own, pack, current()), pack)
+            for h in level._text("hints", level.hints)
+        ],
         "unlockedBlocks": level.unlocked_blocks,
         "starter": reskin_source(level.starter, own, pack),
         "pack": pack.public(),
@@ -344,6 +413,8 @@ def attempt_from_run(run: LevelRun, source: str) -> Attempt:
         run.level.concepts,
         run.check.solved,
         run.check.earned,
-        classify_mistakes(run.check.solved, stars, run.error_kind),
+        classify_mistakes(
+            run.check.solved, stars, run.error_kind, bool(run.world and run.world.misses)
+        ),
         source,
     )

@@ -1,0 +1,92 @@
+{
+  "id": "i315-l02",
+  "title": "All the honey in one line",
+  "module": "island-3.15",
+  "concepts": [
+    "unpacking in comprehensions"
+  ],
+  "animal": "bee",
+  "minPython": "3.15",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "[1, 2, 3, 4, 5]"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "Comprehension"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`[*comb for comb in combs]` pours every comb into one list."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Všetok med v jednom riadku",
+      "hints": [
+        "`[*comb for comb in combs]` vysype každý plást do jedného zoznamu."
+      ]
+    }
+  }
+}

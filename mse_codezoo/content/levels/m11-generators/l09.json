@@ -1,0 +1,102 @@
+{
+  "id": "m11-l09",
+  "title": "{B} pipeline",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "generator expression",
+    "boss"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B..B.."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "6 steps"
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "GeneratorExp"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Bananas lie on every third square.",
+    "A generator expression in the `for` gives the spots one by one."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Reťazec: {B.few}",
+      "hints": [
+        "Banány ležia na každom treťom políčku.",
+        "Generátorový výraz vo `for` dáva miesta po jednom."
+      ]
+    }
+  }
+}

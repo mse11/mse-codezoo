@@ -1,0 +1,95 @@
+{
+  "id": "m13-l06",
+  "title": "Remember the answers",
+  "module": "decorators",
+  "concepts": [
+    "functools.cache",
+    "recursion"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "832040"
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator",
+      "Recursion"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Without help, `fib(30)` asks the same questions millions of times.",
+    "`@functools.cache` remembers every answer."
+  ],
+  "mode": "code_first",
+  "starter": "def fib(n):\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\nsay(fib(30))\n",
+  "i18n": {
+    "sk": {
+      "title": "Zapamätaj si odpovede",
+      "hints": [
+        "Bez pomoci sa `fib(30)` pýta tie isté otázky miliónkrát.",
+        "`@functools.cache` si zapamätá každú odpoveď."
+      ]
+    }
+  }
+}

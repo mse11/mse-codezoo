@@ -1,0 +1,94 @@
+{
+  "id": "m14-l04",
+  "title": "A race for the count",
+  "module": "concurrency",
+  "concepts": [
+    "race condition",
+    "asyncio.Lock"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "8"
+  },
+  "constraints": {
+    "mustUse": [
+      "With"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Every task reads `shells` before any of them writes it back: a race.",
+    "`async with lock:` lets only one task at a time between reading and writing."
+  ],
+  "mode": "code_first",
+  "starter": "import asyncio\n\nshells = 0\n\nasync def count_shell():\n    global shells\n    seen = shells\n    await asyncio.sleep(0)\n    shells = seen + 1\n\nasync def main():\n    await asyncio.gather(*[count_shell() for _ in range(8)])\n    say(shells)\n\nasyncio.run(main())\n",
+  "i18n": {
+    "sk": {
+      "title": "Preteky o počet",
+      "hints": [
+        "Každá úloha prečíta `shells` skôr, ako ho niektorá zapíše: preteky.",
+        "`async with lock:` pustí medzi čítanie a zápis len jednu úlohu naraz."
+      ]
+    }
+  }
+}

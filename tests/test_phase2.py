@@ -340,7 +340,7 @@ def test_play_respects_the_daily_limit(home):
 
 def test_play_in_slovak(home):
     result = CliRunner().invoke(main, ["--lang", "sk", "play", "--level", "m01-l01"], input="q\n")
-    assert "Level m01-l01: Jeden banán" in result.output
+    assert "Level m01-l01: Zober jeden kus: banán" in result.output
     assert "opička" in result.output
 
 

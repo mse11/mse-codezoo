@@ -1,6 +1,6 @@
 {
   "id": "m02-l11",
-  "title": "Banana square (boss)",
+  "title": "{B} square (boss)",
   "module": "loops-1",
   "concepts": [
     "for",
@@ -43,7 +43,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Banánový štvorec (boss)",
+      "title": "Štvorec: {B.few} (boss)",
       "hints": [
         "Osem banánov po okraji a opička stojí na jednom.",
         "Jedna strana: krok, chyť, krok, chyť, otoč sa. Zopakuj 4-krát."

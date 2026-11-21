@@ -1,0 +1,94 @@
+{
+  "id": "i310-l05",
+  "title": "Several errors at once",
+  "module": "island-baseline",
+  "concepts": [
+    "ExceptionGroup",
+    "except*"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "rain handled",
+      "wasp handled"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`except*` takes the errors of its kind out of the group; the next `except*` gets the rest."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Niekoľko chýb naraz",
+      "hints": [
+        "`except*` vyberie zo skupiny chyby svojho druhu; ďalšie `except*` dostane zvyšok."
+      ]
+    }
+  }
+}

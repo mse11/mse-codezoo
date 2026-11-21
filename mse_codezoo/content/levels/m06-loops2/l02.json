@@ -1,6 +1,6 @@
 {
   "id": "m06-l02",
-  "title": "Stop at the banana",
+  "title": "Stop at the {B}",
   "module": "loops-2",
   "concepts": [
     "while",
@@ -81,7 +81,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Zastav pri banáne",
+      "title": "Zastav, keď nájdeš: {B}",
       "hints": [
         "`while True:` opakuje stále, kým ho nezastaví `break`.",
         "Vnútri: step(1), potom if item_here(): break."

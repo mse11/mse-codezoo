@@ -1,0 +1,95 @@
+{
+  "id": "m11-l05",
+  "title": "Nothing left (`StopIteration`)",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "iter",
+    "next",
+    "StopIteration"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B.B..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`next()` gives the next jump; when there are none left it raises `StopIteration`.",
+    "Catch it with `try` / `except StopIteration:` and `break`."
+  ],
+  "mode": "code_first",
+  "starter": "jumps = iter([2, 2, 3])\nwhile True:\n    step(next(jumps))\n    grab()\n",
+  "i18n": {
+    "sk": {
+      "title": "Už nič nezostalo (`StopIteration`)",
+      "hints": [
+        "`next()` dá ďalší skok; keď už žiaden nie je, vyvolá `StopIteration`.",
+        "Zachyť ju cez `try` / `except StopIteration:` a `break`."
+      ]
+    }
+  }
+}

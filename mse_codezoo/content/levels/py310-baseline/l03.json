@@ -1,0 +1,96 @@
+{
+  "id": "i310-l03",
+  "title": "The log scale",
+  "module": "island-baseline",
+  "concepts": [
+    "union types",
+    "isinstance"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "2.5 kg",
+      "the scale says no"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`int | float` means: a whole number or a decimal one.",
+    "Type hints don't check anything; `isinstance` does."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Váha na polená",
+      "hints": [
+        "`int | float` znamená: celé alebo desatinné číslo.",
+        "Typové nápovedy nič nekontrolujú; to robí `isinstance`."
+      ]
+    }
+  }
+}

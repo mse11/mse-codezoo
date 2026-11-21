@@ -1,0 +1,140 @@
+{
+  "id": "m15-l05",
+  "title": "The zoo keeper's quiz",
+  "module": "first-project",
+  "concepts": [
+    "project",
+    "boss"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ],
+    "inputs": [
+      "5",
+      "7",
+      "3"
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        "."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "inputs": [
+        "5",
+        "8",
+        "3"
+      ],
+      "goal": {
+        "type": "all",
+        "goals": [
+          {
+            "type": "say",
+            "text": "3 points"
+          },
+          {
+            "type": "file",
+            "name": "highscore.txt",
+            "text": "3"
+          }
+        ]
+      }
+    }
+  ],
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "say",
+        "text": "2 points"
+      },
+      {
+        "type": "file",
+        "name": "highscore.txt",
+        "text": "2"
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "With",
+      "Dict"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Ask each question with `input`, count the right answers.",
+    "Save the points in highscore.txt with `with open(..., \"w\")`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Kvíz ošetrovateľa",
+      "hints": [
+        "Každú otázku polož cez `input` a počítaj správne odpovede.",
+        "Body ulož do highscore.txt cez `with open(..., \"w\")`."
+      ]
+    }
+  }
+}

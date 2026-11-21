@@ -1,0 +1,94 @@
+{
+  "id": "m14-l07",
+  "title": "Threads take turns",
+  "module": "concurrency",
+  "concepts": [
+    "threading",
+    "Lock"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "20"
+  },
+  "constraints": {
+    "mustUse": [
+      "With"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Threads can switch between any two lines, even between reading and writing.",
+    "`with lock:` keeps the other threads out until both lines are done."
+  ],
+  "mode": "code_first",
+  "starter": "import threading\n\nshells = 0\n\ndef gather():\n    global shells\n    for _ in range(5):\n        seen = shells\n        shells = seen + 1\n\narms = [threading.Thread(target=gather) for _ in range(4)]\nfor arm in arms:\n    arm.start()\nfor arm in arms:\n    arm.join()\nsay(shells)\n",
+  "i18n": {
+    "sk": {
+      "title": "Vlákna sa striedajú",
+      "hints": [
+        "Vlákna sa môžu vystriedať medzi hocijakými dvoma riadkami, aj medzi čítaním a zápisom.",
+        "`with lock:` nepustí ostatné vlákna, kým nie sú hotové oba riadky."
+      ]
+    }
+  }
+}

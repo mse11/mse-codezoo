@@ -1,0 +1,91 @@
+{
+  "id": "i314-l03",
+  "title": "The queen knows her workers",
+  "module": "island-3.14",
+  "concepts": [
+    "deferred annotations"
+  ],
+  "animal": "bee",
+  "minPython": "3.14",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "Bea"
+  },
+  "constraints": {
+    "mustUse": [
+      "ClassDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`-> Worker` names a class that comes later; since 3.14 that's fine without quotes."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Kráľovná pozná robotnice",
+      "hints": [
+        "`-> Worker` menuje triedu, ktorá príde neskôr; od 3.14 to ide aj bez úvodzoviek."
+      ]
+    }
+  }
+}

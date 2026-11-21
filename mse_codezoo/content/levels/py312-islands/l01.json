@@ -1,0 +1,91 @@
+{
+  "id": "i312-l01",
+  "title": "The signboard",
+  "module": "island-3.12",
+  "concepts": [
+    "f-strings (PEP 701)"
+  ],
+  "animal": "monkey",
+  "minPython": "3.12",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "Momo's bananas: 3"
+  },
+  "constraints": {
+    "mustUse": [
+      "FString"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Since Python 3.12 an f-string can use its own quotes inside `{ }`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Vývesná tabuľa",
+      "hints": [
+        "Od Pythonu 3.12 môže f-reťazec v `{ }` použiť vlastné úvodzovky."
+      ]
+    }
+  }
+}

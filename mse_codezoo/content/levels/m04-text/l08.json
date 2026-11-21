@@ -1,6 +1,6 @@
 {
   "id": "m04-l08",
-  "title": "Banana song",
+  "title": "{B} song",
   "module": "text",
   "concepts": [
     "text"
@@ -50,7 +50,7 @@
   "mode": "both_editable",
   "i18n": {
     "sk": {
-      "title": "Banánová pieseň",
+      "title": "Pieseň: {B.few}",
       "hints": [
         "\"na\" * 2 je \"nana\": * text zopakuje.",
         "say(\"ba\" + \"na\" * 2)"

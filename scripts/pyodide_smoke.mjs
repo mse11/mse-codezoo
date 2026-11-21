@@ -35,9 +35,19 @@ for path in levels:
     errors = solution_errors(load_level(path))
     if errors:
         failed.append("FAIL " + path.name + ": " + "; ".join(errors))
+# the offline build calls the API through dispatch_json() inside Pyodide
+import json, tempfile
+from pathlib import Path
+from mse_codezoo.profiles import ProfileStore
+from mse_codezoo.server import dispatch_json
+store = ProfileStore(Path(tempfile.mkdtemp()))
+listed = json.loads(dispatch_json("GET", "/api/levels", "{}", "{}", store, "sk"))
+ran = json.loads(dispatch_json("POST", "/api/run", "{}", json.dumps({"level": "m01-l01", "source": "step(4)\\ngrab()\\n"}), store, "en"))
+if listed["status"] != 200 or not ran["data"]["check"]["solved"]:
+    failed.append("FAIL dispatch_json: " + str(listed["status"]) + " " + str(ran["data"].get("check")))
 lines = [
     "Python " + sys.version.split()[0] + ": imported " + str(len(engine)) + " engine modules, "
-    + str(len(levels) - len(failed)) + "/" + str(len(levels)) + " levels solved"
+    + str(len(levels) - len(failed)) + "/" + str(len(levels)) + " levels solved, API answers"
 ] + failed
 chr(10).join(lines)
 `);

@@ -1,0 +1,103 @@
+{
+  "id": "m13-l07",
+  "title": "Keep the name (wraps)",
+  "module": "decorators",
+  "concepts": [
+    "functools.wraps",
+    "**kwargs"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "texts": [
+          "start dig",
+          "dig"
+        ]
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Without `@functools.wraps(func)` the wrapped function would be called `inner`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Zachovaj meno (wraps)",
+      "hints": [
+        "Bez `@functools.wraps(func)` by sa obalená funkcia volala `inner`."
+      ]
+    }
+  }
+}

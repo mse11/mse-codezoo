@@ -10,6 +10,12 @@ Goal types:
 * ``avoid`` ``{"item": "R"}``: never pick up an ``R``.
 * ``build`` ``{"logs": {"oak": 2, "pine": 1}}``: the beaver built exactly these logs into
   the dam.
+* ``print`` ``{"lines": ["3", "done"]}``: the program prints exactly these lines; or
+  ``{"text": "8 shells"}``: one of its lines is exactly this.
+* ``time`` ``{"within": 6}``: the run ends by tick 6 of the simulated clock (tasks and
+  threads that work at the same time finish sooner).
+* ``file`` ``{"name": "scores.txt", "text": "..."}``: the file holds exactly this text;
+  ``"contains"`` instead of ``"text"`` asks only for a part of it.
 * ``all`` ``{"goals": [...]}``: every goal in the list.
 
 Standard library only.
@@ -22,11 +28,11 @@ from typing import Any
 
 from mse_codezoo import ir
 from mse_codezoo.i18n import t
-from mse_codezoo.interpreter import RunResult
+from mse_codezoo.interpreter import RunResult, is_generator_body
 from mse_codezoo.lang_python import print_program
 from mse_codezoo.world import World
 
-GOAL_TYPES = ("collect_all", "reach", "say", "avoid", "build", "all")
+GOAL_TYPES = ("collect_all", "reach", "say", "avoid", "build", "print", "time", "file", "all")
 
 
 def concept_name(node_type: str) -> str:
@@ -60,6 +66,21 @@ def concept_name(node_type: str) -> str:
         "Comprehension": t("a comprehension"),
         "Recursion": t("a function that calls itself"),
         "Global": t("`global`"),
+        "Lambda": t("`lambda`"),
+        "Yield": t("`yield`"),
+        "YieldFrom": t("`yield from`"),
+        "Generator": t("a generator function (`yield`)"),
+        "GeneratorExp": t("a generator expression `( ... for ... )`"),
+        "ClassDef": t("a class"),
+        "Inheritance": t("a class built on another class"),
+        "Decorator": t("a decorator (`@`)"),
+        "With": t("`with`"),
+        "Match": t("`match` / `case`"),
+        "AsyncFunction": t("an `async def`"),
+        "Await": t("`await`"),
+        "AnnAssign": t("a type hint"),
+        "TString": t('a template string `t"..."`'),
+        "TypeAlias": t("a `type` statement"),
     }
     return names.get(node_type, f"`{node_type}`")
 
@@ -97,10 +118,28 @@ def used_node_types(program: ir.Program) -> set[str]:
             for inner in ir.walk(stmt)
         ):
             found.add("Recursion")
+        if isinstance(node, ir.FunctionDef | ir.ClassDef) and node.decorators:
+            found.add("Decorator")
+        if isinstance(node, ir.FunctionDef) and node.is_async:
+            found.add("AsyncFunction")
+        if isinstance(node, ir.FunctionDef) and is_generator_body(node.body):
+            found.add("Generator")
+        if isinstance(node, ir.Comprehension) and node.kind == "generator":
+            found.add("GeneratorExp")
+        if isinstance(node, ir.ClassDef) and node.bases:
+            found.add("Inheritance")
     return found
 
 
-PSEUDO_CONCEPTS = ("Recursion",)  # allowed in ``mustUse`` besides node type names
+# allowed in ``mustUse`` besides node type names
+PSEUDO_CONCEPTS = (
+    "Recursion",
+    "Decorator",
+    "AsyncFunction",
+    "Generator",
+    "GeneratorExp",
+    "Inheritance",
+)
 
 
 def goal_met(goal: dict[str, Any], world: World) -> tuple[bool, str]:
@@ -176,6 +215,57 @@ def goal_met(goal: dict[str, Any], world: World) -> tuple[bool, str]:
             if missing:
                 return False, t("The dam still needs: {logs}.", logs=missing)
             return False, t("The dam has the wrong logs in it: {logs}.", logs=world.built)
+        case "print" if "lines" in goal:
+            wanted = [str(line) for line in goal["lines"]]
+            if world.printed == wanted:
+                return True, t("The program printed just the right lines!")
+            shown = " / ".join(world.printed[-3:]) or t("nothing")
+            return False, t(
+                "The program should print {want} lines: {text}. It printed: {got}",
+                want=len(wanted),
+                text=" / ".join(wanted),
+                got=shown,
+            )
+        case "print":
+            text = str(goal["text"])
+            if text in world.printed:
+                return True, t('The program printed "{text}"!', text=text)
+            return False, t(
+                'The program should print "{text}". It printed: {got}',
+                text=text,
+                got=" / ".join(world.printed[-3:]) or t("nothing"),
+            )
+        case "time":
+            within = goal["within"]
+            if world.elapsed <= within:
+                return True, t("Done by tick {time}!", time=_ticks(world.elapsed))
+            return False, t(
+                "That took {time} ticks; it has to be done by tick {within}. "
+                "Can more happen at the same time?",
+                time=_ticks(world.elapsed),
+                within=within,
+            )
+        case "file":
+            name = str(goal["name"])
+            text = world.files.get(name)
+            if text is None:
+                return False, t("There is no file called {name} yet.", name=repr(name))
+            if "contains" in goal:
+                if str(goal["contains"]) in text:
+                    return True, t("The file {name} is just right!", name=repr(name))
+                return False, t(
+                    "The file {name} should have {want} in it.",
+                    name=repr(name),
+                    want=repr(goal["contains"]),
+                )
+            if text == str(goal["text"]):
+                return True, t("The file {name} is just right!", name=repr(name))
+            return False, t(
+                "The file {name} holds {got}, but should hold {want}.",
+                name=repr(name),
+                got=repr(text[:60]),
+                want=repr(str(goal["text"])[:60]),
+            )
         case "all":
             messages = []
             for part in goal["goals"]:
@@ -185,6 +275,44 @@ def goal_met(goal: dict[str, Any], world: World) -> tuple[bool, str]:
                 messages.append(message)
             return True, messages[0]  # the first goal is the main one
     raise ValueError(f"unknown goal type {goal.get('type')!r}")
+
+
+def miss_hint(world: World) -> str:
+    """Why the last empty grab() missed, in words a child can act on."""
+    from mse_codezoo.i18n import plural
+
+    miss = world.misses[-1]
+    pack = world.pack
+    near = miss.get("near", "none")
+    if near == "none":
+        return t("There was nothing to grab where the {animal} stood.", animal=pack.animal_name())
+    item = pack.noun(miss.get("target"))
+    count = int(miss.get("distance", 1))
+    steps = plural(
+        count,
+        {
+            "one": t("one step"),
+            "few": t("{n} steps (2-4)").replace("{n}", str(count)),
+            "many": t("{n} steps").replace("{n}", str(count)),
+        },
+    )
+    if near == "ahead":
+        return t("Almost! The {item} is {steps} further on.", item=item, steps=steps)
+    if near == "behind":
+        return t("You walked past it: the {item} is {steps} back.", item=item, steps=steps)
+    if near == "left":
+        return t("The {item} is to the left: turn first.", item=item)
+    if near == "right":
+        return t("The {item} is to the right: turn first.", item=item)
+    return t(
+        "The {item} is up in the tree: try `{climb}()`.",
+        item=item,
+        climb=pack.action_name("climb"),
+    )
+
+
+def _ticks(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:.2f}"
 
 
 def goal_errors(goal: Any, world: World | None) -> list[str]:
@@ -208,6 +336,22 @@ def goal_errors(goal: Any, world: World | None) -> list[str]:
         case "avoid":
             if not isinstance(goal.get("item"), str):
                 return ["goal.item must be a tile letter"]
+        case "print":
+            lines = goal.get("lines")
+            if lines is not None:
+                if not isinstance(lines, list) or not all(isinstance(x, str) for x in lines):
+                    return ["goal.lines must be a list of texts"]
+            elif not isinstance(goal.get("text"), str):
+                return ["goal.text must be the text to print"]
+        case "time":
+            within = goal.get("within")
+            if isinstance(within, bool) or not isinstance(within, int | float) or within <= 0:
+                return ["goal.within must be a positive number of ticks"]
+        case "file":
+            if not isinstance(goal.get("name"), str):
+                return ["goal.name must be a file name"]
+            if not isinstance(goal.get("text", goal.get("contains")), str):
+                return ['goal needs "text" or "contains"']
         case "build":
             logs = goal.get("logs")
             if not isinstance(logs, dict) or not all(
@@ -238,6 +382,12 @@ def check(
         solved, message = goal_met(goal, world)
         if solved and also is not None and not also[0]:
             solved, message = also
+        if not solved and result.error is None and world.misses:
+            message += " " + miss_hint(world)
+        if not solved and world.forgot_await:
+            message += " " + t(
+                "A trick that takes time only happens with `await` in front, like `await reach(3)`."
+            )
 
     stars = [Star(solved, t("Solved the level"))]
 

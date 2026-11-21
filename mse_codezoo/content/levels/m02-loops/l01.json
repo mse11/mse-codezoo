@@ -1,6 +1,6 @@
 {
   "id": "m02-l01",
-  "title": "Banana row",
+  "title": "{B} row",
   "module": "loops-1",
   "concepts": [
     "for",
@@ -39,7 +39,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Rad banánov",
+      "title": "Celý rad: {B.few}",
       "hints": [
         "Krok, chyť, krok, chyť... tie isté dva bloky päťkrát.",
         "for i in range(5): a v cykle step(1) a grab()."

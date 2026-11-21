@@ -31,6 +31,15 @@ Phase 3:
     GET  /api/profiles/<id>/habitat            stickers, their places, outfits
     POST /api/profiles/<id>/habitat {placed?, outfit?}
     POST /api/levels/check {level, solution}   -> {errors}: the editor's "Test" button
+
+Phase 4:
+    every request may pick the Python release with ``?python=3.12`` (or ``"python"`` in a
+    POST body); levels list their ``minPython`` and say when they are ``locked`` here.
+    GET  /api/info                     engine version, Python releases this engine reads
+    POST /api/levels/preview {level, animal?}  a level from the editor (or a share link),
+                                               checked, then ready to draw
+    All routes go through ``dispatch()``, which the offline browser build calls directly
+    inside Pyodide instead of over HTTP.
 """
 
 from __future__ import annotations
@@ -45,11 +54,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from mse_codezoo import __version__, ir
+from mse_codezoo import __version__, ir, versions
 from mse_codezoo.cards import card_for_code, card_public, cards_html
 from mse_codezoo.game import (
     attempt_from_run,
     level_to_json,
+    lock_reason,
     run_level,
     run_to_json,
     solution_errors,
@@ -89,7 +99,29 @@ class ApiError(Exception):
         self.message = message
 
 
-def list_levels() -> list[dict[str, Any]]:
+def _python(value: Any) -> tuple[int, int] | None:
+    try:
+        return versions.parse_version(value if isinstance(value, str) else None)
+    except ValueError as exc:
+        raise ApiError(HTTPStatus.BAD_REQUEST, str(exc)) from None
+
+
+def api_info() -> dict[str, Any]:
+    return {
+        "version": __version__,
+        "host": versions.version_text(versions.HOST),
+        "default": versions.version_text(versions.DEFAULT),
+        "releases": [
+            {"version": versions.version_text(v), "readable": versions.readable(v)}
+            for v in versions.RELEASES
+        ],
+    }
+
+
+def list_levels(
+    python: tuple[int, int] | None = None, animal: str | None = None
+) -> list[dict[str, Any]]:
+    """Every level; titles name the items of ``animal`` where it can play the level."""
     levels = []
     for path in level_files():
         try:
@@ -99,28 +131,32 @@ def list_levels() -> list[dict[str, Any]]:
         levels.append(
             {
                 "id": level.id,
-                "title": level.shown_title,
+                "title": level.title_for(animal),
                 "module": level.module,
                 "animal": level.animal,
                 "signature": level.signature,
                 "worlds": len(level.worlds()),
+                "minPython": versions.version_text(level.min_python) if level.min_python else None,
+                "locked": lock_reason(level, python),
             }
         )
     return levels
 
 
-def get_level(level_id: str, animal: str | None = None) -> dict[str, Any]:
+def get_level(
+    level_id: str, animal: str | None = None, python: tuple[int, int] | None = None
+) -> dict[str, Any]:
     if animal is not None and animal not in animal_names():
         animal = None
     try:
-        return level_to_json(find_level(level_id), animal)
+        return level_to_json(find_level(level_id), animal, python)
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
 
 
 def api_parse(body: dict[str, Any]) -> dict[str, Any]:
     source = _text(body, "source")
-    result = parse(source)
+    result = parse(source, _python(body.get("python")))
     return {
         "ok": result.ok,
         "diagnostics": [asdict(d) for d in result.diagnostics],
@@ -179,7 +215,14 @@ def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
             level = _inline_level(body["levelData"])
         else:
             level = find_level(_text(body, "level"))
-        run = run_level(level, source, animal=animal, variant=variant, modules=_modules(body))
+        run = run_level(
+            level,
+            source,
+            animal=animal,
+            variant=variant,
+            modules=_modules(body),
+            python=_python(body.get("python")),
+        )
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
     data = run_to_json(run)
@@ -188,7 +231,10 @@ def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
     if isinstance(player, str) and player and "levelData" not in body:
         data["progress"] = store.record(player, attempt_from_run(run, source))
         levels = _all_levels()
-        data["newStickers"] = store.award(player, levels)
+        # stickers come with a solved run, never right after a failed one (a player who
+        # earned one earlier gets it with their next success)
+        solved = run.check is not None and run.check.solved
+        data["newStickers"] = store.award(player, levels) if solved else []
         data["suggestion"] = store.suggest(player, level, levels)
     return data
 
@@ -320,6 +366,76 @@ def _text(body: dict[str, Any], key: str) -> str:
     return value
 
 
+def dispatch(
+    method: str, path: str, query: dict[str, str], body: dict[str, Any], store: ProfileStore
+) -> Any:
+    """Answer one API request; raises ``ApiError``, ``PinError`` or ``ProfileError``."""
+    if method == "GET":
+        python = _python(query.get("python"))
+        if path == "/api/levels":
+            animal = query.get("animal")
+            return list_levels(python, animal if animal in animal_names() else None)
+        if path == "/api/info":
+            return api_info()
+        if path == "/api/profiles":
+            return api_profiles(store)
+        if match := PROGRESS_PATH.match(path):
+            return api_progress(match["id"], store)
+        if match := HABITAT_PATH.match(path):
+            return store.habitat(match["id"])
+        if path == "/api/animals":
+            return api_animals()
+        if path.startswith("/api/levels/"):
+            return get_level(
+                unquote(path.removeprefix("/api/levels/")), query.get("animal"), python
+            )
+        raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
+    if path == "/api/parse":
+        return api_parse(body)
+    if path == "/api/print":
+        return api_print(body)
+    if path == "/api/run":
+        return api_run(body, store)
+    if path == "/api/profiles":
+        return api_add_profile(body, store)
+    if match := TIME_PATH.match(path):
+        return api_time(match["id"], body, store)
+    if match := PARENT_PATH.match(path):
+        return api_parent(match["action"], body, store)
+    if match := UNLOCK_PATH.match(path):
+        return api_unlock(match["id"], body, store)
+    if match := HABITAT_PATH.match(path):
+        return api_set_habitat(match["id"], body, store)
+    if path == "/api/story":
+        return api_story(body)
+    if path == "/api/levels/check":
+        return api_check_level(body)
+    if path == "/api/levels/preview":
+        animal = body.get("animal")
+        if animal is not None and animal not in animal_names():
+            animal = None
+        level = _inline_level(body.get("level"))
+        return level_to_json(level, animal, _python(body.get("python")))
+    raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
+
+
+def dispatch_json(
+    method: str, path: str, query_json: str, body_json: str, store: ProfileStore, lang: str
+) -> str:
+    """``dispatch`` with JSON in and out, for the offline build's web worker."""
+    query = json.loads(query_json or "{}")
+    body = json.loads(body_json or "{}")
+    with use_lang(lang):
+        try:
+            return json.dumps({"status": 200, "data": dispatch(method, path, query, body, store)})
+        except ApiError as exc:
+            return json.dumps({"status": int(exc.status), "data": {"error": exc.message}})
+        except PinError as exc:
+            return json.dumps({"status": 403, "data": {"error": str(exc)}})
+        except ProfileError as exc:
+            return json.dumps({"status": 400, "data": {"error": str(exc)}})
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = f"codezoo/{__version__}"
 
@@ -345,23 +461,11 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         try:
             store = self.server.store  # type: ignore[attr-defined]
-            if path == "/api/levels":
-                self._json(list_levels())
-            elif path == "/api/profiles":
-                self._json(api_profiles(store))
-            elif match := PROGRESS_PATH.match(path):
-                self._json(api_progress(match["id"], store))
-            elif match := HABITAT_PATH.match(path):
-                self._json(store.habitat(match["id"]))
-            elif path == "/api/animals":
-                self._json(api_animals())
-            elif path == "/cards.html":
+            if path == "/cards.html":
                 self._cards()
-            elif path.startswith("/api/levels/"):
-                animal = parse_qs(urlsplit(self.path).query).get("animal", [None])[0]
-                self._json(get_level(unquote(path.removeprefix("/api/levels/")), animal))
             elif path.startswith("/api/"):
-                raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
+                query = {k: v[0] for k, v in parse_qs(urlsplit(self.path).query).items()}
+                self._json(dispatch("GET", path, query, {}, store))
             else:
                 self._static(path)
         except ApiError as exc:
@@ -378,36 +482,13 @@ class Handler(BaseHTTPRequestHandler):
             raw = self._read_body()  # always read first: replying early resets the connection
             body = self._parse_body(raw)
             with use_lang(self._lang(body)):
-                self._json(self._post(path, body, store))
+                self._json(dispatch("POST", path, {}, body, store))
         except ApiError as exc:
             self._json({"error": exc.message}, exc.status)
         except PinError as exc:
             self._json({"error": str(exc)}, HTTPStatus.FORBIDDEN)
         except ProfileError as exc:
             self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
-
-    def _post(self, path: str, body: dict[str, Any], store: ProfileStore) -> Any:
-        if path == "/api/parse":
-            return api_parse(body)
-        if path == "/api/print":
-            return api_print(body)
-        if path == "/api/run":
-            return api_run(body, store)
-        if path == "/api/profiles":
-            return api_add_profile(body, store)
-        if match := TIME_PATH.match(path):
-            return api_time(match["id"], body, store)
-        if match := PARENT_PATH.match(path):
-            return api_parent(match["action"], body, store)
-        if match := UNLOCK_PATH.match(path):
-            return api_unlock(match["id"], body, store)
-        if match := HABITAT_PATH.match(path):
-            return api_set_habitat(match["id"], body, store)
-        if path == "/api/story":
-            return api_story(body)
-        if path == "/api/levels/check":
-            return api_check_level(body)
-        raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
 
     def _cards(self) -> None:
         animal = parse_qs(urlsplit(self.path).query).get("animal", ["monkey"])[0]

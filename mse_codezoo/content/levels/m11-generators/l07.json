@@ -1,0 +1,101 @@
+{
+  "id": "m11-l07",
+  "title": "Nectar pipeline",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "generator",
+    "pipeline",
+    "infinite"
+  ],
+  "animal": "bee",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "6",
+      "12",
+      "18"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Generator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "fly"
+  ],
+  "hints": [
+    "`flowers()` never ends, but it only works when asked.",
+    "`nectar` takes flowers one at a time and yields twice every third one."
+  ],
+  "mode": "code_first",
+  "starter": "def flowers():\n    n = 0\n    while True:\n        n += 1\n        yield n\n\n# write nectar(source) here\n",
+  "i18n": {
+    "sk": {
+      "title": "Nektárový reťazec",
+      "hints": [
+        "`flowers()` nikdy neskončí, ale pracuje len keď ju niekto požiada.",
+        "`nectar` berie kvety po jednom a pri každom treťom vráti dvojnásobok."
+      ]
+    }
+  }
+}

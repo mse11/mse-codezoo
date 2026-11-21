@@ -1,0 +1,93 @@
+{
+  "id": "m12-l07",
+  "title": "Forgot self",
+  "module": "objects",
+  "concepts": [
+    "method",
+    "self",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "2"
+  },
+  "constraints": {
+    "mustUse": [
+      "ClassDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "A method always gets the object first: `def add(self):`."
+  ],
+  "mode": "code_first",
+  "starter": "class Counter:\n    def __init__(self):\n        self.n = 0\n\n    def add():\n        self.n += 1\n\nc = Counter()\nc.add()\nc.add()\nsay(c.n)\n",
+  "i18n": {
+    "sk": {
+      "title": "Zabudnuté self",
+      "hints": [
+        "Metóda vždy dostane ako prvý objekt: `def add(self):`."
+      ]
+    }
+  }
+}

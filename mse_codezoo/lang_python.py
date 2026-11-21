@@ -50,6 +50,7 @@ BOOL_OPS: dict[type[ast.boolop], str] = {ast.And: "and", ast.Or: "or"}
 CONVERSIONS = {ord("r"): "r", ord("s"): "s", ord("a"): "a"}
 
 # Python's operator precedence, weakest first (only the levels CodeZoo uses)
+LAMBDA_PRECEDENCE = 0  # also `yield`, which needs brackets almost everywhere
 IFEXP_PRECEDENCE = 1
 BOOL_PRECEDENCE = {"or": 2, "and": 3}
 NOT_PRECEDENCE = 4
@@ -68,6 +69,7 @@ PRECEDENCE = {
 }
 UNARY_PRECEDENCE = 12
 POW_PRECEDENCE = 13
+AWAIT_PRECEDENCE = 14
 ATOM_PRECEDENCE = 15
 
 FRIENDLY = {
@@ -101,6 +103,7 @@ FRIENDLY = {
     "Attribute": "dots like `a.b`",
     "Subscript": "indexing like `a[0]`",
     "TemplateStr": 'template strings (`t"..."`)',
+    "Interpolation": 'template strings (`t"..."`)',
     "Lambda": "`lambda`",
     "ListComp": "comprehensions",
     "SetComp": "comprehensions",
@@ -161,20 +164,57 @@ def friendly_name(node: ast.AST) -> str:
 # --- parsing -----------------------------------------------------------------
 
 
-def parse(text: str, version: tuple[int, int] = BASELINE, *, id_prefix: str = "") -> ParseResult:
-    """Parse Python ``text`` into IR, accepting only syntax available in ``version``.
+def parse(text: str, version: tuple[int, int] | None = None, *, id_prefix: str = "") -> ParseResult:
+    """Parse Python ``text`` into IR, accepting only syntax available in ``version``
+    (by default, the newest release this computer's Python can read).
 
     ``id_prefix`` keeps node ids of a helper file apart from the main program's.
     """
+    from mse_codezoo import versions
+
+    version = version or versions.DEFAULT
     try:
-        tree = ast.parse(text, feature_version=version)
+        try:
+            tree = ast.parse(text, feature_version=min(version, versions.HOST))
+        except SyntaxError:
+            # newer syntax than `version`? Read it with everything this Python knows, so the
+            # message can name the release that brought it
+            tree = ast.parse(text, feature_version=versions.HOST)
+            if not [n for n in versions.newer_syntax(tree, text) if n.since > version]:
+                raise
     except SyntaxError as exc:
         line = exc.lineno or 1
         message = t("Python can't read line {line}: {why}.", line=line, why=exc.msg)
+        hint = versions.host_hint(text)
+        if hint is not None:
+            message += " " + t(
+                "{what} need Python {since}, but this computer runs Python {host}.",
+                what=t(hint[0]),
+                since=versions.version_text(hint[1]),
+                host=versions.version_text(versions.HOST),
+            )
         return ParseResult(None, [Diagnostic(line, max((exc.offset or 1) - 1, 0), message)])
     except ValueError as exc:  # e.g. null bytes in the source
         return ParseResult(
             None, [Diagnostic(1, 0, t("Python can't read this file: {why}.", why=exc))]
+        )
+    too_new = [n for n in versions.newer_syntax(tree, text) if n.since > version]
+    if too_new:
+        return ParseResult(
+            None,
+            [
+                Diagnostic(
+                    n.line,
+                    n.col,
+                    t(
+                        "{what} arrived in Python {since}; this program is set to Python {now}.",
+                        what=t(n.what),
+                        since=versions.version_text(n.since),
+                        now=versions.version_text(version),
+                    ),
+                )
+                for n in too_new
+            ],
         )
     converter = _Converter(text, id_prefix)
     program = converter.program(tree)
@@ -219,8 +259,8 @@ class _Converter:
     def body(self, stmts: list[ast.stmt], indent: int, stop_line: float) -> list[ir.Stmt]:
         out: list[ir.Stmt] = []
         for i, node in enumerate(stmts):
-            out += self.take_comments(before=node.lineno)
-            next_line = stmts[i + 1].lineno if i + 1 < len(stmts) else stop_line
+            out += self.take_comments(before=first_line(node))
+            next_line = first_line(stmts[i + 1]) if i + 1 < len(stmts) else stop_line
             out.append(self.stmt(node, next_line))
         out += self.take_comments(before=stop_line, min_col=indent)
         return out
@@ -244,14 +284,16 @@ class _Converter:
 
     def stmt(self, node: ast.stmt, next_line: float) -> ir.Stmt:
         stmt_id = self.new_id()
-        self.positions[stmt_id] = self.span(node)
+        start = first_line(node)
+        span = self.span(node)
+        self.positions[stmt_id] = Span(start, span.col, span.end_line, span.end_col)
         try:
             result = self._stmt(node, stmt_id, next_line)
         except Unsupported as exc:
             end = node.end_lineno or node.lineno
             # inner comments are part of the raw text; don't emit them twice
             self.comments = [c for c in self.comments if c[0] > end]
-            text = textwrap.dedent("\n".join(self.lines[node.lineno - 1 : end]))
+            text = textwrap.dedent("\n".join(self.lines[start - 1 : end]))
             reason = str(exc)
             self.diagnostics.append(
                 Diagnostic(
@@ -276,8 +318,15 @@ class _Converter:
                 return ir.Assign(id=stmt_id, target=self.target(target), value=self.expr(value))
             case ast.Assign():
                 raise Unsupported("`a = b = ...` with several `=`")
+            case ast.AnnAssign(target=ast.Name() | ast.Attribute() as target, annotation=ann):
+                return ir.AnnAssign(
+                    id=stmt_id,
+                    target=self.target(target),
+                    annotation=self.expr(ann),
+                    value=None if node.value is None else self.expr(node.value),
+                )
             case ast.AugAssign(
-                target=ast.Name() | ast.Subscript() as target, op=op, value=value
+                target=ast.Name() | ast.Subscript() | ast.Attribute() as target, op=op, value=value
             ) if type(op) in BIN_OPS:
                 return ir.AugAssign(
                     id=stmt_id,
@@ -310,8 +359,38 @@ class _Converter:
                     test=header_test,
                     body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
                 )
-            case ast.FunctionDef():
+            case ast.FunctionDef() | ast.AsyncFunctionDef():
                 return self.function(node, stmt_id, next_line)
+            case ast.ClassDef():
+                return self.class_(node, stmt_id, next_line)
+            case ast.With(items=items, body=body) | ast.AsyncWith(items=items, body=body):
+                with_items = [
+                    ir.WithItem(
+                        id=self.new_id(),
+                        context=self.expr(item.context_expr),
+                        target=None
+                        if item.optional_vars is None
+                        else self.target(item.optional_vars),
+                    )
+                    for item in items
+                ]
+                return ir.With(
+                    id=stmt_id,
+                    items=with_items,
+                    body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
+                    is_async=isinstance(node, ast.AsyncWith),
+                )
+            case ast.Nonlocal(names=names):
+                return ir.Nonlocal(id=stmt_id, names=list(names))
+            case ast.Match():
+                return self.match_(node, stmt_id, next_line)
+            case _ if type(node).__name__ == "TypeAlias":
+                return ir.TypeAlias(
+                    id=stmt_id,
+                    name=node.name.id,  # type: ignore[attr-defined]
+                    type_params=self.type_params(node),
+                    value=self.expr(node.value),  # type: ignore[attr-defined]
+                )
             case ast.Return(value=value):
                 return ir.Return(id=stmt_id, value=None if value is None else self.expr(value))
             case ast.Break():
@@ -320,7 +399,7 @@ class _Converter:
                 return ir.Continue(id=stmt_id)
             case ast.Global(names=names):
                 return ir.Global(id=stmt_id, names=list(names))
-            case ast.Try():
+            case ast.Try() | ast.TryStar():
                 return self.try_(node, stmt_id, next_line)
             case ast.Raise(exc=exc, cause=None):
                 return ir.Raise(id=stmt_id, exc=None if exc is None else self.expr(exc))
@@ -333,44 +412,143 @@ class _Converter:
             case ast.Delete(targets=targets):
                 return ir.Delete(id=stmt_id, targets=[self.target(t) for t in targets])
             case ast.Import(names=[ast.alias(name=module, asname=None)]) if "." not in module:
-                return ir.Import(id=stmt_id, module=module)
+                return ir.Import(id=stmt_id, module=module, lazy=_is_lazy(node))
             case ast.ImportFrom(module=str() as module, names=names, level=0) if (
                 "." not in module and all(a.asname is None and a.name != "*" for a in names)
             ):
-                return ir.Import(id=stmt_id, module=module, names=[a.name for a in names])
+                return ir.Import(
+                    id=stmt_id, module=module, names=[a.name for a in names], lazy=_is_lazy(node)
+                )
             case ast.Pass():
                 return ir.Pass(id=stmt_id)
         raise Unsupported(friendly_name(node))
 
-    def function(self, node: ast.FunctionDef, stmt_id: str, next_line: float) -> ir.FunctionDef:
-        args = node.args
-        if node.decorator_list:
-            raise Unsupported("decorators")
-        if args.posonlyargs or args.vararg or args.kwonlyargs or args.kwarg:
-            raise Unsupported("`*args` and other special inputs")
-        if node.returns is not None or any(a.annotation is not None for a in args.args):
-            raise Unsupported("type hints")
-        if getattr(node, "type_params", None):
-            raise Unsupported("type parameters")
-        defaults: list[ast.expr | None] = [None] * (len(args.args) - len(args.defaults))
-        defaults += list(args.defaults)
-        params = [
-            ir.Param(
-                id=self.new_id(),
-                name=arg.arg,
-                default=None if default is None else self.expr(default),
-            )
-            for arg, default in zip(args.args, defaults, strict=True)
-        ]
+    def function(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef, stmt_id: str, next_line: float
+    ) -> ir.FunctionDef:
+        decorators = [self.expr(d) for d in node.decorator_list]
+        type_params = self.type_params(node)
+        params = self.params(node.args)
+        returns = None if node.returns is None else self.expr(node.returns)
         body = node.body
         return ir.FunctionDef(
             id=stmt_id,
             name=node.name,
             params=params,
             body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
+            decorators=decorators,
+            is_async=isinstance(node, ast.AsyncFunctionDef),
+            returns=returns,
+            type_params=type_params,
         )
 
-    def try_(self, node: ast.Try, stmt_id: str, next_line: float) -> ir.Try:
+    def params(self, args: ast.arguments) -> list[ir.Param]:
+        if args.posonlyargs:
+            raise Unsupported("`/` in a function's inputs")
+        defaults: list[ast.expr | None] = [None] * (len(args.args) - len(args.defaults))
+        defaults += list(args.defaults)
+        out = [
+            self.param(arg, default, "plain")
+            for arg, default in zip(args.args, defaults, strict=True)
+        ]
+        if args.vararg is not None:
+            out.append(self.param(args.vararg, None, "args"))
+        for arg, default in zip(args.kwonlyargs, args.kw_defaults, strict=True):
+            out.append(self.param(arg, default, "kwonly"))
+        if args.kwarg is not None:
+            out.append(self.param(args.kwarg, None, "kwargs"))
+        return out
+
+    def param(self, arg: ast.arg, default: ast.expr | None, kind: str) -> ir.Param:
+        return ir.Param(
+            id=self.new_id(),
+            name=arg.arg,
+            default=None if default is None else self.expr(default),
+            kind=kind,
+            annotation=None if arg.annotation is None else self.expr(arg.annotation),
+        )
+
+    def type_params(self, node: ast.AST) -> list[str]:
+        names = []
+        for param in getattr(node, "type_params", None) or []:
+            if type(param).__name__ != "TypeVar" or param.bound is not None:
+                raise Unsupported("type parameters")
+            if getattr(param, "default_value", None) is not None:
+                raise Unsupported("type parameters")
+            names.append(param.name)
+        return names
+
+    def class_(self, node: ast.ClassDef, stmt_id: str, next_line: float) -> ir.ClassDef:
+        decorators = [self.expr(d) for d in node.decorator_list]
+        type_params = self.type_params(node)
+        if any(k.arg is None for k in node.keywords):
+            raise Unsupported("`**` unpacking")
+        bases = [self.expr(b) for b in node.bases]
+        keywords = [self.keyword(k) for k in node.keywords]
+        body = node.body
+        return ir.ClassDef(
+            id=stmt_id,
+            name=node.name,
+            bases=bases,
+            keywords=keywords,
+            body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
+            decorators=decorators,
+            type_params=type_params,
+        )
+
+    def match_(self, node: ast.Match, stmt_id: str, next_line: float) -> ir.Match:
+        subject = self.expr(node.subject)
+        starts: list[float] = [c.pattern.lineno for c in node.cases] + [next_line]
+        cases = []
+        for number, case in enumerate(node.cases):
+            case_id = self.new_id()
+            line = case.pattern.lineno
+            self.positions[case_id] = Span(line, 0, line, len(self.lines[line - 1]))
+            pattern = self.pattern(case.pattern)
+            guard = None if case.guard is None else self.expr(case.guard)
+            inner = self.body(
+                case.body, indent=case.body[0].col_offset, stop_line=starts[number + 1]
+            )
+            cases.append(ir.MatchCase(id=case_id, pattern=pattern, guard=guard, body=inner))
+        return ir.Match(id=stmt_id, subject=subject, cases=cases)
+
+    def pattern(self, node: ast.pattern) -> ir.Pattern:
+        pattern_id = self.new_id()
+        match node:
+            case ast.MatchValue(value=value):
+                return ir.PatternValue(id=pattern_id, value=self.expr(value))
+            case ast.MatchSingleton(value=value):
+                return ir.PatternValue(id=pattern_id, value=ir.Const(id=self.new_id(), value=value))
+            case ast.MatchAs(pattern=None, name=name):
+                return ir.PatternCapture(id=pattern_id, name=name)
+            case ast.MatchAs(pattern=inner, name=str() as name):
+                return ir.PatternAs(id=pattern_id, pattern=self.pattern(inner), name=name)
+            case ast.MatchOr(patterns=patterns):
+                return ir.PatternOr(id=pattern_id, patterns=[self.pattern(p) for p in patterns])
+            case ast.MatchSequence(patterns=patterns):
+                return ir.PatternSequence(
+                    id=pattern_id, patterns=[self.pattern(p) for p in patterns]
+                )
+            case ast.MatchStar(name=name):
+                return ir.PatternStar(id=pattern_id, name=name)
+            case ast.MatchMapping(keys=keys, patterns=patterns, rest=rest):
+                return ir.PatternMapping(
+                    id=pattern_id,
+                    keys=[self.expr(k) for k in keys],
+                    patterns=[self.pattern(p) for p in patterns],
+                    rest=rest,
+                )
+            case ast.MatchClass(cls=cls, patterns=patterns, kwd_attrs=names, kwd_patterns=kwds):
+                return ir.PatternClass(
+                    id=pattern_id,
+                    cls=self.expr(cls),
+                    patterns=[self.pattern(p) for p in patterns],
+                    kwd_names=list(names),
+                    kwd_patterns=[self.pattern(p) for p in kwds],
+                )
+        raise Unsupported("this kind of `case`")
+
+    def try_(self, node: ast.Try | ast.TryStar, stmt_id: str, next_line: float) -> ir.Try:
         def header(keyword: str, section: list[ast.stmt], after: int) -> int:
             """The line of the `else:` / `finally:` that opens ``section``."""
             for line in range(section[0].lineno, after, -1):
@@ -424,7 +602,14 @@ class _Converter:
             finalbody = self._header_note(finally_line, node.finalbody[0].lineno) + self.body(
                 node.finalbody, indent=node.finalbody[0].col_offset, stop_line=rest[0]
             )
-        return ir.Try(id=stmt_id, body=body, handlers=handlers, orelse=orelse, finalbody=finalbody)
+        return ir.Try(
+            id=stmt_id,
+            body=body,
+            handlers=handlers,
+            orelse=orelse,
+            finalbody=finalbody,
+            star=isinstance(node, ast.TryStar),
+        )
 
     def _header_note(self, line: float, first_line: int) -> list[ir.Stmt]:
         """A comment on an `except:` / `else:` / `finally:` line, kept as a note."""
@@ -445,7 +630,7 @@ class _Converter:
         match node:
             case ast.Name():
                 return self.name(node)
-            case ast.Subscript():
+            case ast.Subscript() | ast.Attribute():
                 return self.expr(node)
             case ast.Tuple(elts=elts) | ast.List(elts=elts):
                 tuple_id = self.new_id()
@@ -507,26 +692,18 @@ class _Converter:
             case ast.Name(id=name):
                 return ir.Name(id=expr_id, name=name)
             case ast.Call(func=ast.Name(id=func), args=args, keywords=keywords):
-                if any(isinstance(arg, ast.Starred) for arg in args):
-                    raise Unsupported("`*` unpacking")
-                if any(k.arg is None for k in keywords):
-                    raise Unsupported("`**` unpacking")
                 return ir.Call(
                     id=expr_id,
                     func=func,
-                    args=[self.expr(a) for a in args],
+                    args=[self.element(a) for a in args],
                     keywords=[self.keyword(k) for k in keywords],
                 )
             case ast.Call(func=ast.Attribute(value=obj, attr=method), args=args, keywords=keywords):
-                if any(isinstance(arg, ast.Starred) for arg in args):
-                    raise Unsupported("`*` unpacking")
-                if any(k.arg is None for k in keywords):
-                    raise Unsupported("`**` unpacking")
                 return ir.MethodCall(
                     id=expr_id,
                     obj=self.expr(obj),
                     method=method,
-                    args=[self.expr(a) for a in args],
+                    args=[self.element(a) for a in args],
                     keywords=[self.keyword(k) for k in keywords],
                 )
             case ast.Call():
@@ -575,11 +752,31 @@ class _Converter:
                 )
             case ast.ListComp(elt=elt, generators=generators):
                 return ir.Comprehension(
-                    id=expr_id, kind="list", elt=self.expr(elt), generators=self.comp(generators)
+                    id=expr_id, kind="list", elt=self.element(elt), generators=self.comp(generators)
                 )
             case ast.SetComp(elt=elt, generators=generators):
                 return ir.Comprehension(
-                    id=expr_id, kind="set", elt=self.expr(elt), generators=self.comp(generators)
+                    id=expr_id, kind="set", elt=self.element(elt), generators=self.comp(generators)
+                )
+            case ast.GeneratorExp(elt=elt, generators=generators):
+                return ir.Comprehension(
+                    id=expr_id,
+                    kind="generator",
+                    elt=self.element(elt),
+                    generators=self.comp(generators),
+                )
+            case ast.Lambda(args=args, body=body):
+                return ir.Lambda(id=expr_id, params=self.params(args), body=self.expr(body))
+            case ast.Yield(value=value):
+                return ir.Yield(id=expr_id, value=None if value is None else self.expr(value))
+            case ast.YieldFrom(value=value):
+                return ir.YieldFrom(id=expr_id, value=self.expr(value))
+            case ast.Await(value=value):
+                return ir.Await(id=expr_id, value=self.expr(value))
+            case _ if type(node).__name__ == "TemplateStr":
+                return ir.TString(
+                    id=expr_id,
+                    parts=[self.fstring_part(v) for v in node.values],  # type: ignore[attr-defined]
                 )
             case ast.DictComp(key=key, value=value, generators=generators):
                 return ir.Comprehension(
@@ -617,7 +814,6 @@ class _Converter:
         return out
 
     def keyword(self, node: ast.keyword) -> ir.Keyword:
-        assert node.arg is not None
         return ir.Keyword(id=self.new_id(), name=node.arg, value=self.expr(node.value))
 
     def index(self, node: ast.expr) -> ir.Expr:
@@ -629,14 +825,12 @@ class _Converter:
                 for part in (node.lower, node.upper, node.step)
             )
             return ir.Slice(id=slice_id, lower=lower, upper=upper, step=step)
-        if isinstance(node, ast.Tuple):
-            raise Unsupported("indexing with a comma")
         return self.expr(node)
 
     def fstring_part(self, node: ast.expr) -> ir.Expr:
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return ir.Const(id=self.new_id(), value=node.value)
-        if not isinstance(node, ast.FormattedValue):
+        if not isinstance(node, ast.FormattedValue) and type(node).__name__ != "Interpolation":
             raise Unsupported("this kind of f-string")
         spec = None
         if node.format_spec is not None:
@@ -650,6 +844,16 @@ class _Converter:
             conversion=CONVERSIONS.get(node.conversion),
             spec=spec,
         )
+
+
+def first_line(node: ast.stmt) -> int:
+    """Where a statement starts: its first decorator, if it has any."""
+    decorators = getattr(node, "decorator_list", None) or []
+    return min([node.lineno, *(d.lineno for d in decorators)])
+
+
+def _is_lazy(node: ast.stmt) -> bool:
+    return bool(getattr(node, "is_lazy", False))
 
 
 # --- printing ----------------------------------------------------------------
@@ -686,17 +890,47 @@ class _Printer:
                 self.emit(f"{pad}for {target_to_text(target)} in {expr_to_text(iterable)}:", stmt)
                 self.body(body, depth + 1)
             case ir.FunctionDef(name=name, params=params, body=body):
-                inputs = ", ".join(
-                    p.name if p.default is None else f"{p.name}={expr_to_text(p.default)}"
-                    for p in params
+                self.lines += [f"{pad}@{expr_to_text(d)}" for d in stmt.decorators]
+                keyword = "async def" if stmt.is_async else "def"
+                head = (
+                    f"{pad}{keyword} {name}{_type_params(stmt.type_params)}({params_text(params)})"
                 )
-                self.emit(f"{pad}def {name}({inputs}):", stmt)
+                if stmt.returns is not None:
+                    head += f" -> {expr_to_text(stmt.returns)}"
+                self.emit(head + ":", stmt)
                 self.body(body, depth + 1)
+            case ir.ClassDef(name=name, bases=bases, keywords=keywords, body=body):
+                self.lines += [f"{pad}@{expr_to_text(d)}" for d in stmt.decorators]
+                parts = [expr_to_text(b) for b in bases]
+                parts += [f"{k.name}={expr_to_text(k.value)}" for k in keywords]
+                inside = f"({', '.join(parts)})" if parts else ""
+                self.emit(f"{pad}class {name}{_type_params(stmt.type_params)}{inside}:", stmt)
+                self.body(body, depth + 1)
+            case ir.With(items=items, body=body):
+                keyword = "async with" if stmt.is_async else "with"
+                parts = [
+                    expr_to_text(item.context)
+                    + ("" if item.target is None else f" as {target_to_text(item.target)}")
+                    for item in items
+                ]
+                self.emit(f"{pad}{keyword} {', '.join(parts)}:", stmt)
+                self.body(body, depth + 1)
+            case ir.Match(subject=subject, cases=cases):
+                self.emit(f"{pad}match {target_to_text(subject)}:", stmt)
+                inner = INDENT * (depth + 1)
+                for case in cases:
+                    line = f"{inner}case {pattern_to_text(case.pattern, top=True)}"
+                    if case.guard is not None:
+                        line += f" if {expr_to_text(case.guard)}"
+                    self.lines.append(line + ":")
+                    row = len(self.lines)
+                    self.source_map[case.id] = Span(row, len(inner), row, len(self.lines[-1]))
+                    self.body(case.body, depth + 2)
             case ir.Try(body=body, handlers=handlers, orelse=orelse, finalbody=finalbody):
                 self.emit(f"{pad}try:", stmt)
                 self.body(body, depth + 1)
                 for handler in handlers:
-                    line = f"{pad}except"
+                    line = f"{pad}except*" if stmt.star else f"{pad}except"
                     if handler.kind is not None:
                         line += " " + expr_to_text(handler.kind)
                     if handler.name is not None:
@@ -749,6 +983,14 @@ def _simple_stmt_text(stmt: ir.Stmt) -> str:
             return expr_to_text(value)
         case ir.Assign(target=target, value=value):
             return f"{target_to_text(target)} = {target_to_text(value)}"
+        case ir.AnnAssign(target=target, annotation=annotation, value=None):
+            return f"{expr_to_text(target)}: {expr_to_text(annotation)}"
+        case ir.AnnAssign(target=target, annotation=annotation, value=value):
+            return f"{expr_to_text(target)}: {expr_to_text(annotation)} = {target_to_text(value)}"
+        case ir.Nonlocal(names=names):
+            return f"nonlocal {', '.join(names)}"
+        case ir.TypeAlias(name=name, type_params=type_params, value=value):
+            return f"type {name}{_type_params(type_params)} = {expr_to_text(value)}"
         case ir.AugAssign(target=target, op=op, value=value):
             return f"{target_to_text(target)} {op}= {expr_to_text(value)}"
         case ir.Return(value=None):
@@ -771,13 +1013,103 @@ def _simple_stmt_text(stmt: ir.Stmt) -> str:
             return f"assert {expr_to_text(test)}, {expr_to_text(msg)}"
         case ir.Delete(targets=targets):
             return f"del {', '.join(target_to_text(t) for t in targets)}"
-        case ir.Import(module=module, names=[]):
-            return f"import {module}"
-        case ir.Import(module=module, names=names):
-            return f"from {module} import {', '.join(names)}"
+        case ir.Import(module=module, names=[], lazy=lazy):
+            return f"{'lazy ' if lazy else ''}import {module}"
+        case ir.Import(module=module, names=names, lazy=lazy):
+            return f"{'lazy ' if lazy else ''}from {module} import {', '.join(names)}"
         case ir.Pass():
             return "pass"
     raise TypeError(f"cannot print {type(stmt).__name__}")
+
+
+def params_text(params: list[ir.Param]) -> str:
+    """A function's inputs: ``a, b: int = 2, *rest, key=None, **options``."""
+    parts = []
+    starred = any(p.kind == "args" for p in params)
+    for param in params:
+        if param.kind == "kwonly" and not starred:
+            parts.append("*")
+            starred = True
+        prefix = {"args": "*", "kwargs": "**"}.get(param.kind, "")
+        text = prefix + param.name
+        if param.annotation is not None:
+            text += f": {expr_to_text(param.annotation)}"
+        if param.default is not None:
+            sep = " = " if param.annotation is not None else "="
+            text += sep + expr_to_text(param.default)
+        parts.append(text)
+    return ", ".join(parts)
+
+
+def _type_params(names: list[str]) -> str:
+    return f"[{', '.join(names)}]" if names else ""
+
+
+def pattern_to_text(pattern: ir.Pattern, top: bool = False) -> str:
+    """A ``case`` pattern."""
+    match pattern:
+        case ir.PatternValue(value=value):
+            return expr_to_text(value)
+        case ir.PatternCapture(name=name):
+            return name or "_"
+        case ir.PatternStar(name=name):
+            return "*" + (name or "_")
+        case ir.PatternAs(pattern=inner, name=name):
+            text = f"{pattern_to_text(inner)} as {name}"
+            return text if top else f"({text})"
+        case ir.PatternOr(patterns=patterns):
+            text = " | ".join(pattern_to_text(p) for p in patterns)
+            return text if top else f"({text})"
+        case ir.PatternSequence(patterns=[one]):
+            return f"[{pattern_to_text(one)}]"
+        case ir.PatternSequence(patterns=patterns):
+            return "(" + ", ".join(pattern_to_text(p) for p in patterns) + ")"
+        case ir.PatternMapping(keys=keys, patterns=patterns, rest=rest):
+            items = [
+                f"{expr_to_text(k)}: {pattern_to_text(p)}"
+                for k, p in zip(keys, patterns, strict=True)
+            ]
+            if rest is not None:
+                items.append(f"**{rest}")
+            return "{" + ", ".join(items) + "}"
+        case ir.PatternClass(cls=cls, patterns=patterns, kwd_names=names, kwd_patterns=kwds):
+            items = [pattern_to_text(p) for p in patterns]
+            items += [f"{n}={pattern_to_text(p)}" for n, p in zip(names, kwds, strict=True)]
+            return f"{expr_to_text(cls)}({', '.join(items)})"
+    raise TypeError(f"cannot print {type(pattern).__name__}")
+
+
+def _arguments(args: list[ir.Expr], keywords: list[ir.Keyword]) -> str:
+    if len(args) == 1 and not keywords and _is_generator(args[0]):
+        return _comprehension_text(args[0], bare=True)  # sum(x for x in y)
+    parts = [expr_to_text(a) for a in args]
+    parts += [
+        f"**{expr_to_text(k.value)}" if k.name is None else f"{k.name}={expr_to_text(k.value)}"
+        for k in keywords
+    ]
+    return ", ".join(parts)
+
+
+def _is_generator(expr: ir.Expr) -> bool:
+    return isinstance(expr, ir.Comprehension) and expr.kind == "generator"
+
+
+def _comprehension_text(expr: ir.Comprehension, bare: bool = False) -> str:
+    head = expr_to_text(expr.elt)
+    if expr.kind == "dict" and expr.value is not None:
+        head = f"{head}: {expr_to_text(expr.value)}"
+    loops = []
+    for gen in expr.generators:
+        loops.append(
+            f"for {target_to_text(gen.target)} in "
+            f"{_wrap(gen.iter, _precedence(gen.iter) <= IFEXP_PRECEDENCE)}"
+        )
+        loops += [f"if {_wrap(c, _precedence(c) <= IFEXP_PRECEDENCE)}" for c in gen.ifs]
+    inner = f"{head} {' '.join(loops)}"
+    if bare:
+        return inner
+    brackets = {"list": "[]", "generator": "()"}.get(expr.kind, "{}")
+    return f"{brackets[0]}{inner}{brackets[1]}"
 
 
 def target_to_text(expr: ir.Expr) -> str:
@@ -801,6 +1133,10 @@ def _precedence(expr: ir.Expr) -> int:
             return BOOL_PRECEDENCE[op]
         case ir.IfExp():
             return IFEXP_PRECEDENCE
+        case ir.Lambda() | ir.Yield() | ir.YieldFrom():
+            return LAMBDA_PRECEDENCE
+        case ir.Await():
+            return AWAIT_PRECEDENCE
         case ir.Const(value=int() | float() as value) if not isinstance(value, bool) and (
             repr(value).startswith("-")
         ):
@@ -822,13 +1158,26 @@ def expr_to_text(expr: ir.Expr) -> str:
         case ir.Name(name=name):
             return name
         case ir.Call(func=func, args=args, keywords=keywords):
-            parts = [expr_to_text(a) for a in args]
-            parts += [f"{k.name}={expr_to_text(k.value)}" for k in keywords]
-            return f"{func}({', '.join(parts)})"
+            return f"{func}({_arguments(args, keywords)})"
         case ir.MethodCall(obj=obj, method=method, args=args, keywords=keywords):
-            parts = [expr_to_text(a) for a in args]
-            parts += [f"{k.name}={expr_to_text(k.value)}" for k in keywords]
-            return f"{_primary(obj)}.{method}({', '.join(parts)})"
+            return f"{_primary(obj)}.{method}({_arguments(args, keywords)})"
+        case ir.Lambda(params=params, body=body):
+            inputs = params_text(params)
+            return (
+                f"lambda {inputs}: {expr_to_text(body)}"
+                if inputs
+                else f"lambda: {expr_to_text(body)}"
+            )
+        case ir.Yield(value=None):
+            return "yield"
+        case ir.Yield(value=value):
+            return f"yield {target_to_text(value)}"
+        case ir.YieldFrom(value=value):
+            return f"yield from {expr_to_text(value)}"
+        case ir.Await(value=value):
+            return "await " + _wrap(value, _precedence(value) < ATOM_PRECEDENCE)
+        case ir.TString(parts=parts):
+            return "t" + _fstring(parts)[1:]
         case ir.Attribute(value=value, attr=attr):
             return f"{_primary(value)}.{attr}"
         case ir.List(elts=elts):
@@ -851,21 +1200,10 @@ def expr_to_text(expr: ir.Expr) -> str:
             return "{" + ", ".join(items) + "}"
         case ir.Starred(value=value):
             return "*" + _wrap(value, _precedence(value) < ATOM_PRECEDENCE)
-        case ir.Comprehension(kind=kind, elt=elt, value=value, generators=generators):
-            head = expr_to_text(elt)
-            if kind == "dict" and value is not None:
-                head = f"{head}: {expr_to_text(value)}"
-            loops = []
-            for gen in generators:
-                loops.append(
-                    f"for {target_to_text(gen.target)} in "
-                    f"{_wrap(gen.iter, _precedence(gen.iter) <= IFEXP_PRECEDENCE)}"
-                )
-                loops += [f"if {_wrap(c, _precedence(c) <= IFEXP_PRECEDENCE)}" for c in gen.ifs]
-            brackets = "[]" if kind == "list" else "{}"
-            return f"{brackets[0]}{head} {' '.join(loops)}{brackets[1]}"
+        case ir.Comprehension():
+            return _comprehension_text(expr)
         case ir.Subscript(value=value, index=index):
-            return f"{_primary(value)}[{expr_to_text(index)}]"
+            return f"{_primary(value)}[{target_to_text(index)}]"
         case ir.Slice(lower=lower, upper=upper, step=step):
             text = ":".join("" if p is None else expr_to_text(p) for p in (lower, upper))
             return text if step is None else f"{text}:{expr_to_text(step)}"
@@ -952,8 +1290,11 @@ def outline(program: ir.Program) -> Iterator[tuple[int, ir.Stmt]]:
     def visit(stmts: list[ir.Stmt], depth: int) -> Iterator[tuple[int, ir.Stmt]]:
         for stmt in stmts:
             yield depth, stmt
-            if isinstance(stmt, ir.For | ir.While | ir.FunctionDef):
+            if isinstance(stmt, ir.For | ir.While | ir.FunctionDef | ir.ClassDef | ir.With):
                 yield from visit(stmt.body, depth + 1)
+            elif isinstance(stmt, ir.Match):
+                for case in stmt.cases:
+                    yield from visit(case.body, depth + 1)
             elif isinstance(stmt, ir.If):
                 yield from visit(stmt.body, depth + 1)
                 yield from visit(stmt.orelse, depth + 1)
@@ -978,8 +1319,18 @@ def block_label(stmt: ir.Stmt) -> str:
             return f"set {target_to_text(target)} to {target_to_text(value)}"
         case ir.AugAssign(target=target, op=op, value=value):
             return f"change {target_to_text(target)} by {op}{expr_to_text(value)}"
+        case ir.FunctionDef(name=name, params=params, is_async=True):
+            return f"teach async {name}({', '.join(p.name for p in params)})"
         case ir.FunctionDef(name=name, params=params):
             return f"teach {name}({', '.join(p.name for p in params)})"
+        case ir.ClassDef(name=name):
+            return f"class {name}"
+        case ir.With(items=items):
+            return "with " + ", ".join(expr_to_text(i.context) for i in items)
+        case ir.Match(subject=subject):
+            return f"match {expr_to_text(subject)}"
+        case ir.AnnAssign() | ir.Nonlocal() | ir.TypeAlias():
+            return _simple_stmt_text(stmt)
         case ir.Return(value=None):
             return "give back"
         case ir.Return(value=value):

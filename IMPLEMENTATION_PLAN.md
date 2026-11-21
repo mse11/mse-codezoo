@@ -1,6 +1,6 @@
 # CodeZoo – Implementation Plan
 
-Nov 1, 2026 · @Michal · revised Nov 19, 2026: engine becomes a uv Python package (`mse_codezoo`, flat layout) with a click CLI; parent, profile and story ideas taken from the Applaydu comparison
+Nov 1, 2026 · @Michal · revised Nov 19, 2026: engine becomes a uv Python package (`mse_codezoo`, flat layout) with a click CLI; parent, profile and story ideas taken from the Applaydu comparison · Nov 20, 2026: phase 4 built (see Phase 4 steps)
 
 ## Vision and concept
 
@@ -569,10 +569,33 @@ Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), t
 - [x] Grown-up report: new mistake kinds (endless recursion, uncaught errors) with try-at-home tips
 - [x] Tests: `test_phase3_language.py`, `test_phase3_features.py` and `test_web_i18n.py` (every web text has a Slovak translation); the Pyodide CI job solves all 109 levels
 - [ ] Fewer levels than planned in modules 8–10 (9–10 instead of about 12) and fewer signature levels per module (1–4 instead of about 4); to be filled with the level editor once content production starts
-- [ ] Generators, `lambda` and generator expressions move with module 11 to phase 4 (they stay raw code until then)
-- [ ] Graduation path (export a real `.py` and run it in CPython): still to decide; helper files and saved runs are a first step
+- [x] Generators, `lambda` and generator expressions moved with module 11 to phase 4 (done there)
+- [x] Graduation path: `codezoo graduate` (phase 4) exports a plain `.py` and can run it in CPython
 - [ ] Recorded narration for the storybook and voices for cards (speech synthesis first); a native-speaker review of the new Slovak texts (same open point as phase 2)
 - [ ] Learning-gain and drop-off check with pilot families (the phase 3 gate); device testing of the new 3D animals on the cheapest tablet
+
+**Phase 4 steps (weeks 25–36)**
+
+- [x] Interpreter, generators and lambda: `lambda`, `map` / `filter` / `iter` / `next` / `StopIteration`, generator functions (`yield`, `.send()`, `yield from` with return values), generator expressions, endless generators; lazy iterators (`map`, `zip`, `enumerate`, `itertools`) count what they hand out, so an endless one stops at a limit instead of freezing. Pausable bodies run as Python generators only where a statement holds `yield` / `await` (everything else still runs directly), so the step-by-step interpreter stays as fast as before
+- [x] Interpreter, objects: classes become real Python classes (so `isinstance`, the MRO, `super()`, special methods, `@dataclass`, `NamedTuple` and the learner's own exceptions behave like CPython); learner functions bind as methods; a whitelist of special methods, hidden `__class__` and friends, and no three-argument `type()` keep a class from hooking into the interpreter; notes never run the learner's own `__repr__`
+- [x] Interpreter, decorators: functions as values, `*args` / `**kwargs` in definitions and calls, keyword-only inputs, `nonlocal`, stacked decorators, decorators with arguments, class-based decorators (`__call__`), `functools.wraps` / `cache` / `lru_cache` / `reduce` / `partial`
+- [x] Concurrency (`scheduler.py`): `async def` / `await`, `asyncio.run` / `sleep` / `create_task` / `gather` / `Lock` / `Queue` / `TaskGroup` (cancelling siblings) and `except*`, on a simulated clock in CPython's own task order (differential tests against real asyncio); `threading.Thread` / `Lock`, statement by statement with a seeded scheduler, with or without the GIL (3.13 free threading: threads overlap in the same tick), deadlock detection; every step carries its lane and tick
+- [x] `with` (several items, own context managers, `async with`), `match` / `case` (literals, captures, sequences with `*rest`, mappings, class patterns via `__match_args__`, `|`, guards, `as`), type hints kept and never run, `input()` (answers from the level) and `open()` on a per-run in-memory disk, `if __name__ == "__main__":`, the zoo's own `math`, `random` (seeded), `json`, `string`, `time`, `itertools`, `copy`, `dataclasses`, `typing`, `__future__`; IR version 4 (21 new node types), schema regenerated
+- [x] Release islands (`versions.py`): a `since` table for syntax and builtins; programs are checked against a chosen release (`--python`, a menu in the web client) and refused with the release that brought newer syntax; levels take `"minPython"`; islands newer than this computer's Python show as locked and `levels validate` skips them. Islands: baseline 3.10/3.11 (5 levels: `match`, `zip(strict=)`, unions, parenthesised `with`, `except*`), 3.12 (3: nested f-string quotes, `class Stack[T]` / `type`, `batched`), 3.13 (2: free threading with and without the GIL, `copy.replace`), 3.14 (3: template strings, `except A, B:`, deferred annotations), 3.15 (4: `frozendict`, `[*x for x in xs]`, `sentinel`, `lazy import`). The 3.15 levels were checked on CPython 3.15.0b1; CI adds 3.15 to the matrix
+- [x] Animals: octopus (`await reach(arm)` stretches one of eight arms while the others keep working; `stretch(arm)` for threads) and bee (`fly(n)` over rocks, water and trees), with English and Slovak names, 3D models and 2D drawings; new goals `print`, `file` and `time` ("done by tick N"), and a hint when a trick was started without `await`
+- [x] Modules 11–15: Comprehensions and generators (9 levels), Objects (9), Decorators (8), Concurrency (8), First real project (6), with debugging levels in every module, signature levels for the bee, fox and octopus, Slovak titles and hints; 166 levels in all, every reference solution earns 3 stars in every world for every animal that can play it
+- [x] Lanes under the stage: one row per task or thread on the simulated clock, bars while a lane waits, steps of the same tick played together (the octopus's arms move at once), and a timeline slider that jumps to any moment
+- [x] Blocks: `class`, `async def`, `yield`, `await`, `await reach(arm)` and the bee's / octopus's tricks; an outline block keeps a header the blocks can't show (decorators, `with`, type hints, `async`) exactly as typed while its body stays blocks, so code-first modules read as an outline and nothing is lost either way
+- [x] Offline browser build (`codezoo build-web`): the same web client with the engine in Pyodide 0.29.5 in a web worker, calling the server's `dispatch()` directly; a service worker caches the site and Pyodide; players' progress in IndexedDB; cards pre-rendered; host it on any static host. CI builds it and solves every level and calls the API inside Pyodide
+- [x] Level editor, full version: several worlds, every goal type plus "done by tick", answers for `input()` and files for `open()`, a no-GIL switch, Python release, Slovak title and hints, "My levels" kept in the browser, and share links that carry the level inside the link (nothing uploaded; the game checks it like a level file and runs it only in the zoo's interpreter)
+- [x] Graduation: `codezoo graduate PROGRAM.py [--run]` writes a plain `.py` (the zoo's commands become stand-ins that print) and runs it in CPython, for the learner's own programs only
+- [x] Tests: `test_phase4_language.py` (every construct against CPython, round trips, limits, safety), `test_phase4_features.py`; the suite passes on Python 3.13, 3.14 and 3.15
+- [ ] Gate: run the offline build on the cheapest target tablet and Chromebook (not done; only checked in a desktop browser), and pilot modules 11–14 with learners aged 13+
+- [ ] The first visit to the offline build needs the network for Pyodide (about 10 MB); a vendored Pyodide copy (`--pyodide ./pyodide/`) works but isn't packaged yet
+- [ ] Fewer levels than planned: 6–9 per module instead of about 12, 2–5 per island; to be filled with the editor
+- [ ] Not built: the 3.13 REPL "pond", `concurrent.interpreters` (3.14), a free-threading boss level, rival levels; `async for`, async generators and `:=` stay raw code; `lambda`, `match` and `with` have no blocks of their own (outline or raw)
+- [ ] Concurrency is simulated: threads switch only between statements (a call inside a thread runs in one go), and `lock.acquire()` in a thread waits after its line; good for teaching races, not a model of real CPU timing
+- [ ] Native-speaker review of the new Slovak texts, recorded narration (same open point as phases 2 and 3)
 
 ## Not yet covered
 

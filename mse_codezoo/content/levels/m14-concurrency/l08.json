@@ -1,0 +1,116 @@
+{
+  "id": "m14-l08",
+  "title": "Eight arms, one basket",
+  "module": "concurrency",
+  "concepts": [
+    "concurrency",
+    "boss"
+  ],
+  "animal": "octopus",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "B.....B",
+      ".......",
+      "...R...",
+      "B.....B",
+      ".......",
+      ".......",
+      "B..B..B"
+    ],
+    "start": [
+      3,
+      3,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B",
+        "avoid": "R"
+      },
+      {
+        "type": "say",
+        "text": "7 shells"
+      },
+      {
+        "type": "time",
+        "within": 6
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "AsyncFunction",
+      "With"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "reach"
+  ],
+  "hints": [
+    "Arm 0 would reach the jellyfish: leave it out.",
+    "Count the shells with a lock, and let the arms work at the same time."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Osem ramien, jeden košík",
+      "hints": [
+        "Rameno 0 by siahlo na medúzu: vynechaj ho.",
+        "Mušle počítaj so zámkom a nechaj ramená pracovať naraz."
+      ]
+    }
+  }
+}

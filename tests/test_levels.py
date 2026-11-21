@@ -32,7 +32,7 @@ def test_level_ids_are_unique():
 
 def test_find_level_by_id_and_by_path():
     by_id = find_level("m01-l01")
-    assert by_id.title == "One banana"
+    assert by_id.shown_title == "One banana"
     assert find_level(str(by_id.path)).id == "m01-l01"
     with pytest.raises(LevelError, match="No level called"):
         find_level("m99-l99")

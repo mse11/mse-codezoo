@@ -34,7 +34,7 @@ OOPS = {
     "typo.py": ("m01-l01", "Did you mean `step`?"),
     "syntax.py": ("m01-l01", "Python can't read line"),
     "too-short.py": ("m01-l01", "1 banana still to collect."),
-    "class.py": ("m01-l01", "CodeZoo can't run classes yet."),
+    "walrus.py": ("m01-l01", "CodeZoo can't run `:=` yet."),
     "no-brackets.py": ("m05-l01", "Add brackets to ask it: `is_blocked()`."),
     "one-world.py": ("m05-l02", "It works here, but not in world 2"),
     "no-base-case.py": ("m10-l01", "Does it have a base case"),

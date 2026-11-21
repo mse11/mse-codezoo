@@ -1,0 +1,126 @@
+{
+  "id": "i313-l01",
+  "title": "With and without the GIL",
+  "module": "island-3.13",
+  "concepts": [
+    "free threading",
+    "threads"
+  ],
+  "animal": "octopus",
+  "signature": true,
+  "minPython": "3.13",
+  "world": {
+    "tiles": [
+      "..B..",
+      ".....",
+      "B...B",
+      ".....",
+      "..B.."
+    ],
+    "start": [
+      2,
+      2,
+      "north"
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        "..B..",
+        ".....",
+        "B...B",
+        ".....",
+        "..B.."
+      ],
+      "start": [
+        2,
+        2,
+        "north"
+      ],
+      "gil": false,
+      "goal": {
+        "type": "all",
+        "goals": [
+          {
+            "type": "collect_all",
+            "item": "B"
+          },
+          {
+            "type": "time",
+            "within": 12
+          }
+        ]
+      }
+    }
+  ],
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "stretch"
+  ],
+  "hints": [
+    "World 1 has the GIL: one thread runs at a time. World 2 is free-threaded (3.13).",
+    "Watch the lanes: without the GIL the threads really overlap."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "S GIL a bez neho",
+      "hints": [
+        "Svet 1 má GIL: naraz beží jedno vlákno. Svet 2 je bez GIL (3.13).",
+        "Sleduj dráhy: bez GIL sa vlákna naozaj prekrývajú."
+      ]
+    }
+  }
+}

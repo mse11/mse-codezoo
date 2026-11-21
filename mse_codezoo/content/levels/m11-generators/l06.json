@@ -1,0 +1,95 @@
+{
+  "id": "m11-l06",
+  "title": "A flight plan with yield",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "generator",
+    "yield"
+  ],
+  "animal": "bee",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".#B~#B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "Generator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "fly"
+  ],
+  "hints": [
+    "A generator hands out its hops one by one with `yield`.",
+    "`for hop in route():` asks for the next hop each time round."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Letový plán s yield",
+      "hints": [
+        "Generátor rozdáva skoky po jednom cez `yield`.",
+        "`for hop in route():` si zakaždým vypýta ďalší skok."
+      ]
+    }
+  }
+}

@@ -3,10 +3,35 @@
 
 import { lang } from "./i18n.js";
 
+// The Python release programs are written for (null: the newest the engine can read).
+let python = null;
+export function setPython(version) {
+  python = version || null;
+}
+
+// The offline build (`codezoo build-web`) runs the engine in the browser, in a web worker,
+// instead of asking `codezoo serve`.
+const offline = window.CODEZOO_OFFLINE ? import("./offline.js") : null;
+
 async function call(method, path, body) {
+  if (python && body !== undefined) body = { ...body, python };
+  if (offline) {
+    const engine = await offline;
+    const [route, search = ""] = path.split("?");
+    const query = Object.fromEntries(new URLSearchParams(search));
+    if (python) query.python = python;
+    const { status, data } = await engine.request(method, route, query, body || {}, lang());
+    if (status !== 200) {
+      const error = new Error(data.error || `error ${status}`);
+      error.status = status;
+      throw error;
+    }
+    return data;
+  }
   const options = { method, headers: {} };
   const separator = path.includes("?") ? "&" : "?";
-  const url = `${path}${separator}lang=${encodeURIComponent(lang())}`;
+  let url = `${path}${separator}lang=${encodeURIComponent(lang())}`;
+  if (python) url += `&python=${encodeURIComponent(python)}`;
   if (body !== undefined) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(body);
@@ -22,7 +47,8 @@ async function call(method, path, body) {
 }
 
 export const api = {
-  levels: () => call("GET", "/api/levels"),
+  info: () => call("GET", "/api/info"),
+  levels: (animal) => call("GET", `/api/levels${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
   level: (id, animal) =>
     call("GET", `/api/levels/${encodeURIComponent(id)}${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
   animals: () => call("GET", "/api/animals"),
@@ -32,6 +58,7 @@ export const api = {
     call("POST", "/api/run", { level, source, profile, variant, save: true, ...extra }),
   runLevelData: (levelData, source, variant = 0) => call("POST", "/api/run", { levelData, source, variant }),
   checkLevel: (level, solution) => call("POST", "/api/levels/check", { level, solution }),
+  previewLevel: (level, animal) => call("POST", "/api/levels/preview", { level, animal }),
   story: (run) => call("POST", "/api/story", { run }),
 
   profiles: () => call("GET", "/api/profiles"),

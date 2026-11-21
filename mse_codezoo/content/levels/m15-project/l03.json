@@ -1,0 +1,102 @@
+{
+  "id": "m15-l03",
+  "title": "Keep the scores",
+  "module": "first-project",
+  "concepts": [
+    "open",
+    "with",
+    "files"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ],
+    "inputs": [
+      "Momo",
+      "3"
+    ],
+    "data": {
+      "scores.txt": "Bea 5\n"
+    }
+  },
+  "goal": {
+    "type": "file",
+    "name": "scores.txt",
+    "text": "Bea 5\nMomo 3\n"
+  },
+  "constraints": {
+    "mustUse": [
+      "With"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`open(\"scores.txt\", \"a\")` adds to the end; \"w\" would wipe Bea's score.",
+    "`with` closes the file for you."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Ulož skóre",
+      "hints": [
+        "`open(\"scores.txt\", \"a\")` pridáva na koniec; \"w\" by zmazalo Bein výsledok.",
+        "`with` súbor za teba zavrie."
+      ]
+    }
+  }
+}

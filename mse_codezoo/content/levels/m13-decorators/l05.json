@@ -1,0 +1,94 @@
+{
+  "id": "m13-l05",
+  "title": "Order matters",
+  "module": "decorators",
+  "concepts": [
+    "stacking decorators",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "hi!hi!"
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "The decorator nearest to `def` wraps first.",
+    "Should each \"hi\" get a \"!\", or only the end?"
+  ],
+  "mode": "code_first",
+  "starter": "def exclaim(func):\n    def inner():\n        return func() + \"!\"\n    return inner\n\ndef twice(func):\n    def inner():\n        return func() + func()\n    return inner\n\n@exclaim\n@twice\ndef greet():\n    return \"hi\"\n\nsay(greet())\n",
+  "i18n": {
+    "sk": {
+      "title": "Na poradí záleží",
+      "hints": [
+        "Dekorátor najbližšie pri `def` obalí funkciu ako prvý.",
+        "Má dostať \"!\" každé \"hi\", alebo len koniec?"
+      ]
+    }
+  }
+}

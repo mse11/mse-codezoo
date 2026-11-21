@@ -1,0 +1,93 @@
+{
+  "id": "i310-l02",
+  "title": "Fish for every chick",
+  "module": "island-baseline",
+  "concepts": [
+    "zip strict"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "Pip: 2",
+      "Pop: 1",
+      "Pia: 3"
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Without `strict=True`, `zip` quietly stops at the shorter list: Pia stays hungry.",
+    "Add `strict=True` to see the error, then give Pia her fish."
+  ],
+  "mode": "code_first",
+  "starter": "chicks = [\"Pip\", \"Pop\", \"Pia\"]\nfish = [2, 1]\nfor chick, count in zip(chicks, fish):\n    say(f\"{chick}: {count}\")\n",
+  "i18n": {
+    "sk": {
+      "title": "Ryba pre každé mláďa",
+      "hints": [
+        "Bez `strict=True` sa `zip` potichu zastaví pri kratšom zozname: Pia ostane hladná.",
+        "Pridaj `strict=True`, uvidíš chybu, a potom daj Pii jej rybu."
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "id": "m05-l06",
-  "title": "Bananas and coconuts",
+  "title": "{B.many} and {C.many}",
   "module": "conditions",
   "concepts": [
     "if",
@@ -92,7 +92,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Banány a kokosy",
+      "title": "{B.few} a {C.few}",
       "hints": [
         "Chyť banán alebo kokos, ale nikdy zhnitý banán.",
         "if item_here() == \"banana\" or item_here() == \"coconut\": grab()"

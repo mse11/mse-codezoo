@@ -1,6 +1,6 @@
 {
   "id": "m03-l11",
-  "title": "Banana bank (boss)",
+  "title": "{B} bank (boss)",
   "module": "variables",
   "concepts": [
     "variable",
@@ -58,7 +58,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Banánová banka (boss)",
+      "title": "Banka: {B.few} (boss)",
       "hints": [
         "Dve premenné: jedna na rastúcu medzeru, druhá na počítanie banánov.",
         "gap = 1 a total = 0; v cykle: step(gap), grab(), gap += 1, total += 1."

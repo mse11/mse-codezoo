@@ -1,0 +1,93 @@
+{
+  "id": "m13-l02",
+  "title": "A hand-made decorator",
+  "module": "decorators",
+  "concepts": [
+    "closure",
+    "decorator"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "FunctionDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`twice` gets a move and gives back a new function that does it two times.",
+    "`hop = twice(hop)` swaps the old hop for the new one."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Ručne vyrobený dekorátor",
+      "hints": [
+        "`twice` dostane pohyb a vráti novú funkciu, ktorá ho urobí dvakrát.",
+        "`hop = twice(hop)` vymení starý skok za nový."
+      ]
+    }
+  }
+}

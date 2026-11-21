@@ -57,7 +57,7 @@ def test_step_needs_a_positive_whole_number(bad):
 def test_grab_on_empty_square_is_not_an_error():
     world = make(["."])
     world.grab()
-    assert world.drain_events() == [{"type": "grab", "at": [0, 0], "item": None}]
+    assert world.drain_events() == [{"type": "grab", "at": [0, 0], "item": None, "near": "none"}]
 
 
 def test_render_shows_animal_walls_and_items():

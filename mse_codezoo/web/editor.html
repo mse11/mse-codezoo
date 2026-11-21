@@ -12,7 +12,7 @@
   <header class="bar">
     <h1 class="logo"><a href="index.html">CodeZoo</a></h1>
     <span class="editor-title" data-i18n>Level editor</span>
-    <span class="note" data-i18n>Prototype: paint a world, write a solution, test it, download the files.</span>
+    <span class="note" data-i18n>Paint the worlds, write a solution, test it, then play, share or download it.</span>
   </header>
   <main class="editor-main">
     <section class="editor-world">
@@ -20,6 +20,11 @@
         <label><span data-i18n>Width</span> <input id="width" type="number" min="1" max="16" value="6"></label>
         <label><span data-i18n>Height</span> <input id="height" type="number" min="1" max="12" value="3"></label>
         <label><span data-i18n>Animal</span> <select id="animal"></select></label>
+      </div>
+      <div class="row world-tabs">
+        <div id="world-tabs" role="group" data-i18n-label="Worlds"></div>
+        <button id="add-world" type="button" class="small" data-i18n>+ Another world</button>
+        <button id="remove-world" type="button" class="small" data-i18n>Remove this world</button>
       </div>
       <div id="tools" class="tools" role="radiogroup" aria-label="Tile" data-i18n-label="Tile"></div>
       <div class="row">
@@ -29,36 +34,57 @@
         <span class="note" data-i18n>Pick “start”, then tap the square where the animal begins.</span>
       </div>
       <div id="grid" class="editor-grid"></div>
+      <div class="row">
+        <label><span data-i18n>Answers for input(), one per line</span> <textarea id="inputs" rows="2" spellcheck="false"></textarea></label>
+        <label><span data-i18n>Files for open(): name, a line with ---, the text</span> <textarea id="data" rows="2" spellcheck="false"></textarea></label>
+      </div>
+      <label class="check"><input id="no-gil" type="checkbox"> <span data-i18n>Threads run without the GIL here (Python 3.13+)</span></label>
     </section>
     <section class="editor-form">
       <div class="row">
         <label><span data-i18n>Level id</span> <input id="level-id" value="my-l01"></label>
         <label><span data-i18n>Title</span> <input id="title" value="My first level"></label>
+        <label><span data-i18n>Title in Slovak</span> <input id="title-sk" value=""></label>
       </div>
       <div class="row">
         <label><span data-i18n>Module</span> <select id="module"></select></label>
+        <label><span data-i18n>Python release</span> <select id="min-python"></select></label>
+      </div>
+      <div class="row">
         <label><span data-i18n>Goal</span>
           <select id="goal-type">
             <option value="collect_all" data-i18n>collect every item</option>
             <option value="reach" data-i18n>reach the flag</option>
             <option value="say" data-i18n>say a text</option>
+            <option value="print" data-i18n>print a line</option>
+            <option value="file" data-i18n>leave text in a file</option>
           </select>
         </label>
         <label id="goal-item-row"><span data-i18n>Item</span> <select id="goal-item"></select></label>
+        <label id="goal-avoid-row"><span data-i18n>Leave alone</span> <select id="goal-avoid"></select></label>
         <label id="goal-text-row" hidden><span data-i18n>Text</span> <input id="goal-text" value="Yum!"></label>
+        <label id="goal-file-row" hidden><span data-i18n>File name</span> <input id="goal-file" value="scores.txt"></label>
+        <label><span data-i18n>Done by tick (optional)</span> <input id="within" type="number" min="1" placeholder="—"></label>
       </div>
       <label><span data-i18n>Must use (node types, split by commas)</span> <input id="must-use" placeholder="For, If"></label>
-      <label><span data-i18n>Hints, one per line</span> <textarea id="hints" rows="2">Count the squares.</textarea></label>
+      <div class="row">
+        <label><span data-i18n>Hints, one per line</span> <textarea id="hints" rows="2">Count the squares.</textarea></label>
+        <label><span data-i18n>Hints in Slovak, one per line</span> <textarea id="hints-sk" rows="2"></textarea></label>
+      </div>
       <label><span data-i18n>Starter program (optional, for a bug to fix)</span> <textarea id="starter" rows="3" spellcheck="false"></textarea></label>
       <label><span data-i18n>Reference solution</span> <textarea id="solution" rows="6" spellcheck="false">step(1)
 grab()
 </textarea></label>
       <div class="row">
         <button id="test" type="button" class="primary" data-i18n>Test the level</button>
+        <button id="play" type="button" data-i18n>Play it</button>
+        <button id="share" type="button" data-i18n>Copy a share link</button>
+        <button id="keep" type="button" data-i18n>Keep in my levels</button>
         <button id="download" type="button" data-i18n>Download the files</button>
         <label class="file-button"><span data-i18n>Open a level file</span> <input id="open" type="file" accept=".json,application/json"></label>
       </div>
       <div id="report" class="report" aria-live="polite"></div>
+      <details id="library-box"><summary data-i18n>My levels (kept in this browser)</summary><ul id="library" class="library"></ul></details>
       <details><summary data-i18n>Level JSON</summary><pre id="json"></pre></details>
     </section>
   </main>

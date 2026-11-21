@@ -1,6 +1,6 @@
 {
   "id": "m02-l08",
-  "title": "Banana stairs",
+  "title": "{B} stairs",
   "module": "loops-1",
   "concepts": [
     "for",
@@ -44,7 +44,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Banánové schody",
+      "title": "Schody: {B.few}",
       "hints": [
         "Každý schod je: doprava jedno, dole jedno, chyť.",
         "Jeden schod daj do cyklu, ktorý sa zopakuje 3-krát."

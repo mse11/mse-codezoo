@@ -11,7 +11,8 @@ from jsonschema import Draft202012Validator
 from mse_codezoo import ir
 from mse_codezoo.cli import main
 from mse_codezoo.lang_python import parse
-from mse_codezoo.levels import level_files, solution_path
+from mse_codezoo.levels import level_files, load_level, solution_path
+from mse_codezoo.versions import readable
 
 BUNDLED = Path(ir.__file__).with_name("ir.schema.json")
 VALIDATOR = Draft202012Validator(ir.json_schema())
@@ -90,6 +91,11 @@ def test_every_node_type_has_a_definition():
         "Dict",
         "Starred",
         "Comprehension",
+        "Lambda",
+        "Yield",
+        "YieldFrom",
+        "Await",
+        "TString",
     }
     assert stmt_members == {
         "ExprStmt",
@@ -101,6 +107,12 @@ def test_every_node_type_has_a_definition():
         "Break",
         "Continue",
         "FunctionDef",
+        "ClassDef",
+        "AnnAssign",
+        "With",
+        "Nonlocal",
+        "TypeAlias",
+        "Match",
         "Return",
         "Global",
         "Try",
@@ -121,6 +133,9 @@ def test_parsed_programs_are_valid(source):
 
 @pytest.mark.parametrize("path", level_files(), ids=lambda p: f"{p.parent.name}/{p.name}")
 def test_every_reference_solution_is_valid(path):
+    need = load_level(path).min_python
+    if need and not readable(need):
+        pytest.skip(f"this Python can't read Python {need} code")
     source = solution_path(path).read_text(encoding="utf-8")
     assert errors(program_dict(source)) == []
 
@@ -185,4 +200,4 @@ def test_schema_command_writes_a_file(tmp_path):
     target = tmp_path / "ir.schema.json"
     result = CliRunner().invoke(main, ["schema", "-o", str(target)])
     assert result.exit_code == 0, result.output
-    assert json.loads(target.read_text(encoding="utf-8"))["$id"] == "urn:mse-codezoo:ir:v3"
+    assert json.loads(target.read_text(encoding="utf-8"))["$id"] == "urn:mse-codezoo:ir:v4"

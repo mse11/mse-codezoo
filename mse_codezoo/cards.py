@@ -157,7 +157,7 @@ def card_html(card: Card, level: Level) -> str:
         [
             '<article class="card">',
             f'<div class="module">{html.escape(pack.emoji)} {html.escape(module)}</div>',
-            f"<h2>{html.escape(level.shown_title)}</h2>",
+            f"<h2>{html.escape(level.title_for(pack.id))}</h2>",
             picture(start, [], pack),
             f"<p>{html.escape(steps)}</p>",
             f"<pre>{html.escape(source.strip())}</pre>" if source.strip() else "",
@@ -194,6 +194,6 @@ def card_public(card: Card, levels: list[Level]) -> dict[str, Any]:
         "animal": card.animal,
         "module": card.module,
         "level": card.level_id,
-        "title": level.shown_title,
+        "title": level.title_for(card.animal),
         "sticker": card.sticker,
     }

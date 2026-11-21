@@ -1,6 +1,8 @@
 // The 2D stage: an SVG grid world that animates the world events from a run.
 // Used when 3D is off or WebGL is missing; same interface as Stage3D in stage3d.js.
 
+import { t } from "./i18n.js";
+
 const CELL = 64;
 const TOP = 44; // room above the grid for speech bubbles
 const NS = "http://www.w3.org/2000/svg";
@@ -8,9 +10,24 @@ const ANGLE = { north: -90, east: 0, south: 90, west: 180 };
 export const EMOJI = {
   monkey: "🐒", penguin: "🐧", beaver: "🦫", fox: "🦊", octopus: "🐙", bee: "🐝",
   banana: "🍌", coconut: "🥥", rotten: "🤢", fish: "🐟", log: "🪵", shell: "🐚", flower: "🌼",
-  pebble: "🪨", crab: "🦀", stick: "🥢", leaf: "🍃", thorn: "🌵", oak: "🪵", pine: "🌲",
+  pebble: "🪨", crab: "🦀", stick: "🪵", leaf: "🍃", thorn: "🌵", oak: "🪵", pine: "🌲",
   birch: "🌳", berry: "🫐", mushroom: "🍄", trap: "🪤", egg: "🥚",
+  pearl: "⚪", jellyfish: "🪼", clover: "🍀", nettle: "🌿",
 };
+// what the animal says when grab() finds nothing, by where the item really was
+export function missBubble(near) {
+  if (near === "ahead") return t("Too far!");
+  if (near === "behind") return t("Missed it!");
+  if (near === "left" || near === "right") return t("Over there!");
+  if (near === "up") return t("Up there!");
+  return t("Nothing here");
+}
+// animals whose emoji looks at us rather than to one side
+const FRONT_FACING = new Set(["penguin", "octopus"]);
+// the octopus's arms, clockwise from north (as in world.py)
+const ARMS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
+// events that only matter to the lanes and the result, not the stage
+const QUIET = new Set(["task", "thread", "lock", "file", "input", "import", "call", "return"]);
 // terrain: ~ water or a gap, t tree, - thin ice, o a guard's watch, = a log bridge
 const TERRAIN = { "~": ["water", ""], t: ["tree", "🌴"], "-": ["thin-ice", ""], o: ["watched", "👁️"], "=": ["bridge", ""] };
 
@@ -91,12 +108,16 @@ export class Stage {
       root.append(item);
     }
 
+    this.arms = new Map(); // arm number -> the stretched arm, while it is out
+    this.armLayer = svg("g", { class: "arms" });
+    root.append(this.armLayer);
     this.animal = svg("g", { class: "animal" });
     this.body = svg("g", { class: "body" });
     this.facingGroup = svg("g", { class: "facing" });
     this.facingGroup.append(svg("polygon", { points: "52,24 62,32 52,40", class: "arrow" }));
     this.body.append(this.facingGroup);
-    this.body.append(svg("text", { x: CELL / 2, y: CELL / 2, class: "emoji" }, pack.emoji || EMOJI[pack.animal] || "🐾"));
+    this.face = svg("text", { x: CELL / 2, y: CELL / 2, class: "emoji animal-face" }, pack.emoji || EMOJI[pack.animal] || "🐾");
+    this.body.append(this.face);
     this.outfitText = svg("text", { x: CELL / 2, y: 6, class: "emoji outfit" }, this.outfit || "");
     this.body.append(this.outfitText);
     this.bubble = svg("g", { class: "bubble", visibility: "hidden" });
@@ -134,6 +155,15 @@ export class Stage {
     const [x, y] = this.position;
     this.animal.style.transform = `translate(${x * CELL}px, ${y * CELL}px)`;
     this.facingGroup.style.transform = `rotate(${this.angle}deg)`;
+    this.lookTowards(this.facing);
+  }
+
+  // Emoji animals mostly look to the left: mirror the picture when it walks east, and keep
+  // the last side when it walks north or south. Animals drawn from the front stay as they are.
+  lookTowards(direction) {
+    if (!this.face || FRONT_FACING.has(this.level?.pack.id)) return;
+    if (direction === "east") this.face.classList.add("mirrored");
+    else if (direction === "west") this.face.classList.remove("mirrored");
   }
 
   say(text) {
@@ -158,9 +188,81 @@ export class Stage {
     }, 2500);
   }
 
+  // grab() found nothing: reach for the item, look back, look around or up, or shrug,
+  // and show where the item really is with a dashed square
+  async missed(event) {
+    const d = Math.max(this.duration, 200);
+    const near = event.near || "none";
+    let ghost = null;
+    if (event.to) {
+      ghost = svg("rect", {
+        x: event.to[0] * CELL + 4, y: event.to[1] * CELL + 4, width: CELL - 8, height: CELL - 8,
+        rx: 12, class: "ghost-target",
+      });
+      this.animal.before(ghost);
+    }
+    this.say(missBubble(near));
+    const [x, y] = this.position;
+    if (near === "ahead" && event.to) {
+      // lean towards the item, then back: it's out of reach
+      const [tx, ty] = event.to;
+      const reach = 0.3 / Math.max(Math.abs(tx - x) + Math.abs(ty - y), 1);
+      this.animal.style.transform = `translate(${(x + (tx - x) * reach) * CELL}px, ${(y + (ty - y) * reach) * CELL}px)`;
+      await wait(d * 1.5);
+      this.place();
+      await wait(d);
+    } else if (event.to && near !== "up") {
+      // turn to look at it, then back
+      const [tx, ty] = event.to;
+      const look = (Math.atan2(ty - y, tx - x) * 180) / Math.PI;
+      this.facingGroup.style.transform = `rotate(${look}deg)`;
+      if (tx !== x) this.lookTowards(tx > x ? "east" : "west");
+      await wait(d * 2);
+      this.place();
+      await wait(d);
+    } else {
+      const mood = near === "up" ? "look-up" : "shrug";
+      this.body.classList.add(mood);
+      await wait(d * 2.5);
+      this.body.classList.remove(mood);
+    }
+    this.hideBubble();
+    ghost?.remove();
+  }
+
   async play(event) {
     const d = this.duration;
+    if (QUIET.has(event.type)) return;
     switch (event.type) {
+      case "reach": {
+        // an arm stretches out to its tip; it stays out until its grab comes back
+        const [x, y] = this.position;
+        const [tx, ty] = event.to;
+        const line = svg("line", {
+          x1: x * CELL + CELL / 2, y1: y * CELL + CELL / 2,
+          x2: x * CELL + CELL / 2, y2: y * CELL + CELL / 2, class: "arm",
+        });
+        this.armLayer.append(line);
+        this.arms.get(event.arm)?.remove();
+        this.arms.set(event.arm, line);
+        await wait(20);
+        line.setAttribute("x2", tx * CELL + CELL / 2);
+        line.setAttribute("y2", ty * CELL + CELL / 2);
+        await wait(d);
+        break;
+      }
+      case "fly":
+        this.body.classList.add("swing");
+        this.position = event.to;
+        this.place();
+        await wait(d * 1.4);
+        this.body.classList.remove("swing");
+        break;
+      case "block":
+        this.say("⏳");
+        await wait(d * 2);
+        this.hideBubble();
+        break;
       case "move":
         this.position = event.to;
         this.place();
@@ -217,15 +319,30 @@ export class Stage {
       case "grab": {
         const key = event.at.join(",");
         const item = this.items.get(key);
+        if (event.arm !== undefined) {
+          const line = this.arms.get(event.arm);
+          if (item && event.item) item.classList.add("grabbed");
+          if (line) {
+            const [x, y] = this.position;
+            line.setAttribute("x2", x * CELL + CELL / 2);
+            line.setAttribute("y2", y * CELL + CELL / 2);
+          }
+          await wait(d);
+          line?.remove();
+          this.arms.delete(event.arm);
+          if (item && event.item) {
+            item.remove();
+            this.items.delete(key);
+          }
+          break;
+        }
         if (event.item && item) {
           item.classList.add("grabbed");
           await wait(d);
           item.remove();
           this.items.delete(key);
         } else {
-          this.say("?");
-          await wait(d * 2);
-          this.hideBubble();
+          await this.missed(event);
         }
         break;
       }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:mse-codezoo:ir:v3",
+  "$id": "urn:mse-codezoo:ir:v4",
   "title": "CodeZoo program (IR)",
-  "description": "IR version 3. Generated from mse_codezoo/ir.py by `codezoo schema`; do not edit by hand.",
+  "description": "IR version 4. Generated from mse_codezoo/ir.py by `codezoo schema`; do not edit by hand.",
   "$ref": "#/$defs/Program",
   "$defs": {
     "Expr": {
@@ -39,6 +39,21 @@
         },
         {
           "$ref": "#/$defs/Comprehension"
+        },
+        {
+          "$ref": "#/$defs/Lambda"
+        },
+        {
+          "$ref": "#/$defs/Yield"
+        },
+        {
+          "$ref": "#/$defs/YieldFrom"
+        },
+        {
+          "$ref": "#/$defs/Await"
+        },
+        {
+          "$ref": "#/$defs/TString"
         },
         {
           "$ref": "#/$defs/BinOp"
@@ -99,6 +114,24 @@
           "$ref": "#/$defs/FunctionDef"
         },
         {
+          "$ref": "#/$defs/ClassDef"
+        },
+        {
+          "$ref": "#/$defs/AnnAssign"
+        },
+        {
+          "$ref": "#/$defs/With"
+        },
+        {
+          "$ref": "#/$defs/Nonlocal"
+        },
+        {
+          "$ref": "#/$defs/TypeAlias"
+        },
+        {
+          "$ref": "#/$defs/Match"
+        },
+        {
           "$ref": "#/$defs/Return"
         },
         {
@@ -127,6 +160,34 @@
         },
         {
           "$ref": "#/$defs/RawCode"
+        }
+      ]
+    },
+    "Pattern": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PatternValue"
+        },
+        {
+          "$ref": "#/$defs/PatternCapture"
+        },
+        {
+          "$ref": "#/$defs/PatternSequence"
+        },
+        {
+          "$ref": "#/$defs/PatternStar"
+        },
+        {
+          "$ref": "#/$defs/PatternOr"
+        },
+        {
+          "$ref": "#/$defs/PatternAs"
+        },
+        {
+          "$ref": "#/$defs/PatternMapping"
+        },
+        {
+          "$ref": "#/$defs/PatternClass"
         }
       ]
     },
@@ -211,7 +272,7 @@
       "additionalProperties": false
     },
     "Keyword": {
-      "description": "A named argument, like ``end=\"\"`` in ``print(x, end=\"\")``.",
+      "description": "A named argument, like ``end=\"\"`` in ``print(x, end=\"\")``; a ``name`` of ``None``\nis a ``**options`` merge.",
       "type": "object",
       "properties": {
         "type": {
@@ -222,7 +283,10 @@
           "minLength": 1
         },
         "name": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "value": {
           "$ref": "#/$defs/Expr"
@@ -461,7 +525,7 @@
       "additionalProperties": false
     },
     "Comprehension": {
-      "description": "``[elt for ...]`` (kind ``list``), ``{elt for ...}`` (``set``) or\n``{elt: value for ...}`` (``dict``).",
+      "description": "``[elt for ...]`` (kind ``list``), ``{elt for ...}`` (``set``),\n``{elt: value for ...}`` (``dict``) or ``(elt for ...)`` (``generator``).",
       "type": "object",
       "properties": {
         "type": {
@@ -499,6 +563,130 @@
         "id",
         "kind",
         "elt"
+      ],
+      "additionalProperties": false
+    },
+    "Lambda": {
+      "description": "``lambda log: log.length``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Lambda"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Param"
+          }
+        },
+        "body": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "Yield": {
+      "description": "``yield drop``: hand one value out and pause until asked for the next.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Yield"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "YieldFrom": {
+      "description": "``yield from nectar()``: hand out every value of another generator.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "YieldFrom"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "Await": {
+      "description": "``await reach(3)``: wait here; other tasks run meanwhile.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Await"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "TString": {
+      "description": "A template string ``t\"...\"`` (Python 3.14): text parts and ``FormattedValue`` parts.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "TString"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id"
       ],
       "additionalProperties": false
     },
@@ -1036,7 +1224,7 @@
       "additionalProperties": false
     },
     "Param": {
-      "description": "One input of a function, with an optional default: ``height=2``.",
+      "description": "One input of a function, with an optional default: ``height=2``.\n\n``kind`` is ``plain``, ``args`` (``*args``), ``kwargs`` (``**kwargs``) or ``kwonly``\n(after ``*``). ``annotation`` is a type hint, kept as written and never run.",
       "type": "object",
       "properties": {
         "type": {
@@ -1058,6 +1246,19 @@
               "type": "null"
             }
           ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "annotation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1068,6 +1269,7 @@
       "additionalProperties": false
     },
     "FunctionDef": {
+      "description": "``def`` (or ``async def``), with decorators applied from the bottom up.",
       "type": "object",
       "properties": {
         "type": {
@@ -1097,12 +1299,566 @@
           "items": {
             "$ref": "#/$defs/Stmt"
           }
+        },
+        "decorators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        },
+        "is_async": {
+          "type": "boolean"
+        },
+        "returns": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type_params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
         "type",
         "id",
         "name"
+      ],
+      "additionalProperties": false
+    },
+    "ClassDef": {
+      "description": "``class Worker(Bee):``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ClassDef"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "bases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Keyword"
+          }
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        },
+        "decorators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        },
+        "type_params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "AnnAssign": {
+      "description": "``length: float = 2.5``; the type hint is kept as written and never run.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "AnnAssign"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/Expr"
+        },
+        "annotation": {
+          "$ref": "#/$defs/Expr"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "target",
+        "annotation"
+      ],
+      "additionalProperties": false
+    },
+    "WithItem": {
+      "description": "``open(\"log.txt\") as file`` in a ``with``; ``target`` may be missing.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "WithItem"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "$ref": "#/$defs/Expr"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "With": {
+      "description": "``with a, b as c:`` (or ``async with``): everything is put back afterwards.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "With"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WithItem"
+          }
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        },
+        "is_async": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Nonlocal": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Nonlocal"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "TypeAlias": {
+      "description": "``type Stack = list[int]`` (Python 3.12).",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "TypeAlias"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "type_params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "name",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "PatternValue": {
+      "description": "A literal or a dotted name: ``case \"paw\":``, ``case None:``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternValue"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "PatternCapture": {
+      "description": "``case size:`` catches anything into ``size``; a ``name`` of ``None`` is ``_``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternCapture"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "PatternSequence": {
+      "description": "``case (\"paw\", size):`` or ``case [first, *rest]:``.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternSequence"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Pattern"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "PatternStar": {
+      "description": "``*rest`` inside a sequence pattern.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternStar"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "PatternOr": {
+      "description": "``case \"paw\" | \"claw\":``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternOr"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Pattern"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "PatternAs": {
+      "description": "``case (\"paw\", _) as print:``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternAs"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pattern": {
+          "$ref": "#/$defs/Pattern"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "pattern",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PatternMapping": {
+      "description": "``case {\"kind\": \"paw\", **rest}:``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternMapping"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expr"
+          }
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Pattern"
+          }
+        },
+        "rest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "PatternClass": {
+      "description": "``case Footprint(kind=\"paw\", size=s):``",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "PatternClass"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cls": {
+          "$ref": "#/$defs/Expr"
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Pattern"
+          }
+        },
+        "kwd_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kwd_patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Pattern"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "cls"
+      ],
+      "additionalProperties": false
+    },
+    "MatchCase": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "MatchCase"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pattern": {
+          "$ref": "#/$defs/Pattern"
+        },
+        "guard": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stmt"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "pattern"
+      ],
+      "additionalProperties": false
+    },
+    "Match": {
+      "description": "``match footprint:`` with its ``case`` parts.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Match"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/Expr"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MatchCase"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "subject"
       ],
       "additionalProperties": false
     },
@@ -1209,6 +1965,7 @@
       "additionalProperties": false
     },
     "Try": {
+      "description": "``try`` / ``except``; ``star`` marks ``except*`` for exception groups.",
       "type": "object",
       "properties": {
         "type": {
@@ -1247,6 +2004,9 @@
           "items": {
             "$ref": "#/$defs/Stmt"
           }
+        },
+        "star": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -1356,7 +2116,7 @@
       "additionalProperties": false
     },
     "Import": {
-      "description": "``import tricks`` (no ``names``) or ``from tricks import climb_tree, HEIGHT``.",
+      "description": "``import tricks`` (no ``names``) or ``from tricks import climb_tree, HEIGHT``;\n``lazy`` marks ``lazy import`` (Python 3.15).",
       "type": "object",
       "properties": {
         "type": {
@@ -1380,6 +2140,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "lazy": {
+          "type": "boolean"
         }
       },
       "required": [

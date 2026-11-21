@@ -1,0 +1,96 @@
+{
+  "id": "m12-l09",
+  "title": "Who goes first? (MRO)",
+  "module": "objects",
+  "concepts": [
+    "multiple inheritance",
+    "MRO"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "swim",
+      "['Otter', 'Swimmer', 'Climber', 'object']"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Inheritance"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Python looks for `move` in `Otter`, then in its parents from left to right.",
+    "`Otter.__mro__` lists that order."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Kto má prednosť? (MRO)",
+      "hints": [
+        "Python hľadá `move` v `Otter`, potom v rodičoch zľava doprava.",
+        "`Otter.__mro__` vypíše toto poradie."
+      ]
+    }
+  }
+}

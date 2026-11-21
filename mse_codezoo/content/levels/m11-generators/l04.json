@@ -1,0 +1,95 @@
+{
+  "id": "m11-l04",
+  "title": "map and filter",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "map",
+    "filter",
+    "lambda"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "[4, 16, 36]"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "Lambda"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`filter` keeps the even numbers, `map` squares them.",
+    "`map` and `filter` are lazy: `list(...)` asks for every value."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "map a filter",
+      "hints": [
+        "`filter` nechá párne čísla, `map` ich umocní.",
+        "`map` aj `filter` sú lenivé: `list(...)` si vypýta všetky hodnoty."
+      ]
+    }
+  }
+}

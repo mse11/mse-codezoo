@@ -1,0 +1,95 @@
+{
+  "id": "i312-l02",
+  "title": "One stack for everything",
+  "module": "island-3.12",
+  "concepts": [
+    "generics",
+    "type"
+  ],
+  "animal": "beaver",
+  "minPython": "3.12",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "pine"
+  },
+  "constraints": {
+    "mustUse": [
+      "ClassDef",
+      "TypeAlias"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`class Stack[T]:` says: a stack of things of some type T.",
+    "`type Load = list[str]` gives a type a short name."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Jeden zásobník na všetko",
+      "hints": [
+        "`class Stack[T]:` hovorí: zásobník vecí nejakého typu T.",
+        "`type Load = list[str]` dá typu krátke meno."
+      ]
+    }
+  }
+}

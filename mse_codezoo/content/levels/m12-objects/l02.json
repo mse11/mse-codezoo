@@ -1,0 +1,103 @@
+{
+  "id": "m12-l02",
+  "title": "A picker object",
+  "module": "objects",
+  "concepts": [
+    "class",
+    "attribute",
+    "method"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "2"
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "ClassDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "The picker remembers its stride and how many it picked.",
+    "`self.count += 1` changes the object's own counter."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Objekt zberač",
+      "hints": [
+        "Zberač si pamätá dĺžku kroku a koľko už nazbieral.",
+        "`self.count += 1` zmení vlastné počítadlo objektu."
+      ]
+    }
+  }
+}

@@ -32,9 +32,9 @@ uv run codezoo serve --open
 
 Opens `http://localhost:8765/` with three panes: the stage, Blockly blocks and the Python code, kept in sync through the engine. Drag blocks and the code appears; tick "let me type" to edit the code and the blocks follow. Run or Step to watch the animal, with the current line and block lit up. Drag the bars between the panes to resize them. Everything the page needs ships in the package, so it works offline.
 
-**Animals.** The monkey, the penguin, the beaver and the fox. Core levels can be played by any animal (pick it next to the level list): the program, the hints and the items follow it, so the penguin `catch()`es fish where the monkey `grab()`s bananas. Signature levels belong to one animal and use its tricks: the monkey `swing()`s across gaps and `climb()`s trees, the penguin `slide()`s until something is in the way (and thin ice raises `CrackError`), the beaver picks up logs and `build()`s a dam (`inventory()` says what it carries), and the fox `sniff()`s the open ways and `hide()`s from guards (`guard_ahead()`).
+**Animals.** The monkey, the penguin, the beaver, the fox, the octopus and the bee. Core levels can be played by any animal (pick it next to the level list): the program, the hints and the items follow it, so the penguin `catch()`es fish where the monkey `grab()`s bananas. Signature levels belong to one animal and use its tricks: the monkey `swing()`s across gaps and `climb()`s trees, the penguin `slide()`s until something is in the way (and thin ice raises `CrackError`), the beaver picks up logs and `build()`s a dam (`inventory()` says what it carries), the fox `sniff()`s the open ways and `hide()`s from guards (`guard_ahead()`), the octopus stretches its eight arms with `await reach(arm)` (or `stretch(arm)` in threads) while the other arms keep working, and the bee `fly()`s over rocks, water and trees.
 
-**Stage.** A low-poly 3D world for each animal, drawn with three.js; untick "3D" for the flat 2D stage (also used automatically where WebGL is missing). Levels with several worlds show World 1, World 2... buttons: the program must solve every world, which is what makes `if` worth learning. While a program runs, the call stack shows under the stage as nested burrows, one per function that is still running. After each run the animal shows how it feels (proud, happy, puzzled, oops, confused, dizzy) with a short, kind message.
+**Stage.** A low-poly 3D world for each animal, drawn with three.js; untick "3D" for the flat 2D stage (also used automatically where WebGL is missing). Levels with several worlds show World 1, World 2... buttons: the program must solve every world, which is what makes `if` worth learning. While a program runs, the call stack shows under the stage as nested burrows, one per function that is still running. When tasks or threads run at the same time, each gets a lane under the stage on a simulated clock (steps at the same tick play together), and the timeline slider jumps to any moment of the run. After each run the animal shows how it feels (proud, happy, puzzled, oops, confused, dizzy) with a short, kind message.
 
 **Languages.** English and Slovak: the language menu switches the page, block labels, level titles, hints and every engine message. Python keywords and commands (`for`, `step`) stay English. The CLI takes `--lang sk` (or `CODEZOO_LANG=sk`).
 
@@ -44,9 +44,19 @@ Opens `http://localhost:8765/` with three panes: the stage, Blockly blocks and t
 
 **My zoo.** Solving levels earns stickers (first level, every finished module, 10/30/60/100 stars, every card played away from the screen). Drag them around the animal's habitat and dress the animal up (more stickers unlock more outfits); the outfit shows on the stage. Printable unplugged cards (one per module and animal) carry a word code and a QR code: type the code, or scan the card where the browser can read QR codes (the picture never leaves the device), to get the card's sticker and open its level. After three failed tries on a level, CodeZoo offers an easier level that practises the same idea; the child can still pick any level.
 
-**Level editor.** `editor.html` (the "Level editor" link) is a prototype: paint a world, choose the goal, write a reference solution, and "Test the level" asks the engine to check it like `codezoo levels validate`; then download the level JSON and solution file.
+**Python release.** The menu next to the animal picks the Python release a program is written for (default: the newest this computer's Python reads). Syntax and builtins from a newer release are refused with the release that brought them. Release-island levels (3.12–3.15) show their release, and a lock where this computer can't read it.
+
+**Level editor.** `editor.html` (the "Level editor" link): paint one or more worlds, choose the goal (collect, reach, say, print, a file's text, optionally "done by tick N"), give answers for `input()` and files for `open()`, add Slovak title and hints, and "Test the level" asks the engine to check it like `codezoo levels validate`. Then play it, copy a share link (the level travels inside the link, nothing is uploaded; it is checked again and runs only in the zoo's interpreter), keep it in this browser's "My levels", or download the level JSON and solution file.
 
 **Where data lives.** Only on this computer, as JSON files: `%APPDATA%\CodeZoo` on Windows, `~/Library/Application Support/CodeZoo` on macOS, `~/.local/share/codezoo` on Linux. Set `CODEZOO_HOME` or use `codezoo serve --data-dir PATH` to keep it elsewhere (for example a separate folder per classroom).
+
+## Offline browser version
+
+```bash
+uv run codezoo build-web site/
+```
+
+Writes a static site to `site/`: the same web client, with the engine running in the browser (Pyodide 0.29.5, Python 3.13, in a web worker) instead of `codezoo serve`. A service worker keeps every file, and Pyodide after its first load, so it then works with no network; players' progress lives in the browser (IndexedDB). Put the folder on any static host (GitHub Pages, Cloudflare Pages), or try it with `python -m http.server --directory site`. `--pyodide URL` loads Pyodide from somewhere else (for example a copy next to the page). Release islands newer than Pyodide's Python show as locked there.
 
 ## Play in the terminal
 
@@ -95,10 +105,16 @@ mse_codezoo/        the package (flat layout, no src/)
   cards.py          printable unplugged cards with unlock codes
   qr.py             small QR code encoder for the cards
   profiles.py       players, progress, daily time, grown-up settings (local JSON files)
-  server.py         stdlib HTTP server and JSON API behind `codezoo serve`
+  scheduler.py      asyncio and threading on a simulated clock (lanes, repeatable races)
+  stdlib.py         the standard modules programs may import, in zoo-safe versions
+  versions.py       Python releases: what arrived when, what this computer can read
+  server.py         stdlib HTTP server and JSON API behind `codezoo serve` (dispatch())
+  webbuild.py       `codezoo build-web`: the offline browser version
   web/              browser client: app.js, blocks.js (Blockly <-> IR), stage3d.js (three.js),
                     stage.js (2D), code.js, i18n.js (EN/SK), players.js (picker, grown-ups,
-                    goodbye), layout.js (splitters), editor.html/js (level editor)
+                    goodbye), layout.js (splitters), editor.html/js (level editor),
+                    share.js (share links), offline.js + engine-worker.js + sw.template.js
+                    (the offline build)
   cli.py            click commands (the only module importing click)
   content/levels/   level JSON + reference solutions (<file>.solution.py)
   content/animals/  animal packs
@@ -126,26 +142,34 @@ scripts/            pyodide_smoke.mjs: the engine and every level inside Pyodide
 | `codezoo schema [-o FILE]` | JSON Schema of the program model (IR), the contract with the web client |
 | `codezoo levels list` | Bundled levels |
 | `codezoo levels show LEVEL [--solution]` | One level: goal, star rules, blocks, grid and hints; `--solution` adds the reference solution |
-| `codezoo levels validate [--all] [PATHS...]` | Checks level files and that each reference solution earns every star |
+| `codezoo levels validate [--all] [PATHS...]` | Checks level files and that each reference solution earns every star (islands newer than this Python are skipped) |
+| `codezoo run/check ... --python 3.12` | Runs a program as written for that Python release |
+| `codezoo graduate PROGRAM.py [-o OUT.py] [--run]` | A plain `.py` that runs in normal Python: the zoo's commands become stand-ins that print |
+| `codezoo build-web OUT [--pyodide URL]` | The offline browser version as static files |
 
 `LEVEL` is a level id (`m01-l01`) or a path to a level `.json` file. A program may `import` helper files that sit next to it (your own `tricks.py`), and the files a level brings with it. Every command takes `--lang en|sk` before the command name, for example `codezoo --lang sk check ...`.
 
-## Supported Python (phase 3)
+## Supported Python (phase 4)
 
 Phase 2: calls, variables, `=` and `+=`-style updates, `for` and `while` loops, `if`/`elif`/`else`, comparisons (also chained, `is`, `in`), `and`/`or`/`not`, `x if c else y`, `+ - * / // % **`, numbers, text, `True`/`False`/`None`, f-strings (with `!r` and format specs), indexing and slicing, text methods, comments and `pass`.
 
-Phase 3 adds:
+Phase 3: `break`/`continue`; `def` with defaults and keyword arguments, `return`, `global`, closures, `import` of helper files, recursion (40 deep); `try`/`except`/`else`/`finally`, `raise`, `assert` with real Python exceptions; lists, tuples, dicts, sets, unpacking, `del`, comprehensions and their methods and builtins.
 
-- **Loops II:** `break`, `continue`, loops inside loops.
-- **Functions:** `def` with inputs, default values and keyword arguments, `return` (also several values at once), local names and `global`, functions inside functions, and `import` / `from ... import` of helper files. Recursion works up to 40 calls deep, with a friendly "does it have a base case?" message beyond that.
-- **Errors:** `try` / `except` (one error, several in brackets, `as e`, or bare) / `else` / `finally`, `raise`, bare `raise` inside `except`, `assert`. Errors carry real Python exceptions (`ValueError`, `TypeError`, `KeyError`, `IndexError`, `ZeroDivisionError`, `NameError`, the penguin's `CrackError`...), so `except` catches what CPython would. The zoo's own limits (steps, depth, sizes) can't be caught.
-- **Collections:** lists, tuples, dictionaries (with `**` merging) and sets, indexing, slicing and assigning into them, `del`, unpacking (`a, b = b, a`, `first, *rest = ...`), `in`, `| & - ^` on sets, list/dict/set comprehensions, and the methods `append pop insert remove index extend count sort reverse clear copy`, `get setdefault update keys values items`, `add discard union intersection difference symmetric_difference issubset issuperset`, `split join`; builtins `list tuple dict set sorted sum enumerate zip reversed any all isinstance` (with `key=`/`reverse=` where Python has them).
+Phase 4 adds:
 
-The world adds `step turn_left turn_right grab say`, the sensors `is_blocked() item_here() item_ahead()` and each animal's tricks. Classes, `lambda`, generators, `with`, `match` and `async` are kept as raw code with a friendly note and don't run yet (phase 4).
+- **Comprehensions and generators:** `lambda`, `map`, `filter`, `iter`, `next`, `StopIteration`, generator functions with `yield` (paused and resumed on each `next()`, `.send()`, `yield from` with return values), generator expressions, endless generators and pipelines. Lazy iterators count what they hand out, so an endless one stops at the zoo's limit.
+- **Objects:** classes with class and instance attributes, `__init__`, methods, `@property` (and setters), `@classmethod`, `@staticmethod`, inheritance, `super()`, multiple inheritance and `__mro__`, special methods (`__str__`, `__repr__`, `__eq__`, `__lt__`, `__len__`, `__call__`, `__iter__`, `__enter__`/`__exit__`...), your own exceptions, `@dataclass` (defaults, `field()`, `frozen`, `order`, `__post_init__`, `asdict`) and `NamedTuple`. Classes can't define hooks into the interpreter (`__getattribute__`, `__del__`...), and `__class__` and friends stay hidden.
+- **Decorators:** functions as values, `*args`/`**kwargs` (in definitions and calls), `nonlocal`, hand-made and stacked decorators, decorators with arguments, class-based decorators, `functools.wraps`, `functools.cache`/`lru_cache`, `reduce`, `partial`.
+- **Concurrency:** `async def`, `await`, `asyncio.run`, `sleep`, `create_task`, `gather`, `Lock` (`async with`), `Queue`, `TaskGroup` and `except*`; `threading.Thread`, `Lock` (`with lock:`). Everything runs on a simulated clock, tasks in CPython's own order and threads statement by statement with a seeded scheduler (with or without the GIL), so a race happens the same way every run.
+- **First project:** `input()` (answers come from the level), `open()` with `read`/`readline`/`write`, iterating lines, `with` (also several in brackets), `if __name__ == "__main__":`, and the modules `math`, `random` (seeded), `json`, `string`, `time`, `itertools`, `copy`, `dataclasses`, `typing`, `__future__`.
+- **Baseline 3.10/3.11:** `match`/`case` (literals, captures, sequences with `*rest`, mappings, classes, `|`, guards, `as`), `X | Y` in `isinstance`, `zip(strict=True)`, exception groups.
+- **Release islands:** 3.12 nested f-string quotes, `type` aliases and `[T]` type parameters, `itertools.batched`; 3.13 `copy.replace` and free threading; 3.14 template strings `t"..."` and `except A, B:`; 3.15 `frozendict`, `sentinel`, `[*x for x in xs]` and `lazy import`. Type hints are kept as written and never run (like 3.14's deferred annotations).
+
+Not supported (kept as raw code with a note): `async for`, async generators, `:=`, `raise ... from`, `a = b = ...`, calling a call (`f()()`), `/` in inputs.
 
 ## Levels
 
-109 levels in ten modules: 1 Sequences (12), 2 Loops (11), 3 Variables (11), 4 Types and text (12), 5 Conditions (11), 6 Loops II (11), 7 Functions (12), 8 Errors and debugging (9), 9 Collections (10), 10 Recursion (10). Every module has debugging levels whose starter program has a bug to fix. Signature levels belong to the monkey, penguin, beaver or fox; all other levels can be played by every animal, and `codezoo levels validate --all` checks every reference solution for every animal that can play it. Goals can ask the animal to collect items, avoid some, reach a square, say exact text, or build a dam from exact logs. Every level has a Slovak title and hints.
+166 levels in fifteen modules and five release islands: 1 Sequences (12), 2 Loops (11), 3 Variables (11), 4 Types and text (12), 5 Conditions (11), 6 Loops II (11), 7 Functions (12), 8 Errors and debugging (9), 9 Collections (10), 10 Recursion (10), 11 Comprehensions and generators (9), 12 Objects (9), 13 Decorators (8), 14 Concurrency (8), 15 First real project (6), and the islands baseline 3.10/3.11 (5), 3.12 (3), 3.13 (2), 3.14 (3), 3.15 (4). Every module has debugging levels whose starter program has a bug to fix. Signature levels belong to one animal; all other levels can be played by every animal, and `codezoo levels validate --all` checks every reference solution for every animal that can play it. Goals can ask the animal to collect items, avoid some, reach a square, say exact text, build a dam, print lines, leave text in a file, or be done by a tick of the clock. Every level has a Slovak title and hints.
 
 ## Third-party software
 
@@ -153,5 +177,6 @@ The world adds `step turn_left turn_right grab say`, the sensors `is_blocked() i
 | --- | --- | --- | --- |
 | [Blockly](https://github.com/RaspberryPiFoundation/blockly) | 13.3.0 | Apache-2.0 | `mse_codezoo/web/vendor/blockly/` (unchanged copy, see its README and LICENSE) |
 | [three.js](https://threejs.org/) | 0.170.0 (r170) | MIT | `mse_codezoo/web/vendor/three/` (unchanged copy, see its README and LICENSE) |
+| [Pyodide](https://pyodide.org/) | 0.29.5 | MPL-2.0 | not bundled: the offline build loads it from jsDelivr (or `--pyodide URL`) |
 
 CodeZoo's own code is licensed under the Apache License 2.0 (see `LICENSE` and `NOTICE`); vendored components keep their own licences. Code shared earlier under the MIT licence stays available under MIT.

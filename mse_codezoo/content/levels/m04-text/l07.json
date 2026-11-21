@@ -1,6 +1,6 @@
 {
   "id": "m04-l07",
-  "title": "Half a banana",
+  "title": "Half a {B}",
   "module": "text",
   "concepts": [
     "type",
@@ -60,7 +60,7 @@
   "mode": "both_editable",
   "i18n": {
     "sk": {
-      "title": "Polovica banánu",
+      "title": "Polovica: {B}",
       "hints": [
         "Tri banány pre dve opičky. / dá desatinné číslo.",
         "Spočítaj banány a potom say(count / 2)."

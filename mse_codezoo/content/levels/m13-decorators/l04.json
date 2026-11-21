@@ -1,0 +1,101 @@
+{
+  "id": "m13-l04",
+  "title": "@times(3)",
+  "module": "decorators",
+  "concepts": [
+    "decorator with arguments"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".ooo"
+    ],
+    "items": [
+      [
+        3,
+        0,
+        "B"
+      ]
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "hide"
+  ],
+  "hints": [
+    "`times(3)` makes the decorator; the decorator wraps `sneak`.",
+    "Three layers: `times` -> `decorate` -> `repeat`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "@times(3)",
+      "hints": [
+        "`times(3)` vyrobí dekorátor; dekorátor obalí `sneak`.",
+        "Tri vrstvy: `times` -> `decorate` -> `repeat`."
+      ]
+    }
+  }
+}

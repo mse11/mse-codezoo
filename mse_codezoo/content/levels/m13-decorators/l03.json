@@ -1,0 +1,102 @@
+{
+  "id": "m13-l03",
+  "title": "@sneaky",
+  "module": "decorators",
+  "concepts": [
+    "decorator",
+    "*args"
+  ],
+  "animal": "fox",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".ooo"
+    ],
+    "items": [
+      [
+        3,
+        0,
+        "B"
+      ]
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "hide"
+  ],
+  "hints": [
+    "Guards watch every square; the fox must `hide()` before each step.",
+    "`@sneaky` above `def sneak` wraps it, so every sneak hides first."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "@sneaky",
+      "hints": [
+        "Strážcovia sledujú každé políčko; líška sa musí pred každým krokom `hide()`.",
+        "`@sneaky` nad `def sneak` ju obalí, takže sa pred každým krokom skryje."
+      ]
+    }
+  }
+}

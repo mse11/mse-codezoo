@@ -1,0 +1,102 @@
+{
+  "id": "m15-l06",
+  "title": "A real program file",
+  "module": "first-project",
+  "concepts": [
+    "__name__",
+    "modules"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ],
+    "inputs": [
+      "4"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "right"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Import",
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`if __name__ == \"__main__\":` is true only in the file you run, not in quiz.py.",
+    "Export your program with `codezoo graduate` and run it in real Python."
+  ],
+  "mode": "code_first",
+  "files": {
+    "quiz": "def ask(question, answer):\n    reply = input(question + \" = \")\n    return \"right\" if reply == answer else \"wrong\"\n\nif __name__ == \"__main__\":\n    say(\"testing the quiz\")\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Skutočný programový súbor",
+      "hints": [
+        "`if __name__ == \"__main__\":` platí len v súbore, ktorý spúšťaš, nie v quiz.py.",
+        "Vyexportuj program cez `codezoo graduate` a spusti ho v skutočnom Pythone."
+      ]
+    }
+  }
+}

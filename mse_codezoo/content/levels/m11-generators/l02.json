@@ -1,0 +1,93 @@
+{
+  "id": "m11-l02",
+  "title": "Long logs only",
+  "module": "comprehensions-and-generators",
+  "concepts": [
+    "comprehension",
+    "filter"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "[3.5, 2.5, 4.0]"
+  },
+  "constraints": {
+    "maxLines": 2,
+    "mustUse": [
+      "Comprehension"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Keep only the logs longer than 2 with `if log > 2` at the end."
+  ],
+  "mode": "code_first",
+  "starter": "logs = [3.5, 1.0, 2.5, 0.5, 4.0]\nlong_logs = []\nfor log in logs:\n    long_logs.append(log)\nsay(long_logs)\n",
+  "i18n": {
+    "sk": {
+      "title": "Len dlhé polená",
+      "hints": [
+        "Nechaj len polená dlhšie ako 2: na koniec pridaj `if log > 2`."
+      ]
+    }
+  }
+}

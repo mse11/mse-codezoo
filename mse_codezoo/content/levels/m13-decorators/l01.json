@@ -1,0 +1,93 @@
+{
+  "id": "m13-l01",
+  "title": "Moves are values",
+  "module": "decorators",
+  "concepts": [
+    "functions as values"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "List"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "A function without brackets is a value: put `hop` in a list.",
+    "Then call each one with `move()`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Pohyby sú hodnoty",
+      "hints": [
+        "Funkcia bez zátvoriek je hodnota: daj `hop` do zoznamu.",
+        "Potom každú zavolaj cez `move()`."
+      ]
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "id": "i314-l02",
+  "title": "Tidy handlers",
+  "module": "island-3.14",
+  "concepts": [
+    "except without brackets"
+  ],
+  "animal": "monkey",
+  "minPython": "3.14",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "not a number"
+  },
+  "constraints": {
+    "mustUse": [
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "Since 3.14 `except A, B:` needs no brackets."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Upratané except",
+      "hints": [
+        "Od 3.14 `except A, B:` nepotrebuje zátvorky."
+      ]
+    }
+  }
+}

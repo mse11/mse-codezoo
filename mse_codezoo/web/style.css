@@ -6,8 +6,9 @@
   --border: #dcd8cc;
   --accent: #2f7d4f;
   --accent-text: #ffffff;
-  --tile: #e3efd6;
-  --tile-alt: #d8e8c8;
+  --tile: #e8f3dc;
+  --tile-alt: #c5dcae;
+  --tile-line: #a9c48f;
   --wall: #9c8f7f;
   --ok: #2f7d4f;
   --err: #b3261e;
@@ -28,8 +29,9 @@
     --border: #3a3e35;
     --accent: #5cb27f;
     --accent-text: #0d140f;
-    --tile: #2b3a25;
-    --tile-alt: #26331f;
+    --tile: #34482c;
+    --tile-alt: #22301c;
+    --tile-line: #4a6340;
     --wall: #6d6458;
     --ok: #6fcf97;
     --err: #ff8a80;
@@ -48,8 +50,9 @@
   --border: #3a3e35;
   --accent: #5cb27f;
   --accent-text: #0d140f;
-  --tile: #2b3a25;
-  --tile-alt: #26331f;
+  --tile: #34482c;
+  --tile-alt: #22301c;
+  --tile-line: #4a6340;
   --wall: #6d6458;
   --ok: #6fcf97;
   --err: #ff8a80;
@@ -174,13 +177,16 @@ select {
   overflow: visible;
 }
 
-.stage-svg .tile { fill: var(--tile); }
+.stage-svg .tile { fill: var(--tile); stroke: var(--tile-line); stroke-width: 1.5; }
 .stage-svg .tile.alt { fill: var(--tile-alt); }
 .stage-svg .wall { fill: var(--wall); }
 .stage-svg .emoji { font-size: 40px; text-anchor: middle; dominant-baseline: central; user-select: none; }
 .stage-svg .item { transition: transform 0.25s, opacity 0.25s; transform-origin: center; transform-box: fill-box; }
 .stage-svg .item.grabbed { transform: scale(1.6) translateY(-10px); opacity: 0; }
 .stage-svg .animal { transition: transform var(--dur, 250ms) ease-in-out; }
+/* the animal's picture looks the way it walks (emoji mostly look to the left) */
+.stage-svg .animal-face { transform-box: fill-box; transform-origin: center; transition: transform var(--dur, 250ms); }
+.stage-svg .animal-face.mirrored { transform: scaleX(-1); }
 .stage-svg .facing { transition: transform var(--dur, 250ms) ease-in-out; transform-origin: 32px 32px; }
 .stage-svg .arrow { fill: var(--accent); }
 .stage-svg .target { fill: none; stroke: var(--star); stroke-width: 3; stroke-dasharray: 6 4; }
@@ -424,3 +430,35 @@ select {
 .scan-video { width: 100%; max-height: 220px; border-radius: 12px; background: #000; }
 .animal-select { font-size: 20px; }
 .outfit3d { position: absolute; transform: translate(-50%, -100%); font-size: 30px; pointer-events: none; }
+
+/* phase 4: the octopus's arms, and the lanes under the stage */
+.stage-svg .arm { stroke: #c2185b; stroke-width: 9; stroke-linecap: round; opacity: 0.8;
+  transition: x2 var(--dur, 250ms) ease, y2 var(--dur, 250ms) ease; }
+.lanes { display: grid; gap: 2px; margin: 4px 0; font-size: 0.8rem; }
+.lanes[hidden] { display: none; }
+.lane { display: grid; grid-template-columns: 9rem 1fr; align-items: center; gap: 6px; }
+.lane-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lane-track { position: relative; height: 14px; background: var(--panel-2, #eef2ee); border-radius: 4px; }
+.lane-mark { position: absolute; top: 2px; width: 6px; height: 10px; margin-left: -3px; border-radius: 2px;
+  background: var(--lane, #4c97ff); opacity: 0.55; }
+.lane-mark.done { opacity: 1; }
+.lane-span { position: absolute; top: 5px; height: 4px; background: var(--lane, #4c97ff); opacity: 0.45; border-radius: 2px; }
+.lane-mark.wait { background: transparent; border: 1px solid var(--lane, #4c97ff); }
+.lane.active .lane-name { font-weight: 700; }
+.lane-cursor { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #d32f2f; }
+.timeline[hidden] { display: none; }
+.timeline { display: flex; align-items: center; gap: 6px; }
+.timeline input { flex: 1; }
+.python-select { max-width: 8rem; }
+.files-written pre { max-height: 8rem; overflow: auto; }
+
+/* a missed grab(): where the item really is, and the animal's gesture */
+.stage-svg .ghost-target { fill: none; stroke: #f9a825; stroke-width: 4; stroke-dasharray: 8 6;
+  animation: ghost-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes ghost-pulse { from { opacity: 0.35; } to { opacity: 1; } }
+.stage-svg .body.look-up { transform: translateY(-8px); transition: transform var(--dur, 250ms); }
+.stage-svg .body.shrug { animation: shrug 0.5s ease-in-out 2; }
+@keyframes shrug { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .stage-svg .ghost-target, .stage-svg .body.shrug { animation: none; }
+}

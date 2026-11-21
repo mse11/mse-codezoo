@@ -1,0 +1,100 @@
+{
+  "id": "m14-l01",
+  "title": "One arm at a time",
+  "module": "concurrency",
+  "concepts": [
+    "async def",
+    "await"
+  ],
+  "animal": "octopus",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "..B..",
+      ".....",
+      "....B",
+      ".....",
+      "....."
+    ],
+    "start": [
+      2,
+      2,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "mustUse": [
+      "AsyncFunction",
+      "Await"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "reach"
+  ],
+  "hints": [
+    "Arms are numbered clockwise: 0 points up, 2 to the right.",
+    "`await reach(0)` waits until the arm is back; `asyncio.run(main())` starts it all."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Jedno rameno naraz",
+      "hints": [
+        "Ramená sú očíslované v smere hodín: 0 hore, 2 doprava.",
+        "`await reach(0)` počká, kým sa rameno vráti; `asyncio.run(main())` všetko spustí."
+      ]
+    }
+  }
+}

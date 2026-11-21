@@ -1,0 +1,90 @@
+{
+  "id": "i313-l02",
+  "title": "A copy with one change",
+  "module": "island-3.13",
+  "concepts": [
+    "copy.replace"
+  ],
+  "animal": "fox",
+  "minPython": "3.13",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "river",
+      "meadow"
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "A frozen route can't change, but `replace` makes a new one with one change."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Kópia s jednou zmenou",
+      "hints": [
+        "Zmrazená trasa sa nedá zmeniť, ale `replace` vyrobí novú s jednou zmenou."
+      ]
+    }
+  }
+}

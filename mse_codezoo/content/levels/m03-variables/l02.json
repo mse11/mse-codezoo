@@ -1,6 +1,6 @@
 {
   "id": "m03-l02",
-  "title": "Counting bananas",
+  "title": "Counting {B.many}",
   "module": "variables",
   "concepts": [
     "variable",
@@ -56,7 +56,7 @@
   "mode": "blocks_with_preview",
   "i18n": {
     "sk": {
-      "title": "Počítame banány",
+      "title": "Počítame {B.few}",
       "hints": [
         "Začni s bananas = 0 a pri každom chytení pridaj 1.",
         "bananas += 1 daj do cyklu a say(bananas) až za neho."

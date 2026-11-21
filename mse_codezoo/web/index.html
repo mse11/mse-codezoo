@@ -14,6 +14,7 @@
     <h1 class="logo">CodeZoo</h1>
     <select id="level-select" data-i18n-label="Choose a level"></select>
     <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
+    <select id="python-select" class="python-select" data-i18n-label="Python release"></select>
     <div class="controls">
       <button id="run" class="primary" type="button">▶ Run</button>
       <button id="step" type="button" data-i18n>Step</button>
@@ -44,6 +45,9 @@
       </div>
       <div id="stage" class="stage"></div>
       <div id="callstack" class="callstack" aria-live="polite" data-i18n-label="Call stack"></div>
+      <div id="lanes" class="lanes" hidden data-i18n-label="Tasks and threads"></div>
+      <label id="timeline" class="timeline" hidden><span data-i18n>Timeline</span>
+        <input id="timeline-range" type="range" min="0" max="0" value="0"></label>
       <div id="feeling" class="feeling" aria-live="polite"></div>
       <div id="result" class="result" aria-live="polite"></div>
     </section>

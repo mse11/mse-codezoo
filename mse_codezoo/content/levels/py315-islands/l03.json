@@ -1,0 +1,95 @@
+{
+  "id": "i315-l03",
+  "title": "Missing or not weighed?",
+  "module": "island-3.15",
+  "concepts": [
+    "sentinel"
+  ],
+  "animal": "penguin",
+  "minPython": "3.15",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "Pip: 2.5 kg",
+      "Pop: fish not weighed",
+      "Pia: no fish yet"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "If"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`None` means the fish isn't weighed; a sentinel means there is no fish at all."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Chýba, alebo neodvážená?",
+      "hints": [
+        "`None` znamená, že ryba nie je odvážená; strážna hodnota, že ryba vôbec nie je."
+      ]
+    }
+  }
+}

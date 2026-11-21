@@ -7,19 +7,22 @@ from pathlib import Path
 
 import pytest
 
-from mse_codezoo import i18n
+from mse_codezoo import i18n, scheduler, stdlib, world  # noqa: F401 - their ZooObject kinds
 from mse_codezoo.game import level_to_json, run_level
 from mse_codezoo.i18n import catalog, from_accept_language, normalize, plural, t, use_lang
+from mse_codezoo.interpreter import ZooObject
 from mse_codezoo.lang_python import FRIENDLY, parse
 from mse_codezoo.levels import find_level, level_files, load_level, load_pack
 from mse_codezoo.profiles import MISTAKE_KINDS
+from mse_codezoo.versions import NEWER_FEATURES
 
 PACKAGE = Path(i18n.__file__).parent
 
 
 def message_ids() -> set[str]:
     """Every literal first argument of a ``t(...)`` call, plus texts passed to t() later."""
-    ids = set(FRIENDLY.values()) | set(MISTAKE_KINDS.values())
+    ids = set(FRIENDLY.values()) | set(MISTAKE_KINDS.values()) | set(NEWER_FEATURES)
+    ids |= {cls.KIND for cls in _all_subclasses(ZooObject)}
     for path in PACKAGE.glob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             is_t = isinstance(node, ast.Call) and getattr(node.func, "id", None) == "t"
@@ -29,6 +32,13 @@ def message_ids() -> set[str]:
                 if node.args and isinstance(node.args[0], ast.Constant):
                     ids.add(node.args[0].value)
     return ids
+
+
+def _all_subclasses(cls: type) -> set[type]:
+    found = set()
+    for sub in cls.__subclasses__():
+        found |= {sub, *_all_subclasses(sub)}
+    return found
 
 
 def fields(template: str) -> set[str]:
@@ -126,10 +136,10 @@ def test_level_json_is_translated():
     level = find_level("m05-l02")
     with use_lang("sk"):
         data = level_to_json(level)
-    assert data["title"] == "Zrelý alebo zhnitý"
+    assert data["title"] == "Banán alebo zhnitý banán?"
     assert data["pack"]["animalName"] == "opička"
     assert data["pack"]["itemNames"]["B"] == {"one": "banán", "many": "banány"}
-    assert level_to_json(level)["title"] == "Ripe or rotten"
+    assert level_to_json(level)["title"] == "Banana or rotten banana?"
 
 
 def test_programs_see_english_item_names_in_every_language():

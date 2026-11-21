@@ -1,0 +1,96 @@
+{
+  "id": "i314-l01",
+  "title": "A safe dance",
+  "module": "island-3.14",
+  "concepts": [
+    "template strings"
+  ],
+  "animal": "bee",
+  "minPython": "3.14",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "texts": [
+      "Flowers are left of the oak!",
+      "Go to the ???"
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "TString"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "A `t\"...\"` string keeps the text and the values apart.",
+    "Check every value before you use it: no wasps!"
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Bezpečný tanec",
+      "hints": [
+        "Reťazec `t\"...\"` drží text a hodnoty oddelene.",
+        "Každú hodnotu skontroluj, kým ju použiješ: žiadne osy!"
+      ]
+    }
+  }
+}

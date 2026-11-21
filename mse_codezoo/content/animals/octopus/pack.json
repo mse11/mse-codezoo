@@ -1,0 +1,68 @@
+{
+  "id": "octopus",
+  "animal": "octopus",
+  "world": "reef",
+  "emoji": "🐙",
+  "tricks": [
+    "reach",
+    "stretch"
+  ],
+  "actions": {
+    "step": "step",
+    "turn_left": "turn_left",
+    "turn_right": "turn_right",
+    "grab": "grab",
+    "say": "say",
+    "is_blocked": "is_blocked",
+    "item_here": "item_here",
+    "item_ahead": "item_ahead",
+    "reach": "reach",
+    "stretch": "stretch"
+  },
+  "items": {
+    "B": "shell",
+    "C": "pearl",
+    "R": "jellyfish"
+  },
+  "names": {
+    "en": {
+      "animal": "octopus",
+      "world": "reef",
+      "items": {
+        "B": {
+          "one": "shell",
+          "many": "shells"
+        },
+        "C": {
+          "one": "pearl",
+          "many": "pearls"
+        },
+        "R": {
+          "one": "jellyfish",
+          "many": "jellyfish"
+        }
+      }
+    },
+    "sk": {
+      "animal": "chobotnica",
+      "world": "útes",
+      "items": {
+        "B": {
+          "one": "mušľa",
+          "few": "mušle",
+          "many": "mušlí"
+        },
+        "C": {
+          "one": "perla",
+          "few": "perly",
+          "many": "perál"
+        },
+        "R": {
+          "one": "medúza",
+          "few": "medúzy",
+          "many": "medúz"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "id": "i310-l04",
+  "title": "Basket and ladder",
+  "module": "island-baseline",
+  "concepts": [
+    "with",
+    "context managers"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "file",
+        "name": "basket.txt",
+        "text": "3 bananas"
+      },
+      {
+        "type": "file",
+        "name": "ladder.txt",
+        "text": "put back"
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "With"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "One `with` can hold several things in brackets; all are put back at the end."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Košík a rebrík",
+      "hints": [
+        "Jedno `with` môže v zátvorkách držať viac vecí; na konci sa všetky vrátia."
+      ]
+    }
+  }
+}

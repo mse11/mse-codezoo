@@ -1,0 +1,94 @@
+{
+  "id": "m12-l01",
+  "title": "A class of your own",
+  "module": "objects",
+  "concepts": [
+    "class",
+    "__init__",
+    "method"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "I am Momo"
+  },
+  "constraints": {
+    "mustUse": [
+      "ClassDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`__init__` runs when you make a `Helper(\"Momo\")`; `self.name` keeps the name.",
+    "Every method gets `self` first."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Vlastná trieda",
+      "hints": [
+        "`__init__` sa spustí, keď vytvoríš `Helper(\"Momo\")`; `self.name` si pamätá meno.",
+        "Každá metóda dostane ako prvé `self`."
+      ]
+    }
+  }
+}

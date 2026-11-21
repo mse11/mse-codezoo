@@ -1,0 +1,103 @@
+{
+  "id": "m13-l08",
+  "title": "A decorator class",
+  "module": "decorators",
+  "concepts": [
+    "__call__",
+    "class decorator"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "2"
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator",
+      "ClassDef"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "An object with `__call__` can be called like a function.",
+    "It keeps `calls` between calls."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Dekorátor ako trieda",
+      "hints": [
+        "Objekt s `__call__` sa dá zavolať ako funkcia.",
+        "Medzi volaniami si pamätá `calls`."
+      ]
+    }
+  }
+}

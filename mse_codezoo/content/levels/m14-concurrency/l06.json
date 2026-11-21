@@ -1,0 +1,101 @@
+{
+  "id": "m14-l06",
+  "title": "Stung! (TaskGroup)",
+  "module": "concurrency",
+  "concepts": [
+    "asyncio.TaskGroup",
+    "except*"
+  ],
+  "animal": "octopus",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "..B..",
+      "...R.",
+      "....B",
+      ".....",
+      "..B.."
+    ],
+    "start": [
+      2,
+      2,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "ouch: 1"
+  },
+  "constraints": {
+    "mustUse": [
+      "AsyncFunction",
+      "With",
+      "Try"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "reach"
+  ],
+  "hints": [
+    "If one arm is stung, the task group calls every other arm back.",
+    "`except* StungError` catches the stings out of the group."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Popŕhlené! (TaskGroup)",
+      "hints": [
+        "Keď medúza popŕhli jedno rameno, skupina zavolá ostatné späť.",
+        "`except* StungError` vyberie popŕhlenia zo skupiny."
+      ]
+    }
+  }
+}

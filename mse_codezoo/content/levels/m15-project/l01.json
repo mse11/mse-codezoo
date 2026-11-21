@@ -1,0 +1,110 @@
+{
+  "id": "m15-l01",
+  "title": "Ask a question",
+  "module": "first-project",
+  "concepts": [
+    "input"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ],
+    "inputs": [
+      "Momo"
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        "."
+      ],
+      "start": [
+        0,
+        0,
+        "east"
+      ],
+      "inputs": [
+        "Bea"
+      ],
+      "goal": {
+        "type": "say",
+        "text": "Hello, Bea!"
+      }
+    }
+  ],
+  "goal": {
+    "type": "say",
+    "text": "Hello, Momo!"
+  },
+  "constraints": {
+    "maxLines": 2
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`input()` waits for an answer and gives it back as text."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Polož otázku",
+      "hints": [
+        "`input()` počká na odpoveď a vráti ju ako text."
+      ]
+    }
+  }
+}

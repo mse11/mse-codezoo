@@ -6,18 +6,20 @@
 //                  light up line + block; the engine also checks the level's other worlds.
 //                  With a player chosen, the engine saves the result to their progress.
 
-import { api } from "./api.js";
+import { api, setPython } from "./api.js";
 import { createWorkspace } from "./blocks.js";
 import { CodeView } from "./code.js";
 import { LANGS, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
 import { Players } from "./players.js";
+import { decodeShare } from "./share.js";
 import { Stage } from "./stage.js";
 
 const $ = (id) => document.getElementById(id);
 const HEARTBEAT_SECONDS = 30;
 const VIEW_KEY = "codezoo.view";
 const ANIMAL_KEY = "codezoo.animal";
+const PYTHON_KEY = "codezoo.python";
 
 setLang(initialLang());
 
@@ -215,7 +217,8 @@ function renderLevelOptions() {
     ...state.levels.map((l) => {
       const stars = starText(state.progress[l.id]?.stars || 0);
       const only = l.signature ? `${animalEmoji(l.animal)} ` : "";
-      return el("option", { value: l.id }, `${l.id} · ${only}${l.title}${stars ? `  ${stars}` : ""}`);
+      const island = l.minPython ? ` [${l.locked ? "🔒 " : ""}Python ${l.minPython}]` : "";
+      return el("option", { value: l.id }, `${l.id} · ${only}${l.title}${island}${stars ? `  ${stars}` : ""}`);
     }),
   );
   if (state.level) select.value = state.level.id;
@@ -228,6 +231,10 @@ const MUST_USE = {
   FunctionDef: "def", Return: "return", Try: "try / except", Raise: "raise", Assert: "assert",
   Import: "import", List: "[…]", Tuple: "(a, b)", Dict: "{key: value}", Set: "{a, b}",
   Global: "global", Comprehension: "[… for …]", Recursion: t("a function that calls itself"),
+  Lambda: "lambda", Yield: "yield", YieldFrom: "yield from", Generator: "yield",
+  GeneratorExp: "(… for …)", ClassDef: "class", Inheritance: "class A(B)", Decorator: "@decorator",
+  With: "with", Match: "match / case", AsyncFunction: "async def", Await: "await",
+  AnnAssign: "x: int", TString: 't"…"', TypeAlias: "type X = …",
 };
 
 const animalEmoji = (id) => state.animals.find((a) => a.id === id)?.emoji || "🐾";
@@ -250,6 +257,13 @@ function describeGoal(level, goal) {
       return t("Make the {animal} say “{text}”", { animal, text: goal.text });
     case "avoid":
       return t("Leave every {item} alone", { item: one(goal.item) });
+    case "print":
+      if (goal.lines) return t("Make the program print: {texts}", { texts: goal.lines.map((x) => `“${x}”`).join(", ") });
+      return t("Make the program print “{text}”", { text: goal.text });
+    case "time":
+      return t("Be done by tick {n} of the clock", { n: goal.within });
+    case "file":
+      return t("Leave the right text in the file {name}", { name: goal.name });
     case "build":
       return t("Build a dam from exactly: {logs}", {
         logs: Object.entries(goal.logs).map(([log, n]) => `${n} × ${log}`).join(", "),
@@ -290,6 +304,7 @@ function renderGoal() {
     el("p", {}, t("Stars for: {rules}", { rules: rules.length ? rules.join("; ") : t("just solving it") })),
   ];
   if (level.starter) parts.push(el("p", {}, t("This program has a bug. Run it, watch, then fix it!")));
+  if (level.locked) parts.push(el("p", { class: "message err" }, `🔒 ${level.locked}`));
   parts.push(el("div", { class: "hint-row" }, hintButton, hint));
   $("goal").replaceChildren(...parts);
 }
@@ -340,15 +355,37 @@ function renderFiles() {
 
 async function loadLevel(id) {
   stopPlayback();
+  state.shared = null;
   const level = await api.level(id, state.animal);
+  location.hash = id;
+  $("level-select").value = id;
+  await showLevel(level);
+}
+
+// A level from the editor or a share link (index.html#play=...): checked by the engine like
+// a level file, played like any other, but nothing is saved to a player's progress.
+async function loadShared(link) {
+  stopPlayback();
+  try {
+    const { level } = decodeShare(link);
+    state.shared = level;
+    $("level-select").value = "";
+    await showLevel(await api.previewLevel(level, state.animal));
+  } catch (error) {
+    state.shared = null;
+    $("result").replaceChildren(el("div", { class: "message err" }, t("This shared level can't be played: {message}", { message: error.message })));
+    return false;
+  }
+  return true;
+}
+
+async function showLevel(level) {
   state.level = level;
   state.variant = 0;
   state.hintsShown = 0;
   state.text = "";
   state.sourceMap = {};
   invalidateRun();
-  location.hash = id;
-  $("level-select").value = id;
 
   renderGoal();
   renderWorlds();
@@ -409,11 +446,13 @@ async function changeLanguage(code) {
   translatePage();
   players.relabel();
   updateButtons();
-  state.levels = await api.levels();
+  state.levels = await api.levels(state.animal);
   state.animals = await api.animals();
   renderLevelOptions();
   if (!state.level) return;
-  const level = await api.level(state.level.id, state.animal);
+  const level = state.shared
+    ? await api.previewLevel(state.shared, state.animal)
+    : await api.level(state.level.id, state.animal);
   state.level = level;
   renderGoal();
   renderWorlds();
@@ -438,6 +477,7 @@ function invalidateRun() {
   stopPlayback();
   state.run = null;
   state.stepIndex = 0;
+  renderLanes(null);
   $("result").replaceChildren();
   $("feeling").replaceChildren();
   state.stack = [];
@@ -471,14 +511,95 @@ function updateButtons() {
   $("step").disabled = state.over;
 }
 
+// --- lanes: tasks and threads that run at the same time, on a simulated clock ---------------
+
+const LANE_COLOURS = ["#4C97FF", "#59C059", "#FFAB19", "#CF63CF", "#5CB1D6", "#FF8C1A", "#995BA5", "#D65C5C"];
+const lanes = { marks: [], rows: new Map(), cursor: null, end: 1 };
+
+function renderLanes(run) {
+  const box = $("lanes");
+  lanes.marks = [];
+  lanes.rows = new Map();
+  if (!run?.lanes?.length || !run.steps) {
+    box.hidden = true;
+    box.replaceChildren();
+    $("timeline").hidden = true;
+    return;
+  }
+  lanes.end = Math.max(run.time || 0, 1);
+  const rows = run.lanes.map((name, i) => {
+    const track = el("div", { class: "lane-track" });
+    track.style.setProperty("--lane", LANE_COLOURS[i % LANE_COLOURS.length]);
+    const row = el("div", { class: "lane" }, el("span", { class: "lane-name", title: name }, name), track);
+    lanes.rows.set(name, { row, track });
+    return row;
+  });
+  const waitingSince = new Map(); // lane -> the tick it started waiting
+  run.steps.forEach((step, index) => {
+    const lane = lanes.rows.get(step.lane || "main");
+    if (!lane) return;
+    const waiting = step.note === t("waiting");
+    const since = waitingSince.get(step.lane);
+    if (since !== undefined && step.time > since) {
+      // a bar for the time this lane waited while the others went on
+      const bar = el("span", { class: "lane-span" });
+      bar.style.left = `${(since / lanes.end) * 100}%`;
+      bar.style.width = `${((step.time - since) / lanes.end) * 100}%`;
+      lane.track.append(bar);
+    }
+    if (waiting) waitingSince.set(step.lane, step.time);
+    else waitingSince.delete(step.lane);
+    const mark = el("span", { class: `lane-mark${waiting ? " wait" : ""}`, title: `${step.lane} @ ${step.time}` });
+    mark.style.left = `${((step.time || 0) / lanes.end) * 100}%`;
+    lane.track.append(mark);
+    lanes.marks[index] = mark;
+  });
+  lanes.cursor = el("span", { class: "lane-cursor" });
+  rows[0].querySelector(".lane-track").append(lanes.cursor);
+  box.replaceChildren(el("div", { class: "note" }, t("At the same time (done by tick {n}):", { n: run.time })), ...rows);
+  box.hidden = false;
+  const slider = $("timeline-range");
+  slider.max = String(run.steps.length);
+  slider.value = "0";
+  $("timeline").hidden = false;
+}
+
+function markLanes(index) {
+  const run = state.run;
+  if (!run?.lanes?.length) return;
+  lanes.marks.forEach((mark, i) => mark?.classList.toggle("done", i < index));
+  const step = run.steps[Math.max(index - 1, 0)];
+  for (const [name, { row }] of lanes.rows) row.classList.toggle("active", name === step?.lane);
+  if (lanes.cursor) lanes.cursor.style.left = `${((step?.time || 0) / lanes.end) * 100}%`;
+  $("timeline-range").value = String(index);
+}
+
+// Jump to a moment on the timeline: replay the steps up to it without waiting.
+async function seek(index) {
+  const run = state.run;
+  if (!run?.steps) return;
+  stopPlayback();
+  const token = state.token;
+  stage.reset();
+  state.stack = [];
+  renderStack();
+  const saved = stage.duration;
+  stage.duration = 0;
+  for (let i = 0; i < index && token === state.token; i++) await playStep(run.steps[i]);
+  stage.duration = saved;
+  state.stepIndex = index;
+  markLanes(index);
+}
+
 async function ensureRun() {
   if (state.run) return state.run;
   stage.reset();
-  const result = await api.run(state.level.id, state.text, state.player?.id, state.variant, {
-    animal: state.level.pack.id,
-  });
+  const result = state.shared
+    ? await api.runLevelData(state.shared, state.text, state.variant)
+    : await api.run(state.level.id, state.text, state.player?.id, state.variant, { animal: state.level.pack.id });
   state.run = result;
   state.stepIndex = 0;
+  renderLanes(result);
   showDiagnostics(result.diagnostics || []);
   if (result.progress) {
     state.progress[state.level.id] = result.progress;
@@ -514,8 +635,18 @@ async function play({ single = false } = {}) {
   state.playing = !single;
   updateButtons();
   while (state.stepIndex < run.steps.length) {
-    const step = run.steps[state.stepIndex++];
-    await playStep(step);
+    // steps of different lanes at the same tick happen together: play them together
+    const first = run.steps[state.stepIndex];
+    const batch = [first];
+    while (
+      !single && run.lanes?.length && state.stepIndex + batch.length < run.steps.length &&
+      batch.length < 16 && run.steps[state.stepIndex + batch.length].time === first.time
+    ) {
+      batch.push(run.steps[state.stepIndex + batch.length]);
+    }
+    state.stepIndex += batch.length;
+    await Promise.all(batch.map((step) => playStep(step)));
+    markLanes(state.stepIndex);
     if (token !== state.token) return;
     if (single) break;
     await new Promise((resolve) => setTimeout(resolve, stage.duration / 2));
@@ -578,6 +709,16 @@ function showResult(run) {
       );
     }
     if (run.output?.length) parts.push(el("pre", { class: "printed" }, run.output.join("\n")));
+    const files = Object.entries(run.files || {});
+    if (files.length) {
+      parts.push(
+        el(
+          "div",
+          { class: "files-written" },
+          ...files.map(([name, text]) => el("details", {}, el("summary", {}, `📄 ${name}`), el("pre", {}, text))),
+        ),
+      );
+    }
   }
   for (const sticker of run.newStickers || []) {
     parts.push(el("div", { class: "sticker-new" }, `${sticker.emoji} ${t("New sticker: {name}", sticker)}`));
@@ -640,7 +781,10 @@ async function openZoo() {
   zoo.habitat = await api.habitat(state.player.id);
   $("zoo-error").textContent = "";
   $("card-code").value = "";
-  $("cards-link").href = `cards.html?animal=${encodeURIComponent(state.level?.pack.id || "monkey")}&lang=${lang()}`;
+  const cardAnimal = state.level?.pack.id || "monkey";
+  $("cards-link").href = window.CODEZOO_OFFLINE
+    ? `cards-${cardAnimal}-${lang()}.html`
+    : `cards.html?animal=${encodeURIComponent(cardAnimal)}&lang=${lang()}`;
   $("scan-card").hidden = !("BarcodeDetector" in window && navigator.mediaDevices?.getUserMedia);
   renderZoo();
   $("zoo-dialog").showModal();
@@ -786,6 +930,14 @@ $("reset").addEventListener("click", () => {
   stage.reset();
 });
 $("speed").addEventListener("input", (event) => stage.setSpeed(Number(event.target.value)));
+$("timeline-range").addEventListener("input", (event) => seek(Number(event.target.value)));
+$("python-select").addEventListener("change", async (event) => {
+  setPython(event.target.value || null);
+  saveSetting(PYTHON_KEY, event.target.value);
+  state.levels = await api.levels(state.animal);
+  renderLevelOptions();
+  if (state.level) loadLevel(state.level.id);
+});
 $("edit-code").addEventListener("change", (event) => code.setEditable(event.target.checked));
 $("level-select").addEventListener("change", (event) => loadLevel(event.target.value));
 $("player").addEventListener("click", () => players.choose());
@@ -793,13 +945,22 @@ $("view-3d").addEventListener("change", (event) => useView(event.target.checked)
 $("lang").addEventListener("change", (event) => changeLanguage(event.target.value));
 window.addEventListener("hashchange", () => {
   const id = location.hash.slice(1);
+  if (id.startsWith("play=")) {
+    loadShared(id.slice(5));
+    return;
+  }
   if (id !== state.level?.id && state.levels.some((l) => l.id === id)) loadLevel(id);
 });
 $("grownups").addEventListener("click", () => players.openGrownups());
 $("animal-select").addEventListener("change", (event) => {
   state.animal = event.target.value;
   saveSetting(ANIMAL_KEY, state.animal);
-  if (state.level) loadLevel(state.level.id);
+  api.levels(state.animal).then((levels) => {
+    state.levels = levels; // titles name this animal's items
+    renderLevelOptions();
+  });
+  if (state.shared) loadShared(location.hash.slice(6));
+  else if (state.level) loadLevel(state.level.id);
 });
 $("zoo").addEventListener("click", () => openZoo());
 $("card-form").addEventListener("submit", (event) => {
@@ -834,10 +995,23 @@ async function start() {
   $("view-3d").checked = want3d;
   await useView(want3d);
   state.animal = readSetting(ANIMAL_KEY);
-  [state.levels, state.animals] = await Promise.all([api.levels(), api.animals()]);
+  const info = await api.info();
+  const releases = info.releases.filter((r) => r.readable).map((r) => r.version);
+  $("python-select").replaceChildren(
+    el("option", { value: "" }, t("Python {version} (newest)", { version: info.default })),
+    ...releases.map((v) => el("option", { value: v }, `Python ${v}`)),
+  );
+  const python = readSetting(PYTHON_KEY);
+  if (python && releases.includes(python)) {
+    $("python-select").value = python;
+    setPython(python);
+  }
+  [state.levels, state.animals] = await Promise.all([api.levels(state.animal), api.animals()]);
   renderLevelOptions();
   const wanted = location.hash.slice(1);
-  await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : state.levels[0].id);
+  if (!(wanted.startsWith("play=") && (await loadShared(wanted.slice(5))))) {
+    await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : state.levels[0].id);
+  }
   await players.start();
 }
 

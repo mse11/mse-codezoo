@@ -1,0 +1,110 @@
+{
+  "id": "m14-l02",
+  "title": "All arms at once",
+  "module": "concurrency",
+  "concepts": [
+    "asyncio.gather",
+    "concurrency"
+  ],
+  "animal": "octopus",
+  "signature": true,
+  "world": {
+    "tiles": [
+      "..B..",
+      ".....",
+      "B...B",
+      ".....",
+      "..B.."
+    ],
+    "start": [
+      2,
+      2,
+      "north"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "time",
+        "within": 4
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "AsyncFunction",
+      "Await"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "reach"
+  ],
+  "hints": [
+    "One arm after another takes 16 ticks. Can the arms work at the same time?",
+    "`asyncio.gather(...)` runs them all together and waits for every one."
+  ],
+  "mode": "code_first",
+  "starter": "import asyncio\n\nasync def main():\n    await reach(0)\n    await reach(2)\n    await reach(4)\n    await reach(6)\n\nasyncio.run(main())\n",
+  "i18n": {
+    "sk": {
+      "title": "Všetky ramená naraz",
+      "hints": [
+        "Rameno za ramenom trvá 16 tikov. Môžu ramená pracovať naraz?",
+        "`asyncio.gather(...)` ich spustí spolu a počká na každé."
+      ]
+    }
+  }
+}

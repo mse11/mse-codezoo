@@ -1,6 +1,6 @@
 {
   "id": "m01-l01",
-  "title": "One banana",
+  "title": "One {B}",
   "module": "sequences",
   "concepts": [
     "call"
@@ -34,7 +34,7 @@
   "mode": "blocks_only",
   "i18n": {
     "sk": {
-      "title": "Jeden banán",
+      "title": "Zober jeden kus: {B}",
       "hints": [
         "Spočítaj políčka medzi opičkou a banánom.",
         "step(4) prejde štyri políčka; grab() zdvihne, čo je pod opičkou."

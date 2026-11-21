@@ -1,0 +1,110 @@
+{
+  "id": "m12-l08",
+  "title": "The hive at work",
+  "module": "objects",
+  "concepts": [
+    "inheritance",
+    "dataclass",
+    "boss"
+  ],
+  "animal": "bee",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".#B#B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "texts": [
+          "Bea found nectar",
+          "Gus guards",
+          "Ola found nectar"
+        ]
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Inheritance",
+      "Decorator"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "fly"
+  ],
+  "hints": [
+    "The queen just calls `bee.work()`; each kind of bee does its own job.",
+    "Workers fly over the rocks: `fly(2)`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Úľ v práci",
+      "hints": [
+        "Kráľovná len zavolá `bee.work()`; každý druh včely robí svoju prácu.",
+        "Robotnice preletia cez kamene: `fly(2)`."
+      ]
+    }
+  }
+}

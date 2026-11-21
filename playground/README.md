@@ -40,7 +40,7 @@ uv run codezoo run m01-l03 playground/m01-l03.py --trace
 | `oops/typo.py` | `stpe` instead of `step`: "Did you mean `step`?" |
 | `oops/syntax.py` | A missing bracket: Python can't read the line |
 | `oops/too-short.py` | Stops one square early: 0 stars and a hint |
-| `oops/class.py` | Classes aren't supported yet (module 12): kept as raw code, not run |
+| `oops/walrus.py` | `:=` isn't part of CodeZoo: kept as raw code, not run |
 | `oops/one-world.py` | Works in world 1 but grabs a rotten banana in world 2 |
 | `oops/no-brackets.py` | `if is_blocked:` without brackets: "Add brackets to ask it" |
 | `oops/no-base-case.py` | A function that calls itself forever: "Does it have a base case?" |

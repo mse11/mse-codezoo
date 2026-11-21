@@ -1,0 +1,92 @@
+{
+  "id": "m12-l06",
+  "title": "A data class",
+  "module": "objects",
+  "concepts": [
+    "dataclass",
+    "type hints"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "say",
+    "text": "Log(kind='pine', length=1.0)"
+  },
+  "constraints": {
+    "mustUse": [
+      "Decorator",
+      "AnnAssign"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match"
+  ],
+  "hints": [
+    "`@dataclass` writes `__init__` and a nice print-out from the type hints."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Dátová trieda",
+      "hints": [
+        "`@dataclass` napíše `__init__` aj pekný výpis podľa typových nápovied."
+      ]
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "id": "m12-l03",
+  "title": "Workers and drones",
+  "module": "objects",
+  "concepts": [
+    "inheritance",
+    "polymorphism"
+  ],
+  "animal": "bee",
+  "signature": true,
+  "world": {
+    "tiles": [
+      ".#B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "Dan: buzz"
+      }
+    ]
+  },
+  "constraints": {
+    "mustUse": [
+      "Inheritance"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "fly"
+  ],
+  "hints": [
+    "`class Worker(Bee):` builds on the `Bee` from hive.py and changes `work`.",
+    "A `Drone` keeps the `work` it got from `Bee`."
+  ],
+  "mode": "code_first",
+  "files": {
+    "hive": "class Bee:\n    def __init__(self, name):\n        self.name = name\n\n    def work(self):\n        say(f\"{self.name}: buzz\")\n"
+  },
+  "i18n": {
+    "sk": {
+      "title": "Robotnice a trúdy",
+      "hints": [
+        "`class Worker(Bee):` stavia na `Bee` z hive.py a mení `work`.",
+        "`Drone` si nechá `work`, ktoré dostal od `Bee`."
+      ]
+    }
+  }
+}

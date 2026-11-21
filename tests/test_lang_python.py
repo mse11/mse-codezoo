@@ -107,12 +107,12 @@ def test_positions_point_at_the_input_text():
 
 
 def test_unsupported_code_is_kept_as_raw_code_with_a_note():
-    result = parse("step(1)\nclass Spin:\n    # spin\n    turn_left()\nstep(2)\n")
+    result = parse("step(1)\nasync for s in spins:\n    # spin\n    turn_left()\nstep(2)\n")
     assert result.ok
     raw = result.program.body[1]
     assert isinstance(raw, ir.RawCode)
-    assert raw.text == "class Spin:\n    # spin\n    turn_left()"
-    assert "classes" in result.diagnostics[0].message
+    assert raw.text == "async for s in spins:\n    # spin\n    turn_left()"
+    assert "async loops" in result.diagnostics[0].message
     assert result.diagnostics[0].severity == "warning"
     # the comment inside the raw block is not duplicated outside it
     assert [type(s).__name__ for s in result.program.body] == ["ExprStmt", "RawCode", "ExprStmt"]
@@ -121,12 +121,12 @@ def test_unsupported_code_is_kept_as_raw_code_with_a_note():
 @pytest.mark.parametrize(
     ("source", "reason"),
     [
-        ("x = (n for n in logs)\n", "comprehensions"),
-        ("x = lambda n: n\n", "`lambda`"),
+        ("x = [n async for n in logs]\n", "async comprehensions"),
+        ("x = (n := 3)\n", "`:=`"),
         ("f()()\n", "this kind of call"),
-        ("@trick\ndef f():\n    pass\n", "decorators"),
-        ("def f(*logs):\n    pass\n", "`*args` and other special inputs"),
-        ("x = lambda: 1\n", "`lambda`"),
+        ("def f(a, /):\n    pass\n", "`/` in a function's inputs"),
+        ("x = y = 1\n", "several `=`"),
+        ("raise A from B\n", "`raise ... from`"),
     ],
 )
 def test_unsupported_expressions_name_the_construct(source, reason):
