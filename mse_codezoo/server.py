@@ -18,7 +18,8 @@ otherwise the browser's ``Accept-Language`` decides. Titles, hints and messages 
     POST /api/profiles {name, picture} -> new player
     GET  /api/profiles/<id>/progress   stars per level, today's minutes and limit
     POST /api/profiles/<id>/time {seconds} -> today's minutes and limit
-    POST /api/parent/<action> {pin?, ...}  check | settings | report | export | remove
+    POST /api/parent/<action> {pin?, ...}  check | settings | report | export | remove |
+                                       import {data} (a file from `profile export`)
 
 Phase 3:
     GET  /api/animals                  every animal pack, ready to draw
@@ -40,6 +41,10 @@ Phase 4:
                                                checked, then ready to draw
     All routes go through ``dispatch()``, which the offline browser build calls directly
     inside Pyodide instead of over HTTP.
+
+Phase 5: ``codezoo class serve`` gives the server a classroom hub (``hub.Hub``), which
+checks the class code or the teacher's key and adds ``/api/class/*`` and ``/api/teacher/*``
+before passing the usual routes on to ``dispatch()``.
 """
 
 from __future__ import annotations
@@ -76,7 +81,7 @@ from mse_codezoo.levels import (
     load_pack,
     validate_level_data,
 )
-from mse_codezoo.profiles import PICTURES, PinError, ProfileError, ProfileStore
+from mse_codezoo.profiles import PinError, ProfileError, ProfileStore
 from mse_codezoo.runs import RunFileError, make_run
 from mse_codezoo.story import storybook_html
 
@@ -119,15 +124,17 @@ def api_info() -> dict[str, Any]:
 
 
 def list_levels(
-    python: tuple[int, int] | None = None, animal: str | None = None
+    python: tuple[int, int] | None = None,
+    animal: str | None = None,
+    extra: dict[str, Level] | None = None,
 ) -> list[dict[str, Any]]:
-    """Every level; titles name the items of ``animal`` where it can play the level."""
+    """Every level; titles name the items of ``animal`` where it can play the level.
+
+    ``extra`` adds levels that are not files of the package (a class's own levels).
+    """
     levels = []
-    for path in level_files():
-        try:
-            level = load_level(path)
-        except LevelError:
-            continue
+    extra = extra or {}
+    for level in [*_all_levels(), *extra.values()]:
         levels.append(
             {
                 "id": level.id,
@@ -140,16 +147,22 @@ def list_levels(
                 "locked": lock_reason(level, python),
             }
         )
+        if level.id in extra:
+            levels[-1]["own"] = True  # the class's own level (classroom hub)
     return levels
 
 
 def get_level(
-    level_id: str, animal: str | None = None, python: tuple[int, int] | None = None
+    level_id: str,
+    animal: str | None = None,
+    python: tuple[int, int] | None = None,
+    extra: dict[str, Level] | None = None,
 ) -> dict[str, Any]:
     if animal is not None and animal not in animal_names():
         animal = None
     try:
-        return level_to_json(find_level(level_id), animal, python)
+        level = (extra or {}).get(level_id) or find_level(level_id)
+        return level_to_json(level, animal, python)
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
 
@@ -201,7 +214,9 @@ def _inline_level(data: Any) -> Level:
     return Level.from_dict(data)
 
 
-def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
+def api_run(
+    body: dict[str, Any], store: ProfileStore, extra: dict[str, Level] | None = None
+) -> dict[str, Any]:
     source = _text(body, "source")
     animal = body.get("animal")
     player = body.get("profile")
@@ -214,7 +229,8 @@ def api_run(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
         if "levelData" in body:
             level = _inline_level(body["levelData"])
         else:
-            level = find_level(_text(body, "level"))
+            level_id = _text(body, "level")
+            level = (extra or {}).get(level_id) or find_level(level_id)
         run = run_level(
             level,
             source,
@@ -299,7 +315,11 @@ def api_profiles(store: ProfileStore) -> dict[str, Any]:
                 "solved": sum(1 for entry in levels.values() if entry.get("solved")),
             }
         )
-    return {"profiles": players, "pictures": list(PICTURES), "parent": store.parent().public()}
+    return {
+        "profiles": players,
+        "pictures": list(store.pictures),
+        "parent": store.parent().public(),
+    }
 
 
 def api_add_profile(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
@@ -327,7 +347,7 @@ def api_time(profile_id: str, body: dict[str, Any], store: ProfileStore) -> dict
     return store.add_time(profile_id, seconds)
 
 
-PARENT_ACTIONS = ("check", "settings", "report", "export", "remove")
+PARENT_ACTIONS = ("check", "settings", "report", "export", "remove", "import")
 
 
 def api_parent(action: str, body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
@@ -349,6 +369,11 @@ def api_parent(action: str, body: dict[str, Any], store: ProfileStore) -> dict[s
         )
         return settings.public()
     store.check_pin(pin)
+    if action == "import":  # a player brought home from a class, or from another computer
+        data = body.get("data")
+        if not isinstance(data, dict):
+            raise ProfileError(t("This is not a CodeZoo profile file."))
+        return asdict(store.import_(data))
     player = _text(body, "profile")
     if action == "report":
         return store.report(player, _all_levels())
@@ -367,14 +392,22 @@ def _text(body: dict[str, Any], key: str) -> str:
 
 
 def dispatch(
-    method: str, path: str, query: dict[str, str], body: dict[str, Any], store: ProfileStore
+    method: str,
+    path: str,
+    query: dict[str, str],
+    body: dict[str, Any],
+    store: ProfileStore,
+    extra_levels: dict[str, Level] | None = None,
 ) -> Any:
-    """Answer one API request; raises ``ApiError``, ``PinError`` or ``ProfileError``."""
+    """Answer one API request; raises ``ApiError``, ``PinError`` or ``ProfileError``.
+
+    ``extra_levels`` are levels that aren't package files (the classroom hub's own).
+    """
     if method == "GET":
         python = _python(query.get("python"))
         if path == "/api/levels":
             animal = query.get("animal")
-            return list_levels(python, animal if animal in animal_names() else None)
+            return list_levels(python, animal if animal in animal_names() else None, extra_levels)
         if path == "/api/info":
             return api_info()
         if path == "/api/profiles":
@@ -387,7 +420,10 @@ def dispatch(
             return api_animals()
         if path.startswith("/api/levels/"):
             return get_level(
-                unquote(path.removeprefix("/api/levels/")), query.get("animal"), python
+                unquote(path.removeprefix("/api/levels/")),
+                query.get("animal"),
+                python,
+                extra_levels,
             )
         raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
     if path == "/api/parse":
@@ -395,7 +431,7 @@ def dispatch(
     if path == "/api/print":
         return api_print(body)
     if path == "/api/run":
-        return api_run(body, store)
+        return api_run(body, store, extra_levels)
     if path == "/api/profiles":
         return api_add_profile(body, store)
     if match := TIME_PATH.match(path):
@@ -465,7 +501,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._cards()
             elif path.startswith("/api/"):
                 query = {k: v[0] for k, v in parse_qs(urlsplit(self.path).query).items()}
-                self._json(dispatch("GET", path, query, {}, store))
+                self._json(self._dispatch("GET", path, query, {}, store))
             else:
                 self._static(path)
         except ApiError as exc:
@@ -482,13 +518,22 @@ class Handler(BaseHTTPRequestHandler):
             raw = self._read_body()  # always read first: replying early resets the connection
             body = self._parse_body(raw)
             with use_lang(self._lang(body)):
-                self._json(dispatch("POST", path, {}, body, store))
+                self._json(self._dispatch("POST", path, {}, body, store))
         except ApiError as exc:
             self._json({"error": exc.message}, exc.status)
         except PinError as exc:
             self._json({"error": str(exc)}, HTTPStatus.FORBIDDEN)
         except ProfileError as exc:
             self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+
+    def _dispatch(
+        self, method: str, path: str, query: dict[str, str], body: dict[str, Any], store: Any
+    ) -> Any:
+        hub = getattr(self.server, "hub", None)
+        if hub is None:
+            return dispatch(method, path, query, body, store)
+        # the classroom hub checks the class code or the teacher's key first (see hub.py)
+        return hub.handle(method, path, query, body, self.headers, self.client_address[0])
 
     def _cards(self) -> None:
         animal = parse_qs(urlsplit(self.path).query).get("animal", ["monkey"])[0]
@@ -570,10 +615,12 @@ class CodeZooServer(ThreadingHTTPServer):
         port: int = DEFAULT_PORT,
         verbose: bool = False,
         store: ProfileStore | None = None,
+        hub: Any = None,
     ):
         super().__init__((host, port), Handler)
         self.verbose = verbose
         self.store = store if store is not None else ProfileStore()
+        self.hub = hub  # a classroom hub (hub.Hub) answers the API instead, on the network
 
     @property
     def url(self) -> str:

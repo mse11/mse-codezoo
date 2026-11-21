@@ -24,6 +24,7 @@ WEB_DIR = PACKAGE / "web"
 PYODIDE_VERSION = "0.29.5"
 PYODIDE_CDN = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/"
 SKIP = ("__pycache__", ".pyc")
+WEB_SKIP = (*SKIP, "teacher.*")  # the teacher's screen needs a classroom hub (codezoo class serve)
 PAGES = ("index.html", "editor.html")
 
 
@@ -55,7 +56,7 @@ def build(output: Path, pyodide_url: str | None = None) -> str:
         pyodide += "/"
     if output.exists():
         shutil.rmtree(output)
-    shutil.copytree(WEB_DIR, output, ignore=shutil.ignore_patterns(*SKIP))
+    shutil.copytree(WEB_DIR, output, ignore=shutil.ignore_patterns(*WEB_SKIP))
     modules = engine_zip(output / "engine.zip")
     config = {"pyodide": pyodide, "engine": "engine.zip", "version": __version__}
     for page in PAGES:

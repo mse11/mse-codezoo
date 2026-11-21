@@ -277,6 +277,28 @@ async function share() {
   }
 }
 
+// On a classroom hub: send the level to the teacher, who decides whether the class sees it.
+async function shareWithClass() {
+  if (!(await test())) return;
+  let player = null;
+  try {
+    player = localStorage.getItem("codezoo.player");
+  } catch {
+    player = null;
+  }
+  if (!player) {
+    report(false, t("Pick your picture in the game first, then share."));
+    return;
+  }
+  const data = levelData();
+  try {
+    await api.share(player, "level", data.title || data.id, { level: data, solution: $("solution").value });
+    report(true, t("Sent! The class sees your level once the teacher says yes."));
+  } catch (error) {
+    report(false, error.message);
+  }
+}
+
 function readLibrary() {
   try {
     return JSON.parse(localStorage.getItem(LIBRARY_KEY) || "{}");
@@ -460,11 +482,14 @@ $("test").addEventListener("click", test);
 $("play").addEventListener("click", play);
 $("share").addEventListener("click", share);
 $("keep").addEventListener("click", keep);
+$("share-class").addEventListener("click", shareWithClass);
 $("download").addEventListener("click", download);
 $("open").addEventListener("change", (event) => event.target.files[0] && open(event.target.files[0]));
 
 async function start() {
   translatePage();
+  const info = await api.info();
+  $("share-class").hidden = !info.hub;
   state.animals = await api.animals();
   $("animal").replaceChildren(...state.animals.map((a) => el("option", { value: a.id }, `${a.emoji} ${a.animalName}`)));
   $("module").replaceChildren(...MODULES.map((m) => el("option", { value: m }, m)));

@@ -12,6 +12,7 @@
 <body>
   <header class="bar">
     <h1 class="logo">CodeZoo</h1>
+    <span id="class-name" class="class-name" hidden></span>
     <select id="level-select" data-i18n-label="Choose a level"></select>
     <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
     <select id="python-select" class="python-select" data-i18n-label="Python release"></select>
@@ -25,6 +26,7 @@
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
       <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
+      <button id="class-button" type="button" class="zoo" hidden>🏫 <span data-i18n>Our class</span> <span id="class-badge" class="badge" hidden></span></button>
       <a class="editor-link" href="editor.html" data-i18n>Level editor</a>
       <button id="grownups" type="button" class="grownups" data-i18n>Grown-ups</button>
     </div>
@@ -128,6 +130,14 @@
       <section>
         <h3 data-i18n>Players</h3>
         <div id="reports"></div>
+        <label class="file-button"><span data-i18n>Load a player from a file</span> <input id="import-player" type="file" accept=".json,application/json"></label>
+        <p id="import-msg" class="note" role="status"></p>
+      </section>
+      <!-- grown-ups only (after the gate): never put this link on a child's screen -->
+      <section class="support" aria-labelledby="support-title">
+        <h3 id="support-title" data-i18n>Support CodeZoo</h3>
+        <p data-i18n>CodeZoo is free and open source, made in spare time. If it helps your family or class, you can support it. Donations are optional and unlock nothing.</p>
+        <a class="support-link" href="https://buymeacoffee.com/mse11" target="_blank" rel="noopener noreferrer" data-i18n>☕ Buy me a coffee</a>
       </section>
       <div class="dialog-buttons"><button type="button" data-close data-i18n>Back to the zoo</button></div>
     </div>
@@ -151,6 +161,59 @@
     <p id="card-result" role="status"></p>
     <p id="zoo-error" class="error" role="alert"></p>
     <div class="dialog-buttons"><button type="button" id="zoo-close" data-i18n>Back to the zoo</button></div>
+  </dialog>
+
+  <!-- classroom hub (codezoo class serve): joining, the teacher's pause, the class gallery -->
+  <dialog id="join-dialog" class="dialog" aria-labelledby="join-title">
+    <h2 id="join-title" data-i18n>Join the class</h2>
+    <form id="join-form" class="card-code">
+      <label><span data-i18n>Class code from the teacher's screen</span>
+        <input id="join-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="MANGO-427"></label>
+      <button type="submit" class="primary" data-i18n>Join</button>
+    </form>
+    <div id="join-pick" hidden>
+      <h3 id="join-class-name"></h3>
+      <p id="join-players-note" data-i18n>Already playing? Tap your picture.</p>
+      <div id="join-players" class="picture-grid"></div>
+      <form id="join-new" class="new-player">
+        <h3 data-i18n>New here? Pick a free picture</h3>
+        <div id="join-pictures" class="picture-grid small" role="radiogroup" aria-label="Picture" data-i18n-label="Picture"></div>
+        <label id="join-name-row" hidden><span data-i18n>Your first name (you can leave it empty)</span>
+          <input id="join-name" maxlength="24" autocomplete="off"></label>
+        <div class="dialog-buttons">
+          <button type="submit" class="primary" data-i18n>Start playing</button>
+          <label class="file-button"><span data-i18n>Bring my progress from home</span>
+            <input id="join-import" type="file" accept=".json,application/json"></label>
+        </div>
+      </form>
+      <p id="join-roster-note" class="note" hidden data-i18n>Is your picture missing? Ask the teacher.</p>
+    </div>
+    <p id="join-error" class="error" role="alert"></p>
+  </dialog>
+
+  <dialog id="pause-dialog" class="dialog goodbye" aria-labelledby="pause-title">
+    <div class="goodbye-animal" aria-hidden="true">👀</div>
+    <h2 id="pause-title" data-i18n>Eyes on the teacher!</h2>
+    <p data-i18n>The teacher paused the class for a moment. Your program is safe.</p>
+  </dialog>
+
+  <dialog id="ended-dialog" class="dialog goodbye" aria-labelledby="ended-title">
+    <div class="goodbye-animal" aria-hidden="true">🎉</div>
+    <h2 id="ended-title" data-i18n>This class has ended. Thank you for playing!</h2>
+  </dialog>
+
+  <dialog id="class-dialog" class="dialog wide" aria-labelledby="class-title">
+    <h2 id="class-title" data-i18n>Our class</h2>
+    <h3 data-i18n>Shared by classmates</h3>
+    <div id="gallery" class="gallery"></div>
+    <h3 data-i18n>My progress</h3>
+    <p class="note" data-i18n>Take your stars home: save them to a file, then load it at home in the Grown-ups area.</p>
+    <p id="class-error" class="error" role="alert"></p>
+    <div class="dialog-buttons">
+      <button id="class-export" type="button" data-i18n>Take my progress home</button>
+      <button id="class-switch" type="button" data-i18n>Another player</button>
+      <button id="class-close" type="button" class="primary" data-i18n>Back to the zoo</button>
+    </div>
   </dialog>
 
   <dialog id="goodbye-dialog" class="dialog goodbye" aria-labelledby="goodbye-title">

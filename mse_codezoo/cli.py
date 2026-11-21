@@ -1192,3 +1192,195 @@ def world_new(animal: str, content: Path | None) -> None:
     )
     click.echo(f"Created {folder}/SPEC.md, pack.json and {level_dir}/l01.json.")
     click.echo("Fill in SPEC.md, then loop on `codezoo levels validate --all`.")
+
+
+# --- classes and workshops: the classroom hub (phase 5) --------------------------------
+
+
+def _classes() -> Any:
+    from mse_codezoo.classes import ClassStore
+
+    ctx = click.get_current_context()
+    return ClassStore((ctx.find_object(dict) or {}).get("class_home"))
+
+
+@main.group("class")
+@click.option(
+    "--data-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Keep classes here (default: CODEZOO_HOME or the OS user-data folder).",
+)
+@click.pass_context
+def class_(ctx: click.Context, data_dir: Path | None) -> None:
+    """Classes and workshops on a classroom hub: this computer, on the local network.
+
+    No cloud and no accounts: children join with a class code and a picture, and
+    everything stays on this computer.
+    """
+    ctx.ensure_object(dict)["class_home"] = data_dir
+
+
+@class_.command("new")
+@click.argument("name")
+@click.option(
+    "--type",
+    "class_type",
+    type=click.Choice(["workshop", "class"]),
+    default="workshop",
+    show_default=True,
+    help="workshop: one session, children pick any free picture, data deleted at the end. "
+    "class: meets regularly, the teacher sets up the players, data kept.",
+)
+@click.option("--names/--no-names", default=None, help="Let children type a first name.")
+@click.option("--roster/--no-roster", default=None, help="Only the teacher adds players.")
+@click.option(
+    "--delete-at-end/--keep", "delete_at_end", default=None, help="Delete the data when it ends."
+)
+@_profile_errors
+def class_new(
+    name: str,
+    class_type: str,
+    names: bool | None,
+    roster: bool | None,
+    delete_at_end: bool | None,
+) -> None:
+    """Create a class or a workshop."""
+    settings = {
+        key: value
+        for key, value in {"names": names, "roster": roster, "deleteAtEnd": delete_at_end}.items()
+        if value is not None
+    }
+    info = _classes().create(name, class_type, **settings)
+    s = info.settings
+    click.echo(
+        f"Created {info.type} {info.name!r}: "
+        f"{'the teacher adds players' if s['roster'] else 'children pick a free picture'}, "
+        f"{'names allowed' if s['names'] else 'pictures only'}, "
+        f"{'deleted' if s['deleteAtEnd'] else 'kept'} at the end."
+    )
+    click.echo(f"Start it with: codezoo class serve {info.name!r}")
+
+
+@class_.command("list")
+@_profile_errors
+def class_list() -> None:
+    """List classes and workshops on this computer."""
+    store = _classes()
+    found = store.classes()
+    for info in found:
+        count = len(store.players(info.id).profiles())
+        click.echo(f"{info.name:<40}  {info.type:<8}  {count} player(s), created {info.created}")
+    click.echo(f"{len(found)} class(es) in {store.root}")
+
+
+@class_.command("add-player")
+@click.argument("class_name")
+@click.argument("name")
+@click.option("--picture", required=True, help="One of the 32 class pictures (monkey, cat, ...).")
+@_profile_errors
+def class_add_player(class_name: str, name: str, picture: str) -> None:
+    """Add a player to a class's list."""
+    profile = _classes().players(class_name).add(name, picture)
+    click.echo(f"Added {profile.name} ({profile.picture}).")
+
+
+@class_.command("add-level")
+@click.argument("class_name")
+@click.argument("level", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--solution",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="The reference solution (default: LEVEL.solution.py next to it).",
+)
+@_profile_errors
+def class_add_level(class_name: str, level: Path, solution: Path | None) -> None:
+    """Add your own level (from the level editor) to a class; it is checked first."""
+    solution = solution or solution_path(level)
+    try:
+        data = json.loads(level.read_text(encoding="utf-8"))
+        source = solution.read_text(encoding="utf-8")
+    except (OSError, json.JSONDecodeError) as exc:
+        raise click.ClickException(f"Can't read the level: {exc}") from None
+    errors = _classes().add_level(class_name, data, source)
+    if errors:
+        raise click.ClickException("\n".join(errors))
+    click.echo(f"Added level {data['id']}.")
+
+
+@class_.command("export")
+@click.argument("class_name")
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path), required=True)
+@_profile_errors
+def class_export(class_name: str, output: Path) -> None:
+    """Save the whole class to one file (every player as in `codezoo profile export`)."""
+    data = _classes().export(class_name)
+    output.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    click.echo(f"Saved {len(data['players'])} player(s) of {data['class']['name']} to {output}")
+
+
+@class_.command("delete")
+@click.argument("class_name")
+@click.option("--yes", is_flag=True, help="Don't ask for confirmation.")
+@_profile_errors
+def class_delete(class_name: str, yes: bool) -> None:
+    """Delete a class and all its players' progress."""
+    store = _classes()
+    info = store.find(class_name)
+    if not yes:
+        click.confirm(f"Delete {info.name} and all its players' progress?", abort=True)
+    store.delete(info.id)
+    click.echo(f"Deleted {info.name}.")
+
+
+@class_.command("serve")
+@click.argument("class_name")
+@click.option(
+    "--host",
+    default="0.0.0.0",
+    show_default=True,
+    help="Address to listen on (0.0.0.0: every network of this computer).",
+)
+@click.option("--port", default=8765, show_default=True, help="Port to listen on.")
+@click.option("--open/--no-open", "open_browser", default=True, help="Open the teacher's screen.")
+@click.option("--verbose", is_flag=True, help="Log every request.")
+@_profile_errors
+def class_serve(class_name: str, host: str, port: int, open_browser: bool, verbose: bool) -> None:
+    """Run the classroom hub: children join over the local network with the class code."""
+    import threading
+    import webbrowser
+
+    from mse_codezoo.hub import Hub, local_address
+    from mse_codezoo.server import CodeZooServer
+
+    store = _classes()
+    holder: dict[str, Any] = {}
+
+    def stop_soon() -> None:  # after the answer to "end the workshop" has gone out
+        threading.Timer(1.0, holder["server"].shutdown).start()
+
+    hub = Hub(store, class_name, on_end=stop_soon)
+    try:
+        server = CodeZooServer(host, port, verbose=verbose, hub=hub)
+    except OSError as exc:
+        raise click.ClickException(f"cannot listen on {host}:{port}: {exc}") from None
+    holder["server"] = server
+    real_port = server.server_address[1]
+    address = local_address() if host in ("0.0.0.0", "::") else host
+    hub.base_url = f"http://{address}:{real_port}/"
+    teacher = f"http://localhost:{real_port}/teacher.html#key={hub.teacher_token}"
+    info = hub.info()
+    click.echo(f"Classroom hub for {info.name} ({info.type})")
+    click.echo(f"  Children open:  {hub.base_url}   class code: {hub.code}")
+    click.echo(f"  Teacher screen: {teacher}")
+    click.echo("  Keep the teacher address to yourself: it opens the teacher's screen.")
+    click.echo("Press Ctrl+C to stop.")
+    if open_browser:
+        webbrowser.open(teacher)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        click.echo("\nBye!")
+    finally:
+        server.server_close()
+    if hub.ended:
+        click.echo("The workshop has ended and its data was deleted.")

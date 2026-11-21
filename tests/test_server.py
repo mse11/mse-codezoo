@@ -76,7 +76,10 @@ def test_page_needs_no_internet():
     """Everything the page loads must come from the package, so it works offline."""
     web = Path(server_module.WEB_DIR)
     index = (web / "index.html").read_text(encoding="utf-8")
-    assert not re.findall(r"""(?:src|href)=["']https?://""", index)
+    # nothing loaded from the internet (a plain <a> link, like the grown-ups' support link,
+    # loads nothing until a grown-up clicks it)
+    assert not re.findall(r"""src=["']https?://""", index)
+    assert not re.findall(r"""<link[^>]*href=["']https?://""", index)
     assert 'media: "vendor/blockly/media/"' in (web / "blocks.js").read_text(encoding="utf-8")
     vendor = web / "vendor" / "blockly"
     assert (vendor / "LICENSE").read_text(encoding="utf-8").lstrip().startswith("Apache License")

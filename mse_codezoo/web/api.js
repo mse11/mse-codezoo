@@ -9,6 +9,43 @@ export function setPython(version) {
   python = version || null;
 }
 
+// On a classroom hub (`codezoo class serve`) every request carries the class code, and on
+// the teacher's computer also the teacher's key (so the level editor works there too).
+// Both are kept only in this browser; a new hub start makes new ones.
+const CLASS_KEY = "codezoo.class";
+const TEACHER_KEY = "codezoo.teacher";
+
+function stored(storage, key) {
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function store(storage, key, value) {
+  try {
+    if (value) storage.setItem(key, value);
+    else storage.removeItem(key);
+  } catch {
+    // storage blocked: asked again next time
+  }
+}
+
+let classCode = stored(localStorage, CLASS_KEY);
+let teacherKey = stored(localStorage, TEACHER_KEY); // the teacher's own computer only
+
+export function setClassCode(code) {
+  classCode = code || null;
+  store(localStorage, CLASS_KEY, classCode);
+}
+export const getClassCode = () => classCode;
+
+export function setTeacherKey(key) {
+  teacherKey = key || null;
+  store(localStorage, TEACHER_KEY, teacherKey);
+}
+
 // The offline build (`codezoo build-web`) runs the engine in the browser, in a web worker,
 // instead of asking `codezoo serve`.
 const offline = window.CODEZOO_OFFLINE ? import("./offline.js") : null;
@@ -29,6 +66,8 @@ async function call(method, path, body) {
     return data;
   }
   const options = { method, headers: {} };
+  if (classCode) options.headers["X-Class-Code"] = classCode;
+  if (teacherKey) options.headers["X-Teacher-Token"] = teacherKey;
   const separator = path.includes("?") ? "&" : "?";
   let url = `${path}${separator}lang=${encodeURIComponent(lang())}`;
   if (python) url += `&python=${encodeURIComponent(python)}`;
@@ -69,4 +108,16 @@ export const api = {
   unlock: (id, code) => call("POST", `/api/profiles/${id}/unlock`, { code }),
   habitat: (id) => call("GET", `/api/profiles/${id}/habitat`),
   setHabitat: (id, body) => call("POST", `/api/profiles/${id}/habitat`, body),
+
+  // the classroom hub (phase 5)
+  joinClass: (code) => call("POST", "/api/class/join", { code }),
+  classState: () => call("GET", "/api/class/state"),
+  classMe: (picture, name) => call("POST", "/api/class/me", { picture, name }),
+  classImport: (data) => call("POST", "/api/class/import", { data }),
+  classExport: (profile) => call("POST", "/api/class/export", { profile }),
+  classShares: () => call("GET", "/api/class/shares"),
+  share: (profile, kind, title, payload) => call("POST", "/api/class/share", { profile, kind, title, payload }),
+  reportShare: (share) => call("POST", "/api/class/report", { share }),
+  teacher: (route, body) =>
+    body === undefined ? call("GET", `/api/teacher/${route}`) : call("POST", `/api/teacher/${route}`, body),
 };

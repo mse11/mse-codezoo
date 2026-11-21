@@ -4,6 +4,10 @@ CodeZoo teaches real Python through small animal coding games. See [IMPLEMENTATI
 
 The engine is a pure-Python package (`mse_codezoo/`, standard library only) with a [click](https://click.palletsprojects.com/) command line, `codezoo`. Only `cli.py` may import click; `tests/test_engine_stdlib.py` enforces that so the engine can later run in Pyodide.
 
+### ❤️ Support
+
+This is a hobby project maintained in my spare time. If you find this educational tool useful, you can **[buy me a coffee](https://buymeacoffee.com/mse11)** to support the work! ☕
+
 ## Development
 
 Needs [uv](https://docs.astral.sh/uv/). The package supports Python 3.11+; development is pinned to 3.14 in `.python-version`.
@@ -49,6 +53,26 @@ Opens `http://localhost:8765/` with three panes: the stage, Blockly blocks and t
 **Level editor.** `editor.html` (the "Level editor" link): paint one or more worlds, choose the goal (collect, reach, say, print, a file's text, optionally "done by tick N"), give answers for `input()` and files for `open()`, add Slovak title and hints, and "Test the level" asks the engine to check it like `codezoo levels validate`. Then play it, copy a share link (the level travels inside the link, nothing is uploaded; it is checked again and runs only in the zoo's interpreter), keep it in this browser's "My levels", or download the level JSON and solution file.
 
 **Where data lives.** Only on this computer, as JSON files: `%APPDATA%\CodeZoo` on Windows, `~/Library/Application Support/CodeZoo` on macOS, `~/.local/share/codezoo` on Linux. Set `CODEZOO_HOME` or use `codezoo serve --data-dir PATH` to keep it elsewhere (for example a separate folder per classroom).
+
+## Classroom hub
+
+For a class or a workshop: the teacher's computer runs CodeZoo on the local network, and children join from their tablets or laptops with a class code and a picture. No cloud, no accounts, nothing sent to the internet; see [docs/classroom-privacy.md](docs/classroom-privacy.md) for what is stored.
+
+```bash
+uv run codezoo class new "Saturday club" --type workshop
+```
+
+```bash
+uv run codezoo class serve "Saturday club"
+```
+
+`serve` prints the address children open and the teacher's screen address, and opens the teacher's screen. It shows the class code in big letters and a QR code: children scan it with the tablet's own camera app (it holds the address and the code), or open the address and type the code.
+
+- **Two types.** A *workshop* is one session: children pick any free picture (32 animals), names are optional, and ending it deletes its data. A *class* meets regularly: the teacher adds the players (`codezoo class add-player NAME CHILD --picture owl`, or on the teacher's screen), children pick themselves from the list, and the data stays. The type only sets the defaults; every setting can be changed.
+- **Teacher's screen.** Who joined, stars per module, who is stuck (3 or more tries on an unsolved level), minutes today, a class concept report, the most common mistakes and which levels were tried and solved. "Pause everyone" shows an "Eyes on the teacher!" screen on every device and stops runs. "Today's levels" picks levels; with "Only these levels" children can open nothing else. "New code" locks out the old code.
+- **Sharing inside the class.** After a run, a child can press "Share with the class" (and share a level from the editor). Classmates see it under "Our class" only after the teacher says yes; a child can ask the teacher to look at a share, which hides it until then. "On the projector" shows a shared program big.
+- **The class's own levels.** Add levels from the level editor on the teacher's screen ("My levels" in this browser, or the level and solution files), or with `codezoo class add-level CLASS LEVEL.json`. They are checked like `levels validate` first, then can be picked for today.
+- **Progress to and from home.** "Take my progress home" saves a child's progress to a file; at home it loads in the Grown-ups area ("Load a player from a file") or with `codezoo profile import`. "Bring my progress from home" does the reverse in a workshop. "Save the whole class to a file" (or `codezoo class export`) keeps every player.
 
 ## Offline browser version
 
@@ -109,12 +133,15 @@ mse_codezoo/        the package (flat layout, no src/)
   stdlib.py         the standard modules programs may import, in zoo-safe versions
   versions.py       Python releases: what arrived when, what this computer can read
   server.py         stdlib HTTP server and JSON API behind `codezoo serve` (dispatch())
+  classes.py        classes and workshops for the classroom hub (players, own levels, shares)
+  hub.py            the classroom hub: class code, teacher's key, /api/class and /api/teacher
   webbuild.py       `codezoo build-web`: the offline browser version
   web/              browser client: app.js, blocks.js (Blockly <-> IR), stage3d.js (three.js),
                     stage.js (2D), code.js, i18n.js (EN/SK), players.js (picker, grown-ups,
                     goodbye), layout.js (splitters), editor.html/js (level editor),
                     share.js (share links), offline.js + engine-worker.js + sw.template.js
-                    (the offline build)
+                    (the offline build), classroom.js (joining a class), teacher.html/js
+                    (the teacher's screen)
   cli.py            click commands (the only module importing click)
   content/levels/   level JSON + reference solutions (<file>.solution.py)
   content/animals/  animal packs
@@ -146,6 +173,9 @@ scripts/            pyodide_smoke.mjs: the engine and every level inside Pyodide
 | `codezoo run/check ... --python 3.12` | Runs a program as written for that Python release |
 | `codezoo graduate PROGRAM.py [-o OUT.py] [--run]` | A plain `.py` that runs in normal Python: the zoo's commands become stand-ins that print |
 | `codezoo build-web OUT [--pyodide URL]` | The offline browser version as static files |
+| `codezoo class new NAME [--type workshop\|class] [--names/--no-names] [--roster/--no-roster]` | A class or workshop for the classroom hub |
+| `codezoo class serve NAME [--host 0.0.0.0] [--port 8765]` | Runs the classroom hub on the local network and opens the teacher's screen |
+| `codezoo class list/add-player/add-level/export/delete` | Classes on this computer, their players, own levels and export; `class --data-dir PATH` keeps them elsewhere |
 
 `LEVEL` is a level id (`m01-l01`) or a path to a level `.json` file. A program may `import` helper files that sit next to it (your own `tricks.py`), and the files a level brings with it. Every command takes `--lang en|sk` before the command name, for example `codezoo --lang sk check ...`.
 

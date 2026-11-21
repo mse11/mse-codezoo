@@ -22,6 +22,13 @@ from typing import Any
 from mse_codezoo.i18n import t
 
 PICTURES = ("monkey", "penguin", "beaver", "fox", "octopus", "bee", "turtle", "owl")
+# 32 pictures, enough for a big class; a family still picks from the first eight
+EXTRA_PICTURES = (
+    "cat", "dog", "frog", "lion", "tiger", "panda", "koala", "rabbit",
+    "mouse", "hedgehog", "unicorn", "dragon", "whale", "dolphin", "crab", "snail",
+    "butterfly", "ladybug", "parrot", "flamingo", "chick", "pig", "horse", "sloth",
+)  # fmt: skip
+CLASS_PICTURES = PICTURES + EXTRA_PICTURES
 MAX_NAME = 24
 MAX_SECONDS_PER_TICK = 120
 PIN_PATTERN = re.compile(r"^\d{4,8}$")
@@ -167,8 +174,9 @@ def classify_mistakes(
 
 
 class ProfileStore:
-    def __init__(self, root: Path | None = None) -> None:
+    def __init__(self, root: Path | None = None, pictures: tuple[str, ...] = PICTURES) -> None:
         self.root = Path(root) if root is not None else default_home()
+        self.pictures = pictures  # a class has more pictures than a family (see classes.py)
 
     # --- files -----------------------------------------------------------------
 
@@ -208,14 +216,17 @@ class ProfileStore:
     def _save_profiles(self, profiles: list[Profile]) -> None:
         self._write(self._profiles_path, {"profiles": [asdict(p) for p in profiles]})
 
-    def add(self, name: str, picture: str) -> Profile:
+    def add(self, name: str, picture: str, *, any_picture: bool = False) -> Profile:
+        """A new player; ``any_picture`` also takes a class picture (for imported files)."""
         name = " ".join(str(name).split())
         if not name:
             raise ProfileError(t("Please type a name."))
         if len(name) > MAX_NAME:
             raise ProfileError(t("Names can be at most {count} letters long.", count=MAX_NAME))
-        if picture not in PICTURES:
-            raise ProfileError(t("Pick one of these pictures: {names}.", names=", ".join(PICTURES)))
+        if picture not in (CLASS_PICTURES if any_picture else self.pictures):
+            raise ProfileError(
+                t("Pick one of these pictures: {names}.", names=", ".join(self.pictures))
+            )
         profiles = self.profiles()
         if any(p.name.casefold() == name.casefold() for p in profiles):
             raise ProfileError(t("There is already a player called {name}.", name=name))
@@ -229,6 +240,20 @@ class ProfileStore:
             if profile.id == ref or profile.name.casefold() == str(ref).casefold():
                 return profile
         raise ProfileError(t("No player called {name}.", name=repr(ref)))
+
+    def rename(self, ref: str, name: str) -> Profile:
+        profile = self.find(ref)
+        name = " ".join(str(name).split())
+        if not name:
+            raise ProfileError(t("Please type a name."))
+        if len(name) > MAX_NAME:
+            raise ProfileError(t("Names can be at most {count} letters long.", count=MAX_NAME))
+        profiles = self.profiles()
+        if any(p.name.casefold() == name.casefold() and p.id != profile.id for p in profiles):
+            raise ProfileError(t("There is already a player called {name}.", name=name))
+        profile.name = name
+        self._save_profiles([profile if p.id == profile.id else p for p in profiles])
+        return profile
 
     def remove(self, ref: str) -> Profile:
         profile = self.find(ref)
@@ -308,8 +333,10 @@ class ProfileStore:
         name = str(info.get("name", ""))
         if any(p.name.casefold() == name.casefold() for p in self.profiles()):
             name = f"{name} (2)"
-        picture = info.get("picture") if info.get("picture") in PICTURES else PICTURES[0]
-        profile = self.add(name, picture)
+        picture = info.get("picture")
+        if picture not in CLASS_PICTURES:
+            picture = self.pictures[0]
+        profile = self.add(name, picture, any_picture=True)
         clean = {key: progress.get(key, {}) for key in ("levels", "mistakes", "time", "habitat")}
         stickers = progress.get("stickers", [])
         if not all(isinstance(value, dict) for value in clean.values()) or not (

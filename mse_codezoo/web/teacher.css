@@ -1,0 +1,69 @@
+/* The teacher's screen of a classroom hub (teacher.html). Colours come from style.css. */
+
+body.teacher { display: block; overflow-x: hidden; height: auto; min-height: 100vh; background: var(--bg); }
+.t-main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+  gap: 16px;
+  padding: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
+}
+.t-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem 1.2rem;
+  min-width: 0;
+}
+.t-card h2 { margin: 0 0 0.6rem; font-size: 1.2rem; }
+.t-card h3 { margin: 1rem 0 0.4rem; font-size: 1rem; }
+.t-card label { display: flex; flex-direction: column; gap: 0.25rem; margin: 0.4rem 0; }
+.t-card label.check { flex-direction: row; align-items: center; gap: 0.5rem; }
+.t-card label.file-button { flex-direction: row; align-items: center; }
+.t-card input:not([type="checkbox"]):not([type="file"]), .t-card select {
+  padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); min-height: 2.4rem;
+}
+.t-join, .t-main > section:nth-child(2) { grid-column: 1 / -1; }
+.t-join-row { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+.t-qr svg { width: min(260px, 70vw); height: auto; display: block; border-radius: 0.5rem; }
+.t-url { font-family: var(--code-font); font-size: 1.1rem; overflow-wrap: anywhere; margin: 0.3rem 0; }
+.t-code { font-size: clamp(2rem, 6vw, 3.6rem); font-weight: 800; letter-spacing: 0.08em; margin: 0.2rem 0 0.8rem; }
+.row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.6rem; }
+.hint { color: var(--muted); margin: 0.3rem 0; }
+.t-banner { padding: 0 16px; }
+.t-nokey { padding: 2rem 16px; font-size: 1.2rem; max-width: 46em; }
+button.small { min-height: 2rem; padding: 0.2rem 0.7rem; font-size: 0.9rem; }
+button.paused { background: var(--err); border-color: var(--err); color: #fff; }
+
+.t-scroll { overflow-x: auto; max-width: 100%; }
+.t-table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+.t-table th, .t-table td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.t-table th { color: var(--muted); font-weight: 600; }
+.t-table tr.is-stuck td:first-child { box-shadow: inset 4px 0 0 var(--star); }
+.t-face { font-size: 1.4rem; }
+.t-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.t-modules-cell { min-width: 12rem; }
+.t-module { display: inline-flex; align-items: center; gap: 0.3rem; margin: 0 0.6rem 0.2rem 0; font-size: 0.85rem; }
+.t-bar { display: inline-block; width: 3rem; height: 0.5rem; border-radius: 999px; background: var(--tile); overflow: hidden; }
+.t-bar span { display: block; height: 100%; background: var(--accent); }
+.t-stuck { display: inline-block; margin: 0 0.3rem 0.2rem 0; padding: 0 0.4rem; border-radius: 0.4rem; background: var(--mark-run); }
+.t-add { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+.t-add h3 { width: 100%; }
+.t-modules details { border-bottom: 1px solid var(--border); padding: 0.3rem 0; }
+.t-modules summary { cursor: pointer; font-weight: 600; }
+.t-level-boxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0 1rem; }
+.t-shares { display: grid; gap: 8px; }
+.share-card.status-pending { border-color: var(--star); }
+.share-card.status-reported { border-color: var(--err); }
+.share-card.status-rejected { opacity: 0.6; }
+.t-list { padding-left: 1.2rem; }
+.t-list li { margin: 0.3rem 0; }
+.projector { width: min(1100px, calc(100vw - 32px)); }
+.t-projector-code {
+  font-family: var(--code-font); font-size: clamp(1.1rem, 2.4vw, 2rem); line-height: 1.4;
+  background: var(--bg); padding: 1rem; border-radius: 0.6rem; overflow: auto; max-height: 65vh;
+}

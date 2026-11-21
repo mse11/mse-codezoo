@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeZoo teacher</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="teacher.css">
+  <script type="module" src="teacher.js"></script>
+</head>
+<body class="teacher">
+  <header class="bar">
+    <h1 class="logo">CodeZoo</h1>
+    <span class="class-name" id="t-class"></span>
+    <div class="who">
+      <select id="lang" class="lang-select" data-i18n-label="Language"></select>
+      <a href="editor.html" target="_blank" data-i18n>Level editor</a>
+    </div>
+  </header>
+
+  <p id="t-nokey" class="t-nokey" hidden data-i18n>This is the teacher's screen. Open the teacher address that codezoo class serve printed in the terminal.</p>
+  <p id="t-error" class="error t-banner" role="alert"></p>
+
+  <main id="t-main" class="t-main" hidden>
+    <section class="t-card t-join" aria-labelledby="t-join-title">
+      <h2 id="t-join-title" data-i18n>Join the class</h2>
+      <div class="t-join-row">
+        <div id="t-qr" class="t-qr"></div>
+        <div>
+          <p data-i18n>Scan with the tablet's camera app, or open this address and type the code:</p>
+          <p class="t-url" id="t-url"></p>
+          <p class="t-code" id="t-code"></p>
+          <div class="row">
+            <button id="t-pause" type="button" class="primary" data-i18n>⏸ Pause everyone</button>
+            <button id="t-newcode" type="button" data-i18n>New code</button>
+            <button id="t-end" type="button"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="t-card" aria-labelledby="t-players-title">
+      <h2 id="t-players-title" data-i18n>Players</h2>
+      <div class="t-scroll"><table class="t-table" id="t-players"></table></div>
+      <form id="t-add" class="t-add">
+        <h3 data-i18n>Add a player</h3>
+        <label><span data-i18n>Name</span> <input id="t-add-name" maxlength="24" autocomplete="off" required></label>
+        <label><span data-i18n>Picture</span> <select id="t-add-picture"></select></label>
+        <button type="submit" data-i18n>Add</button>
+      </form>
+    </section>
+
+    <section class="t-card" aria-labelledby="t-levels-title">
+      <h2 id="t-levels-title" data-i18n>Today's levels</h2>
+      <p class="hint" data-i18n>Tick the levels for today. With “Only these levels”, players can open nothing else.</p>
+      <label class="check"><input type="checkbox" id="t-locked"> <span data-i18n>Only these levels</span></label>
+      <div id="t-modules" class="t-modules"></div>
+      <div class="row">
+        <button id="t-save-levels" type="button" class="primary" data-i18n>Save today's levels</button>
+        <button id="t-clear-levels" type="button" data-i18n>Untick all</button>
+        <span id="t-levels-msg" class="note" role="status"></span>
+      </div>
+    </section>
+
+    <section class="t-card" aria-labelledby="t-shares-title">
+      <h2 id="t-shares-title" data-i18n>Shared by the class</h2>
+      <p class="hint" data-i18n>Children see a share only after you say yes. “On the projector” shows it big for everyone.</p>
+      <div id="t-shares" class="t-shares"></div>
+    </section>
+
+    <section class="t-card" aria-labelledby="t-own-title">
+      <h2 id="t-own-title" data-i18n>Our own levels</h2>
+      <ul id="t-own" class="t-list"></ul>
+      <div class="row">
+        <label class="file-button"><span data-i18n>Add a level file (with its solution file)</span>
+          <input id="t-level-files" type="file" multiple accept=".json,.py,application/json,text/x-python"></label>
+      </div>
+      <details>
+        <summary data-i18n>From “My levels” in this browser</summary>
+        <ul id="t-library" class="t-list"></ul>
+      </details>
+      <p id="t-own-msg" class="note" role="status"></p>
+    </section>
+
+    <section class="t-card" aria-labelledby="t-report-title">
+      <h2 id="t-report-title" data-i18n>Class report</h2>
+      <div class="t-scroll"><table class="t-table" id="t-concepts"></table></div>
+      <p id="t-mistakes"></p>
+      <h3 data-i18n>Levels tried</h3>
+      <div class="t-scroll"><table class="t-table" id="t-level-stats"></table></div>
+    </section>
+
+    <section class="t-card" aria-labelledby="t-settings-title">
+      <h2 id="t-settings-title" data-i18n>Settings</h2>
+      <label class="check"><input type="checkbox" id="t-roster"> <span data-i18n>Only I add players (children pick themselves from the list)</span></label>
+      <label class="check"><input type="checkbox" id="t-names"> <span data-i18n>Children may type a first name</span></label>
+      <label class="check"><input type="checkbox" id="t-delete"> <span data-i18n>Delete all data when the class ends</span></label>
+      <div class="row">
+        <button id="t-save-settings" type="button" class="primary" data-i18n>Save settings</button>
+        <button id="t-export" type="button" data-i18n>Save the whole class to a file</button>
+        <span id="t-settings-msg" class="note" role="status"></span>
+      </div>
+      <p class="hint" data-i18n>Everything stays on this computer. Nothing is sent to the internet.</p>
+    </section>
+
+    <!-- the teacher's screen only: never put this link on a child's screen -->
+    <section class="t-card support" aria-labelledby="t-support-title">
+      <h3 id="t-support-title" data-i18n>Support CodeZoo</h3>
+      <p data-i18n>CodeZoo is free and open source, made in spare time. If it helps your family or class, you can support it. Donations are optional and unlock nothing.</p>
+      <a class="support-link" href="https://buymeacoffee.com/mse11" target="_blank" rel="noopener noreferrer" data-i18n>☕ Buy me a coffee</a>
+    </section>
+  </main>
+
+  <dialog id="t-projector" class="dialog projector" aria-labelledby="t-projector-title">
+    <h2 id="t-projector-title"></h2>
+    <p id="t-projector-who" class="hint"></p>
+    <pre id="t-projector-code" class="t-projector-code"></pre>
+    <div class="dialog-buttons"><button type="button" id="t-projector-close" class="primary" data-i18n>Close</button></div>
+  </dialog>
+
+  <dialog id="t-report-dialog" class="dialog wide" aria-labelledby="t-report-name">
+    <h2 id="t-report-name"></h2>
+    <div id="t-report-body"></div>
+    <div class="dialog-buttons"><button type="button" id="t-report-close" class="primary" data-i18n>Close</button></div>
+  </dialog>
+</body>
+</html>

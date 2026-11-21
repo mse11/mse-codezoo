@@ -462,3 +462,80 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .stage-svg .ghost-target, .stage-svg .body.shrug { animation: none; }
 }
+
+/* --- classroom hub (codezoo class serve) ------------------------------------------- */
+
+.class-name {
+  font-weight: 600;
+  color: var(--muted);
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: var(--err);
+  color: #fff;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.badge[hidden] {
+  display: none;
+}
+
+.gallery {
+  display: grid;
+  gap: 8px;
+  max-height: 45vh;
+  overflow: auto;
+}
+
+.share-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.share-card .face {
+  font-size: 2rem;
+}
+
+.share-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.share-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+#join-code {
+  font-size: 1.4rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  width: 10em;
+}
+
+.dialog button.small, .share-card button.small { min-height: 2rem; padding: 0.2rem 0.7rem; font-size: 0.9rem; }
+.dialog .file-button { flex-direction: row; align-items: center; }
+.share-card .note { color: var(--muted); }
+.dialog [hidden], .t-card [hidden] { display: none !important; } /* flex labels and forms too */
+
+/* "Support CodeZoo": grown-ups area and teacher's screen only */
+.support p { color: var(--muted); margin: 0.3rem 0 0.6rem; }
+.support-link { display: inline-block; font-weight: 600; color: var(--accent); }

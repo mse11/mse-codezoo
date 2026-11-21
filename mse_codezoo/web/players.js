@@ -6,7 +6,26 @@ import { concept, lang, t } from "./i18n.js";
 
 export const FACES = {
   monkey: "🐒", penguin: "🐧", beaver: "🦫", fox: "🦊", octopus: "🐙", bee: "🐝", turtle: "🐢", owl: "🦉",
+  // a class has 32 pictures (mse_codezoo/classes.py)
+  cat: "🐱", dog: "🐶", frog: "🐸", lion: "🦁", tiger: "🐯", panda: "🐼", koala: "🐨", rabbit: "🐰",
+  mouse: "🐭", hedgehog: "🦔", unicorn: "🦄", dragon: "🐲", whale: "🐳", dolphin: "🐬", crab: "🦀", snail: "🐌",
+  butterfly: "🦋", ladybug: "🐞", parrot: "🦜", flamingo: "🦩", chick: "🐤", pig: "🐷", horse: "🐴", sloth: "🦥",
 };
+
+// In a workshop without names, a player is called after their picture.
+const PICTURE_NAMES = {
+  monkey: "Monkey", penguin: "Penguin", beaver: "Beaver", fox: "Fox", octopus: "Octopus", bee: "Bee",
+  turtle: "Turtle", owl: "Owl", cat: "Cat", dog: "Dog", frog: "Frog", lion: "Lion", tiger: "Tiger",
+  panda: "Panda", koala: "Koala", rabbit: "Rabbit", mouse: "Mouse", hedgehog: "Hedgehog", unicorn: "Unicorn",
+  dragon: "Dragon", whale: "Whale", dolphin: "Dolphin", crab: "Crab", snail: "Snail", butterfly: "Butterfly",
+  ladybug: "Ladybug", parrot: "Parrot", flamingo: "Flamingo", chick: "Chick", pig: "Pig", horse: "Horse",
+  sloth: "Sloth",
+};
+
+export function displayName(profile) {
+  if (profile.name === profile.picture && PICTURE_NAMES[profile.picture]) return t(PICTURE_NAMES[profile.picture]);
+  return profile.name;
+}
 
 const NUMBER_WORDS = {
   en: ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"],
@@ -67,6 +86,7 @@ export class Players {
     this.current = null;
     this.pin = null;
     this.picture = "monkey";
+    this.classroom = null; // set on a classroom hub: joining replaces "Who's playing?"
 
     this.playerDialog = $("player-dialog");
     this.grownupDialog = $("grownup-dialog");
@@ -89,6 +109,10 @@ export class Players {
     }
     this.grownupDialog.addEventListener("close", () => this.onSettingsChanged());
     $("save-settings").addEventListener("click", () => this.saveSettings());
+    $("import-player").addEventListener("change", (event) => {
+      if (event.target.files[0]) this.importPlayer(event.target.files[0]);
+      event.target.value = "";
+    });
     $("goodbye-grownups").addEventListener("click", () => {
       this.goodbyeDialog.close();
       this.openGrownups();
@@ -104,6 +128,10 @@ export class Players {
   }
 
   // --- picking a player ------------------------------------------------------------
+
+  rememberedId() {
+    return remembered();
+  }
 
   async start() {
     const data = await api.profiles();
@@ -126,11 +154,12 @@ export class Players {
 
   relabel() {
     const profile = this.current;
-    if (profile) $("player").textContent = `${FACES[profile.picture] || "🐾"} ${profile.name}`;
+    if (profile) $("player").textContent = `${FACES[profile.picture] || "🐾"} ${displayName(profile)}`;
     else $("player").textContent = `🐾 ${t(this.guest ? "Guest" : "Who's playing?")}`;
   }
 
   async choose() {
+    if (this.classroom) return this.classroom.choose();
     const data = await api.profiles();
     const tiles = data.profiles.map((p) =>
       el(
@@ -290,7 +319,7 @@ export class Players {
     const card = el(
       "div",
       { class: "report" },
-      el("h4", {}, `${FACES[profile.picture] || "🐾"} ${profile.name}`),
+      el("h4", {}, `${FACES[profile.picture] || "🐾"} ${displayName(profile)}`),
       el("p", {}, t("{levels} solved · {stars} · {minutes} in the last 7 days", {
         levels: plural(report.levelsSolved, "level"),
         stars: plural(report.stars, "star"),
@@ -310,6 +339,19 @@ export class Players {
     );
     card.append(actions);
     return card;
+  }
+
+  // a player's progress from a file: brought home from a class, or from another computer
+  async importPlayer(file) {
+    $("import-msg").textContent = "";
+    try {
+      const data = JSON.parse(await file.text());
+      const profile = await api.parent("import", { pin: this.pin, data });
+      $("import-msg").textContent = t("Welcome, {name}!", { name: displayName(profile) });
+      this.renderReports();
+    } catch (error) {
+      $("import-msg").textContent = error instanceof SyntaxError ? t("This is not a CodeZoo profile file.") : error.message;
+    }
   }
 
   async exportPlayer(profile) {

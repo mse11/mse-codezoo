@@ -8,6 +8,7 @@
 
 import { api, setPython } from "./api.js";
 import { createWorkspace } from "./blocks.js";
+import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
 import { LANGS, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
@@ -55,6 +56,15 @@ const code = new CodeView({
 });
 const blocks = createWorkspace($("blockly"), () => debounce("print", 150, blocksChanged));
 const players = new Players({ onChoose: playerChosen, onSettingsChanged: checkToday });
+// on a classroom hub (`codezoo class serve`); stays unused at home
+const classroom = new Classroom({
+  players,
+  onLevelsChanged: refreshLevels,
+  onPause: stopPlayback,
+  onPlayProgram: playSharedProgram,
+  onPlayLevel: playSharedLevel,
+});
+let inClass = false;
 
 // --- small helpers -----------------------------------------------------------------
 
@@ -365,14 +375,23 @@ async function loadLevel(id) {
 // A level from the editor or a share link (index.html#play=...): checked by the engine like
 // a level file, played like any other, but nothing is saved to a player's progress.
 async function loadShared(link) {
+  try {
+    return await playSharedLevel(decodeShare(link).level, { quiet: false });
+  } catch (error) {
+    $("result").replaceChildren(el("div", { class: "message err" }, t("This shared level can't be played: {message}", { message: error.message })));
+    return false;
+  }
+}
+
+async function playSharedLevel(level, { quiet = true } = {}) {
   stopPlayback();
   try {
-    const { level } = decodeShare(link);
     state.shared = level;
     $("level-select").value = "";
     await showLevel(await api.previewLevel(level, state.animal));
   } catch (error) {
     state.shared = null;
+    if (!quiet) throw error;
     $("result").replaceChildren(el("div", { class: "message err" }, t("This shared level can't be played: {message}", { message: error.message })));
     return false;
   }
@@ -400,6 +419,25 @@ async function showLevel(level) {
   blocks.setPalette(level.unlockedBlocks);
   await loadProgram(level.starter);
   blocks.resize();
+}
+
+// A classmate's program from the class gallery: their level with their code in the panes.
+async function playSharedProgram(payload) {
+  try {
+    await loadLevel(payload.level);
+    await loadProgram(payload.source);
+  } catch (error) {
+    $("result").replaceChildren(el("div", { class: "message err" }, error.message));
+  }
+}
+
+// The teacher picked other levels (or unlocked all of them): show the new list.
+async function refreshLevels() {
+  state.levels = await api.levels(state.animal);
+  renderLevelOptions();
+  if (!state.shared && state.levels.length && !state.levels.some((l) => l.id === state.level?.id)) {
+    await loadLevel(state.levels[0].id);
+  }
 }
 
 // --- stage view: 2D or 3D -----------------------------------------------------------
@@ -626,7 +664,14 @@ async function playStep(step) {
 
 async function play({ single = false } = {}) {
   if (state.over) return players.showGoodbye(state.level?.pack);
-  const run = await ensureRun();
+  let run;
+  try {
+    run = await ensureRun();
+  } catch (error) {
+    // e.g. the teacher paused the class, or picked other levels for today
+    $("result").replaceChildren(el("div", { class: "message err" }, error.message));
+    return;
+  }
   if (!run.steps) {
     showResult(run);
     return;
@@ -741,7 +786,17 @@ function showResult(run) {
     story.addEventListener("click", () => openStory(run.savedRun));
     const save = el("button", { type: "button", class: "small" }, t("💾 Save this run"));
     save.addEventListener("click", () => download(`${run.level}.run.json`, JSON.stringify(run.savedRun)));
-    parts.push(el("div", { class: "result-tools" }, story, save));
+    const tools = el("div", { class: "result-tools" }, story, save);
+    if (inClass && !state.shared && state.player) {
+      const share = el("button", { type: "button", class: "small" }, t("🙋 Share with the class"));
+      share.addEventListener("click", async () => {
+        share.disabled = true;
+        const message = await classroom.shareProgram(state.level, state.text, state.level.pack.id);
+        tools.append(el("span", { class: "note" }, message));
+      });
+      tools.append(share);
+    }
+    parts.push(tools);
   }
   $("result").replaceChildren(...parts);
 }
@@ -996,6 +1051,12 @@ async function start() {
   await useView(want3d);
   state.animal = readSetting(ANIMAL_KEY);
   const info = await api.info();
+  if (info.hub) {
+    // a classroom hub: join with the class code before anything else (levels need it)
+    inClass = true;
+    players.classroom = classroom;
+    await classroom.start(info);
+  }
   const releases = info.releases.filter((r) => r.readable).map((r) => r.version);
   $("python-select").replaceChildren(
     el("option", { value: "" }, t("Python {version} (newest)", { version: info.default })),
@@ -1012,7 +1073,7 @@ async function start() {
   if (!(wanted.startsWith("play=") && (await loadShared(wanted.slice(5))))) {
     await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : state.levels[0].id);
   }
-  await players.start();
+  if (!inClass) await players.start(); // in a class, joining picked the player
 }
 
 start().catch((error) => {
