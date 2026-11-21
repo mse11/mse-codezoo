@@ -417,7 +417,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | 2 MVP | 9–14 | Monkey only, modules 1–5, three.js stage, feelings, English and Slovak, `codezoo play` for adults; Cub mode modules 1–2 only if the phase 1 gate says so | 2 devs + designer × 6 weeks | Pilot metrics below met → **MVP** |
 | 3 Middle ladder | 15–24 | Modules 6–10; penguin, beaver and fox with their tricks; storybook, printable cards with unlocks, habitat stickers, adaptive suggestions, level editor prototype | 2 devs + designer + artist × 10 weeks | Learning-gain and drop-off targets still met |
 | 4 Advanced and offline | 25–36 | Modules 11–15 (13–15 optional); octopus and bee; concurrency lanes, release islands 3.12–3.15, offline browser build on Pyodide, full level editor | Same team × 12 weeks | Runs offline on the cheapest target tablet and Chromebook |
-| 5 Classes | Later | Teacher class view, optional sync, class-only sharing | To be estimated | Privacy review passed |
+| 5 Classes | Later | Classroom hub on the local network (no cloud), join with class code + picture, teacher class view, class-only sharing | To be estimated (one developer + coding agent) | Privacy review passed; one real workshop or class run on the hub |
 
 **The interpreter grows module by module.** Each phase adds only the constructs its modules need, each with its own differential tests: phase 0 calls, `for` and assignment; phase 2 `if`, `while` and strings; phase 3 functions, imports, exceptions, collections, recursion and comprehensions; phase 4 classes, decorators and `async`.
 
@@ -490,7 +490,7 @@ Parsing now uses CPython's own `ast`, so the biggest earlier risk shrinks to the
 **Open questions**
 
 - Age hand-over: at what age (8 or 9?) should learners move from Cub mode to the main course, and should the app suggest it?
-- Free or paid; open source or closed? Decide before the phase 2 pilot: it changes whether cloud sync and accounts are needed, and what pilot families are told.
+- ~~Free or paid; open source or closed?~~ Decided: free and open source, donations welcome, no cloud sync or accounts (see [Future improvements](#3-free-or-paid-open-or-closed)).
 - Which interface languages at launch (English only, or translations from the start)?
 - Should module 14 use real `threading`, `asyncio`, or both? Plan assumes `asyncio` first, threads shown as a comparison.
 - Web UI delivery: keep the local server (`codezoo serve`) as the phase 1 client, or go Pyodide-first and skip the server? The plan assumes the server first because it is simpler to debug.
@@ -548,7 +548,7 @@ Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), t
 - [ ] Cub mode for modules 1–2: waits for the phase 1 gate decision (no pilot yet), so not built
 - [ ] Slovak texts reviewed by a native speaker who teaches children; recorded narration (open point, does not block finishing phase 2)
 - [ ] Pilot against the MVP metrics; device and performance testing of the 3D stage on the cheapest target tablet and Chromebook
-- [ ] Decide free or paid, open or closed before the pilot (see [Future improvements](#3-free-or-paid-open-or-closed))
+- [x] Decide free or paid, open or closed before the pilot: free and open source, donations welcome (see [Future improvements](#3-free-or-paid-open-or-closed))
 
 **Phase 3 steps (weeks 15–24)**
 
@@ -597,6 +597,33 @@ Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), t
 - [ ] Concurrency is simulated: threads switch only between statements (a call inside a thread runs in one go), and `lock.acquire()` in a thread waits after its line; good for teaching races, not a model of real CPU timing
 - [ ] Native-speaker review of the new Slovak texts, recorded narration (same open point as phases 2 and 3)
 
+**Phase 5 steps (draft, decisions of Nov 21, 2026)**
+
+No cloud and no accounts. The teacher's laptop runs a classroom hub on the local network for one workshop or class. Children's devices join it with a class code and a picture.
+
+- [ ] Classroom hub: `codezoo class serve` (or `codezoo serve --class`) listens on the local network instead of only localhost, and only while the teacher keeps it running. It serves the web client and a class API. The teacher's screen sits behind the grown-up gate and PIN. The existing request size limit and the rule against serving files outside `web/` still apply.
+- [ ] Class code: a short word code, like the printable cards, plus a QR code with the hub's address on the teacher's screen. Codes expire when the class ends. Failed joins are rate-limited.
+- [ ] Class type, picked when the teacher creates a class: **workshop** (a one-off session, where children pick any unused picture when they join and the class is deleted afterwards by default) or **class** (meets regularly, where the teacher sets up the list of players with pictures beforehand and children pick themselves from it). The type sets the defaults; the teacher can change each setting.
+- [ ] Joining: the child types or scans the code and picks a picture (and a first name if the teacher allows it). No email, password or account. The teacher sees who joined and can rename or remove a player.
+- [ ] QR joining with the device's own camera app: the teacher's screen shows a QR code holding the hub's address and the class code. The tablet's or phone's built-in camera app scans it and opens the page, already filled in. The page itself never asks for the camera, so the hub stays on plain HTTP, with no certificate and no security warnings to click through (a bad habit to teach children, and often blocked on managed school iPads). Children without a camera type the address and code. On the hub, printable cards are unlocked by typing their word code.
+- [ ] Joining by the hub address (the default): the child opens the hub's address, and the hub serves the web client. This needs nothing on the device but a browser. A child brings progress from home in with an export file and takes class progress home the same way (`codezoo profile export` / import, or the web export).
+- [ ] *Optional, deferred (build only if teachers ask for it):* the offline app (`codezoo build-web`) joins a hub with "Join a class", so home and class progress stay in one place. This would need the hub on HTTPS with a certificate each device trusts, the hub allowing requests from the offline app's site (CORS), and browsers allowing a public HTTPS site to reach a local-network address (Chrome's Private Network Access rules, Safari, Firefox). Fragile and browser-dependent, so export and import files cover this until then.
+- [ ] Teacher levels: the teacher adds levels from "My levels" in the editor, or from level files, to the hub and assigns them like built-in levels. The hub checks them like `levels validate` before children see them.
+- [ ] Data: the child's progress stays on the child's device. While joined, the device sends the hub a copy of progress, best programs and mistake kinds. The teacher can export the class to a file (the same format as `codezoo profile export`) and delete the class at the end. The hub keeps nothing else and sends nothing to the internet.
+- [ ] Teacher class view: stars per module and level for each child, the class concept report (built from the parents' report), who is stuck and on which level, and the pilot metrics.
+- [ ] Workshop controls: assign a module or a list of levels, lock players to it, and use a "pause, eyes on me" button that stops runs on every device. Show one child's program on the projector with their consent.
+- [ ] Class-only sharing: a child shares a saved run, a storybook or a level from the editor to the hub. The teacher approves it before classmates see it, and there is a report button. Nothing leaves the local network.
+- [ ] CLI: `codezoo class new/list/export/delete`
+- [ ] Privacy review (the gate): a one-page privacy note for schools covering what the hub stores, for how long, and that the school decides (GDPR, school as data controller). Also check against COPPA before any US use.
+- [ ] Donations: a "support the project" link in the README and in the grown-up area only
+- [ ] Tests: hub API, joining, data export and deletion, limits on the network listener
+- [ ] Gate: one real workshop or class (about 10–25 children) runs a session on the hub
+
+Still open for phase 5:
+
+- ~~Offline build and the hub~~: decided, the hub address with export and import files by default; the offline app joining is optional and deferred (see the two steps above).
+- ~~Roster~~: decided, it depends on the class type (see above). ~~QR scanning~~: decided, the device's own camera app (no certificate). ~~Teacher levels~~: decided, yes.
+
 ## Not yet covered
 
 Eleven topics still need a decision; none blocks phase 0, but each should be settled by the phase shown.
@@ -613,7 +640,7 @@ Eleven topics still need a decision; none blocks phase 0, but each should be set
 | Team and budget | Confirm the roadmap's team assumption (2 developers, a content designer, a part-time artist, an education specialist); add a sound designer; cost per phase | Before phase 0 |
 | Accessibility | Screen-reader support for blocks (Blockly's keyboard navigation is a start), a dyslexia-friendly font option, reduced motion and adjustable animation speed, a large-target mode for motor difficulties | Phase 2 |
 | Narration cost | Speech synthesis first; record voices only for English and Slovak; budget per extra language | Phase 2 |
-| Name and identity | Trademark check for "CodeZoo"; keep visual design and mechanics clearly distinct from CodeMonkey | Before public launch |
+| Name and identity | Apache-2.0 gives no rights to the name (section 6), but that only protects a name we own. Search for "CodeZoo" / "Code Zoo" in software and education (TMview, EUIPO eSearch, ÚPV SR) before more work goes into the name; if it's clear, register an EU trade mark (classes 9, 41, maybe 42) and add the logo once there is one. Add `TRADEMARKS.md`: schools, clubs and teachers may say they use CodeZoo, unchanged copies keep the name, changed forks must rename, "based on CodeZoo" is welcome. Ask an IP attorney to check the search and classes. Keep visual design and mechanics clearly distinct from CodeMonkey | Search now (before the first pilot); registration and `TRADEMARKS.md` before any public release |
 
 ## Future improvements (to discuss later)
 
@@ -672,5 +699,6 @@ The phase 2 pilot is when real families start using CodeZoo, and the money model
 | One-time purchase, no account | Yes for privacy; app stores take a share; harder to keep open source |
 | Subscription | Least; needs accounts, server and billing |
 
-**To discuss:** pick one model and write the promise given to pilot families.
-**Revisit:** before the phase 2 pilot starts (about week 9).
+**Decided (Nov 21, 2026): free and open source.** CodeZoo stays free for children and adults, under Apache-2.0, with no accounts, ads or purchases. Support comes from voluntary donations (for example a "Buy me a coffee" page). The link appears only in the README, the project page and the grown-up area behind the gate, never on a child's screen, because kid-safety seals forbid payment prompts to children. Paid work for schools that want a special programme (custom levels, a workshop, curriculum mapping) stays possible later as a service around the open code, not as locked features.
+
+**Promise to pilot families:** "CodeZoo is free and open source and will stay free. It needs no account, and your child's progress stays on your device."
