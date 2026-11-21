@@ -109,6 +109,11 @@ export const api = {
   habitat: (id) => call("GET", `/api/profiles/${id}/habitat`),
   setHabitat: (id, body) => call("POST", `/api/profiles/${id}/habitat`, body),
 
+  // pilots (phase 6)
+  pilotEvent: (id, body) => call("POST", `/api/profiles/${id}/pilot`, body),
+  checkQuestions: (module) => call("GET", `/api/checks/${encodeURIComponent(module)}`),
+  answerCheck: (id, module, phase, answers) => call("POST", `/api/profiles/${id}/check`, { module, phase, answers }),
+
   // the classroom hub (phase 5)
   joinClass: (code) => call("POST", "/api/class/join", { code }),
   classState: () => call("GET", "/api/class/state"),

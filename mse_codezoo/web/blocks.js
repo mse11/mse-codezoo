@@ -621,6 +621,37 @@ const currentTheme = () => {
   return darkQuery.matches ? DARK : LIGHT;
 };
 
+// "Big targets" in Look and feel (look.js): bigger blocks, and a tap on a palette block adds
+// it to the end of the program, for children who find precise dragging hard.
+const big = () => document.documentElement.dataset.targets === "true";
+
+function lastInStack(block) {
+  let last = block;
+  while (last.getNextBlock()) last = last.getNextBlock();
+  return last;
+}
+
+function bigTargets(workspace) {
+  const scale = () => workspace.setScale(big() ? 1.25 : 0.8);
+  window.addEventListener("codezoo-look", scale);
+  if (big()) scale();
+  const flyout = workspace.getFlyout()?.getWorkspace();
+  flyout?.addChangeListener((event) => {
+    if (!big() || event.type !== Blockly.Events.CLICK || !event.blockId) return;
+    const source = flyout.getBlockById(event.blockId)?.getRootBlock();
+    if (!source) return;
+    const state = Blockly.serialization.blocks.save(source, { addCoordinates: false });
+    const top = workspace.getTopBlocks(true).find((b) => b.previousConnection || b.nextConnection);
+    const block = Blockly.serialization.blocks.append(state, workspace);
+    const last = top && top !== block ? lastInStack(top) : null;
+    if (last?.nextConnection && block.previousConnection) {
+      last.nextConnection.connect(block.previousConnection);
+    } else {
+      block.moveBy(24, 24 + workspace.getTopBlocks().length * 8);
+    }
+  });
+}
+
 export function createWorkspace(container, onChange) {
   defineBlocks();
   const workspace = Blockly.inject(container, {
@@ -641,6 +672,7 @@ export function createWorkspace(container, onChange) {
   });
   window.addEventListener("resize", () => Blockly.svgResize(workspace));
   darkQuery.addEventListener("change", () => workspace.setTheme(currentTheme()));
+  bigTargets(workspace);
   const api = {
     workspace,
     setPalette(names) {

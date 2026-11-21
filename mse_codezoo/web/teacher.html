@@ -14,6 +14,7 @@
     <span class="class-name" id="t-class"></span>
     <div class="who">
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
+      <button id="look" type="button" class="look-button" data-i18n-title="Look and feel" aria-label="Look and feel" data-i18n-label="Look and feel">Aa</button>
       <a href="editor.html" target="_blank" data-i18n>Level editor</a>
     </div>
   </header>
@@ -95,12 +96,24 @@
       <label class="check"><input type="checkbox" id="t-roster"> <span data-i18n>Only I add players (children pick themselves from the list)</span></label>
       <label class="check"><input type="checkbox" id="t-names"> <span data-i18n>Children may type a first name</span></label>
       <label class="check"><input type="checkbox" id="t-delete"> <span data-i18n>Delete all data when the class ends</span></label>
+      <label class="check"><input type="checkbox" id="t-pilot"> <span data-i18n>Take part in a pilot: record learning data on this computer (no names, nothing is sent)</span></label>
       <div class="row">
         <button id="t-save-settings" type="button" class="primary" data-i18n>Save settings</button>
         <button id="t-export" type="button" data-i18n>Save the whole class to a file</button>
         <span id="t-settings-msg" class="note" role="status"></span>
       </div>
       <p class="hint" data-i18n>Everything stays on this computer. Nothing is sent to the internet.</p>
+      <div id="t-pilot-box" hidden>
+        <h3 data-i18n>Pilot data</h3>
+        <p class="hint" data-i18n>Saves a file for the pilot. You choose whether to send it; CodeZoo never sends anything.</p>
+        <button type="button" id="t-pilot-export" data-i18n>Export pilot data</button>
+        <div id="t-pilot-consent" hidden>
+          <p data-i18n>The file holds:</p>
+          <ul id="t-pilot-contents"></ul>
+          <label class="check"><input type="checkbox" id="t-pilot-agree"> <span data-i18n>I agree to share this file with the pilot.</span></label>
+          <button type="button" id="t-pilot-save" class="primary" disabled data-i18n>Save the file</button>
+        </div>
+      </div>
     </section>
 
     <!-- the teacher's screen only: never put this link on a child's screen -->

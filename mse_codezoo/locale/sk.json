@@ -438,5 +438,15 @@
   "Today the class plays the levels the teacher picked.": "Dnes trieda hrá levely, ktoré vybral učiteľ.",
   "Too many wrong codes. Wait a few minutes, then try again.": "Priveľa nesprávnych kódov. Počkaj pár minút a skús to znova.",
   "Untitled": "Bez názvu",
-  "You can share a program or a level.": "Zdieľať môžeš program alebo level."
+  "You can share a program or a level.": "Zdieľať môžeš program alebo level.",
+  "Pick an age band from the list.": "Vyberte vekovú skupinu zo zoznamu.",
+  "Pilot recording is off.": "Zaznamenávanie pre pilot je vypnuté.",
+  "Please answer every question (or skip them all).": "Odpovedz na každú otázku (alebo ich preskoč všetky).",
+  "There is no such question set.": "Takáto sada otázok neexistuje.",
+  "Unknown pilot event.": "Neznáma udalosť pilotu.",
+  "minutes to the first star, errors the page saw, and the smileys": "minúty do prvej hviezdičky, chyby, ktoré stránka zaznamenala, a smajlíky",
+  "no names, no pictures, no programs, nothing typed": "žiadne mená, obrázky, programy ani nič napísané",
+  "per level: tries, solved or not, stars, and hints used before solving": "pre každý level: pokusy, či je vyriešený, hviezdičky a rady použité pred vyriešením",
+  "the questions before and after each module: how many were right": "otázky pred modulom a po ňom: koľko odpovedí bolo správnych",
+  "{count} player(s), each with a random pilot id and an age band": "hráči: {count}, každý s náhodným id v pilote a vekovou skupinou"
 }

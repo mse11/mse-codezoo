@@ -24,6 +24,7 @@
     </div>
     <div class="who">
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
+      <button id="look" type="button" class="look-button" data-i18n-title="Look and feel" aria-label="Look and feel" data-i18n-label="Look and feel">Aa</button>
       <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
       <button id="class-button" type="button" class="zoo" hidden>🏫 <span data-i18n>Our class</span> <span id="class-badge" class="badge" hidden></span></button>
@@ -45,7 +46,8 @@
         <div id="worlds" class="worlds" role="group"></div>
         <label class="view-toggle" data-i18n-title="Show the stage in 3D"><input type="checkbox" id="view-3d"> 3D</label>
       </div>
-      <div id="stage" class="stage"></div>
+      <div id="stage" class="stage" aria-describedby="stage-description"></div>
+      <p id="stage-description" class="sr-only"></p>
       <div id="callstack" class="callstack" aria-live="polite" data-i18n-label="Call stack"></div>
       <div id="lanes" class="lanes" hidden data-i18n-label="Tasks and threads"></div>
       <label id="timeline" class="timeline" hidden><span data-i18n>Timeline</span>
@@ -122,6 +124,7 @@
           </select>
         </label>
         <label class="check"><input type="checkbox" id="private-mode"> <span data-i18n>Private mode: keep only stars and solved levels</span></label>
+        <label class="check"><input type="checkbox" id="pilot-mode"> <span data-i18n>Take part in a pilot: record learning data on this computer (no names, nothing is sent)</span></label>
         <label><span data-i18n>New PIN (4–8 digits, optional)</span> <input id="new-pin" type="password" inputmode="numeric" autocomplete="new-password"></label>
         <label class="check" id="clear-pin-row" hidden><input type="checkbox" id="clear-pin"> <span data-i18n>Remove the PIN</span></label>
         <p id="settings-msg" class="note" role="status"></p>
@@ -132,6 +135,17 @@
         <div id="reports"></div>
         <label class="file-button"><span data-i18n>Load a player from a file</span> <input id="import-player" type="file" accept=".json,application/json"></label>
         <p id="import-msg" class="note" role="status"></p>
+        <div id="pilot-box" hidden>
+          <h3 data-i18n>Pilot data</h3>
+          <p class="hint" data-i18n>Saves a file for the pilot. You choose whether to send it; CodeZoo never sends anything.</p>
+          <button type="button" id="pilot-export" data-i18n>Export pilot data</button>
+          <div id="pilot-consent" hidden>
+            <p data-i18n>The file holds:</p>
+            <ul id="pilot-contents"></ul>
+            <label class="check"><input type="checkbox" id="pilot-agree"> <span data-i18n>I agree to share this file with the pilot.</span></label>
+            <button type="button" id="pilot-save" class="primary" disabled data-i18n>Save the file</button>
+          </div>
+        </div>
       </section>
       <!-- grown-ups only (after the gate): never put this link on a child's screen -->
       <section class="support" aria-labelledby="support-title">
@@ -214,6 +228,19 @@
       <button id="class-switch" type="button" data-i18n>Another player</button>
       <button id="class-close" type="button" class="primary" data-i18n>Back to the zoo</button>
     </div>
+  </dialog>
+
+  <!-- pilots (phase 6): the same few questions before and after a module -->
+  <dialog id="check-dialog" class="dialog wide" aria-labelledby="check-title">
+    <h2 id="check-title" data-i18n>A few quick questions</h2>
+    <p id="check-intro"></p>
+    <form id="check-form">
+      <div id="check-questions"></div>
+      <div class="dialog-buttons">
+        <button type="submit" class="primary" data-i18n>Done</button>
+        <button type="button" id="check-skip" data-i18n>Skip the questions</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="goodbye-dialog" class="dialog goodbye" aria-labelledby="goodbye-title">

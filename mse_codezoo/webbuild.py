@@ -24,8 +24,13 @@ WEB_DIR = PACKAGE / "web"
 PYODIDE_VERSION = "0.29.5"
 PYODIDE_CDN = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/"
 SKIP = ("__pycache__", ".pyc")
-WEB_SKIP = (*SKIP, "teacher.*")  # the teacher's screen needs a classroom hub (codezoo class serve)
-PAGES = ("index.html", "editor.html")
+# the teacher's screen needs a classroom hub (codezoo class serve); its CSS is shared
+WEB_SKIP = (*SKIP, "teacher.html", "teacher.js")
+PAGES = ("index.html", "editor.html", "check.html")
+PYODIDE_FILES = (  # what the page needs from a Pyodide distribution (the npm package has them)
+    "pyodide.js", "pyodide.mjs", "pyodide.asm.js", "pyodide.asm.wasm", "python_stdlib.zip",
+    "pyodide-lock.json",
+)  # fmt: skip
 
 
 def engine_zip(target: Path) -> int:
@@ -49,8 +54,17 @@ def _offline_page(html: str, config: dict[str, str]) -> str:
     return html.replace("</head>", f"  {setup}</head>", 1)
 
 
-def build(output: Path, pyodide_url: str | None = None) -> str:
-    """Write the offline site into ``output``; returns a short report."""
+def build(output: Path, pyodide_url: str | None = None, pyodide_dir: Path | None = None) -> str:
+    """Write the offline site into ``output``; returns a short report.
+
+    With ``pyodide_dir``, Pyodide is copied next to the page (``pyodide/``), so the site
+    loads nothing from a CDN, not even on the first visit.
+    """
+    if pyodide_dir is not None:
+        missing = [name for name in PYODIDE_FILES if not (pyodide_dir / name).is_file()]
+        if missing:
+            raise FileNotFoundError(f"{pyodide_dir} has no {', '.join(missing)}")
+        pyodide_url = "./pyodide/"
     pyodide = pyodide_url or PYODIDE_CDN
     if not pyodide.endswith("/"):
         pyodide += "/"
@@ -58,6 +72,10 @@ def build(output: Path, pyodide_url: str | None = None) -> str:
         shutil.rmtree(output)
     shutil.copytree(WEB_DIR, output, ignore=shutil.ignore_patterns(*WEB_SKIP))
     modules = engine_zip(output / "engine.zip")
+    if pyodide_dir is not None:
+        (output / "pyodide").mkdir()
+        for name in PYODIDE_FILES:
+            shutil.copy2(pyodide_dir / name, output / "pyodide" / name)
     config = {"pyodide": pyodide, "engine": "engine.zip", "version": __version__}
     for page in PAGES:
         path = output / page

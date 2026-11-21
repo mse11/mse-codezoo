@@ -109,6 +109,9 @@ export class Players {
     }
     this.grownupDialog.addEventListener("close", () => this.onSettingsChanged());
     $("save-settings").addEventListener("click", () => this.saveSettings());
+    $("pilot-export").addEventListener("click", () => this.preparePilotExport());
+    $("pilot-agree").addEventListener("change", (event) => ($("pilot-save").disabled = !event.target.checked));
+    $("pilot-save").addEventListener("click", () => this.savePilotExport());
     $("import-player").addEventListener("change", (event) => {
       if (event.target.files[0]) this.importPlayer(event.target.files[0]);
       event.target.value = "";
@@ -264,6 +267,9 @@ export class Players {
       $("limit").value = String(settings.dailyMinutes);
     }
     $("private-mode").checked = settings.privateMode;
+    $("pilot-mode").checked = settings.pilot;
+    $("pilot-box").hidden = !settings.pilot;
+    $("pilot-consent").hidden = true;
     $("new-pin").value = "";
     $("clear-pin").checked = false;
     $("clear-pin-row").hidden = !settings.hasPin;
@@ -275,6 +281,7 @@ export class Players {
       pin: this.pin,
       dailyMinutes: $("limit").value ? Number($("limit").value) : null,
       privateMode: $("private-mode").checked,
+      pilot: $("pilot-mode").checked,
     };
     const newPin = $("new-pin").value.trim();
     if (newPin) body.newPin = newPin;
@@ -330,6 +337,7 @@ export class Players {
         ? el("p", {}, t("Often: {list}.", { list: report.mistakes.map((m) => m.text).join("; ") }))
         : null,
       top && AT_HOME[top.kind] ? el("p", {}, t("Try at home: {tip}", { tip: t(AT_HOME[top.kind]) })) : null,
+      this.pilotPart(profile, report.pilot),
     );
     const actions = el(
       "div",
@@ -339,6 +347,51 @@ export class Players {
     );
     card.append(actions);
     return card;
+  }
+
+  // pilot (phase 6): show what the file holds, then save it only after "I agree"
+  async preparePilotExport() {
+    const { file, contents } = await api.parent("pilot-export", { pin: this.pin });
+    this.pilotFile = file;
+    $("pilot-contents").replaceChildren(...contents.map((line) => el("li", {}, line)));
+    $("pilot-agree").checked = false;
+    $("pilot-save").disabled = true;
+    $("pilot-consent").hidden = false;
+  }
+
+  savePilotExport() {
+    if (!this.pilotFile || !$("pilot-agree").checked) return;
+    const blob = new Blob([JSON.stringify(this.pilotFile, null, 2)], { type: "application/json" });
+    const link = el("a", { href: URL.createObjectURL(blob), download: `codezoo-pilot-${this.pilotFile.exported}.json` });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+    $("pilot-consent").hidden = true;
+  }
+
+  pilotPart(profile, pilot) {
+    if (!pilot) return null;
+    const select = el(
+      "select",
+      { "aria-label": t("Age band") },
+      el("option", { value: "" }, t("age band?")),
+      ...["6-7", "8-9", "10-12", "13-15", "16+", "adult"].map((band) => el("option", { value: band }, t(band))),
+    );
+    select.value = pilot.ageBand || "";
+    select.addEventListener("change", () =>
+      api.parent("age", { pin: this.pin, profile: profile.id, ageBand: select.value }).catch(() => {}),
+    );
+    const checks = Object.entries(pilot.checks).map(([module, phases]) => {
+      const part = (phase) => (phases[phase] ? `${phases[phase][0]}/${phases[phase][1]}` : "–");
+      return el("li", {}, t("{module}: before {before}, after {after}", { module, before: part("before"), after: part("after") }));
+    });
+    return el(
+      "div",
+      { class: "pilot-part" },
+      el("p", {}, t("Pilot id: {id}", { id: pilot.id }), " ", select),
+      checks.length ? el("ul", {}, ...checks) : null,
+    );
   }
 
   // a player's progress from a file: brought home from a class, or from another computer

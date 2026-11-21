@@ -1,0 +1,50 @@
+name: Pilot builds
+
+# Phase 6: what a pilot needs, built on every push to main.
+# - teacher-app: the one-file classroom hub for Windows (an artifact of this run; not signed yet)
+# - family-site: the offline browser version with Pyodide inside, published on GitHub Pages.
+#   Publishing needs Pages switched on (Settings > Pages > Source: GitHub Actions) and the
+#   repository variable CODEZOO_PAGES set to "true"; until then the job is skipped.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  teacher-app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0  # setup-uv has no moving major tags since v8
+      - run: uv sync --locked
+      - run: uv run --with pyinstaller python scripts/build_teacher_app.py
+      - run: dist\CodeZoo-Teacher.exe --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CodeZoo-Teacher-windows
+          path: dist/CodeZoo-Teacher.exe
+
+  family-site:
+    if: ${{ vars.CODEZOO_PAGES == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0  # setup-uv has no moving major tags since v8
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: npm install --no-save pyodide@0.29.5
+      # Pyodide inside the site: no CDN, not even on the first visit
+      - run: uv run codezoo build-web site/ --pyodide-dir node_modules/pyodide
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+      - id: deploy
+        uses: actions/deploy-pages@v4

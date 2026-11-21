@@ -418,6 +418,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | 3 Middle ladder | 15–24 | Modules 6–10; penguin, beaver and fox with their tricks; storybook, printable cards with unlocks, habitat stickers, adaptive suggestions, level editor prototype | 2 devs + designer + artist × 10 weeks | Learning-gain and drop-off targets still met |
 | 4 Advanced and offline | 25–36 | Modules 11–15 (13–15 optional); octopus and bee; concurrency lanes, release islands 3.12–3.15, offline browser build on Pyodide, full level editor | Same team × 12 weeks | Runs offline on the cheapest target tablet and Chromebook |
 | 5 Classes | Later (built Nov 21, 2026; gate open) | Classroom hub on the local network (no cloud), join with class code + picture, teacher class view, class-only sharing | One developer + coding agent | Privacy review passed; one real workshop or class run on the hub |
+| 6 Pilot readiness | Built Nov 21, 2026; gate open | Families play without installing anything, teachers get a one-file hub app, concept checks before and after each module, pilot metrics recorded on the device and exported with consent, a pilot kit, accessibility basics | One developer + coding agent | The first pilot (5–8 children) runs with the kit and returns its metrics |
 
 **The interpreter grows module by module.** Each phase adds only the constructs its modules need, each with its own differential tests: phase 0 calls, `for` and assignment; phase 2 `if`, `while` and strings; phase 3 functions, imports, exceptions, collections, recursion and comprehensions; phase 4 classes, decorators and `async`.
 
@@ -628,6 +629,49 @@ Still open for phase 5:
 - ~~Roster~~: decided, it depends on the class type. ~~QR scanning~~: decided, the device's own camera app (no certificate). ~~Teacher levels~~: decided, yes.
 - Concurrency: the hub answers one request at a time (a lock keeps the class's files consistent). Fine for a class on a laptop in a desktop browser test; measure with 25 devices running at once at the gate.
 - A small packaged app for teachers (no Python or `uv` to install) would make the hub much easier to start on locked-down school laptops.
+
+**Phase 6 steps (decided and built Nov 21, 2026): pilot readiness, with accessibility basics**
+
+Every gate from phase 1 on waits for a pilot with real children, and none has run yet. This phase removes what stands in the way: installing, measuring learning, collecting the pilot metrics, and the paperwork. It adds the accessibility a pilot school may ask for. It adds no new modules or animals.
+
+*Getting it onto devices*
+
+- [x] Families: `codezoo build-web site/ --pyodide-dir node_modules/pyodide` copies Pyodide into the site (`pyodide/`), so it loads nothing from a CDN, not even on the first visit. The "Pilot builds" workflow (`.github/workflows/pilot.yml`) builds and publishes it on GitHub Pages
+- [ ] Switch Pages on for the repository (Settings > Pages > Source: GitHub Actions) and set the repository variable `CODEZOO_PAGES` to `true`; until then the publishing job is skipped. Not yet tried on a real Pages address
+- [x] Teachers: `CodeZoo-Teacher.exe` (PyInstaller, about 11 MB, `scripts/build_teacher_app.py`; built by the "Pilot builds" workflow as an artifact) runs the new `codezoo teacher`: it lists the classes, makes a new one if asked, starts the hub and opens the teacher's screen. Checked on Windows: it serves every level and the web client. Not code-signed (SmartScreen and firewall steps in `docs/pilot/teacher-app.md`); macOS later
+- [x] Device check page (`check.html`, also in the offline build): screen and touch, engine start (Pyodide in the offline build), one level run, the 3D stage's frames per second, free storage and the hub; below 25 frames a second it offers "Use the 2D stage on this device". "Copy the results" for the device checklist. Real numbers for the low-end budget come from the pilot devices
+
+*Measuring learning*
+
+- [x] Concept checks (`content/checks.json`): the same 3 questions before and after each of modules 1–5 (where does the animal stop, which program gets the banana, what does it say), English and Slovak, with code shown as code; *not pictures yet*. "Before" opens with the module's first level; "after" once 70% of the module is solved. Never scored in front of the child, and "Skip the questions" is recorded as skipped. The grown-up report shows right answers before and after per module. Marked `"reviewed": false` until a teacher has checked them; modules 6–15 later
+- [x] Pilot metrics recorded on the device (`pilot.py`), only when a grown-up or the teacher turns "Take part in a pilot" on, and never in private mode: when the first level was opened and the first star earned, hints shown when each level was first solved, levels opened, the checks, errors the page saw (failed runs and blocks that couldn't become code), and *the smiley once a day under a solved level* (not at the end of a session: the page can't tell when a session ends)
+- [x] Pilot export: Grown-ups area, teacher's screen and `codezoo pilot export`. It lists what the file holds and saves only after "I agree"; random pilot id (`P-7KX3MQ`) and age band (set per player by the grown-up or teacher), no names, pictures, programs or typed text (a test checks this). `codezoo pilot report FILES... [-o report.md]` merges files into the six pilot metrics with their targets (sync reliability is reported as an error count; enjoyment as the share of 4–5 smileys)
+
+*The pilot kit* (`docs/pilot/`, English and Slovak)
+
+- [x] `docs/pilot/`: overview and data flow, parent letter with consent form (English and Slovak; contact details and retention period are placeholders for the maintainer), facilitator guide, observation sheet, device checklist, teacher app guide. The guides are English only for now; the Slovak letter needs a native speaker's review
+
+*Accessibility basics*
+
+- [x] "Look and feel" (the "Aa" button on the game page and the teacher's screen, `look.js`, kept per browser, applied on every page): text size (normal, large, larger), easy-to-read text, high contrast (light and dark), motion (as the device is set, less, all), big targets (48 px buttons, bigger picture tiles, blocks at 125%, and a tap on a palette block adds it to the end of the program). *Easy-to-read uses system fonts with more spacing, not a bundled dyslexia font* (the page loads nothing from the internet; bundling OpenDyslexic is open). Animation speed stays the existing Speed slider
+- [x] Keyboard: every control is a real button, select or input, and dialogs close with Escape. Blockly 13 has keyboard navigation built in. *Not yet checked end to end with only a keyboard*, on any page
+- [x] Screen readers, first step: results, feelings, hints and errors are live regions; the stage has a text description (size, where the animal is and which way it faces, items, rocks), updated for each world. *Not yet tried with a real screen reader* (NVDA, VoiceOver, TalkBack). Full screen-reader editing of blocks stays for later
+- [x] Tests: `tests/test_phase6_pilot.py` (opt-in, private mode, events, every question complete, checks before and after, the export holds nothing private, age bands, the report against targets, CLI, the hub, levels by id only, bundled Pyodide, the Look and feel button). Checked in the browser: pilot switch, the questions, the smiley row, Look and feel with big targets and tap-to-place, the device check
+- [x] Found while building: API requests now name levels by id only (`find_level` also takes a file path, which a class on a network must not reach), and the grown-up route accepts `-` in action names
+
+- [ ] Gate: the first pilot (5–8 children aged 8–12, 30 minutes each) runs with the kit on real devices and returns its metrics file
+
+Open points for phase 6 (to discuss before building):
+
+- ~~Who receives pilot files~~: decided (Nov 21, 2026), only the project maintainer, who is then the data controller for pilot data. Consequences for the build and the kit:
+  - Collect as little as possible: a random pilot id per player, age band (not birth date), module and level ids, counts, durations, concept-check answers and the smiley; no names, programs, free text, device names or IP addresses. Even so, treat the files as personal data (pseudonymous, and a small pilot makes people easier to recognise)
+  - Files reach the maintainer only by hand from the parent or teacher (a file they choose to send); the app never uploads anything
+  - The consent form and parent letter name the maintainer as the contact, say what is collected and why, how long it is kept, and how to ask for deletion (the pilot id is shown on the export screen so a family can quote it). The contact details are filled in by the maintainer, not written into the code
+  - Keep raw files only until the pilot report is made, then keep only the merged, aggregated table; write the retention period into the kit
+- ~~Hosting~~: decided, GitHub Pages now (a workflow builds and publishes the family version once Pages is switched on for the repository); its own domain after the trademark search
+- ~~The teacher app~~: decided, an unsigned Windows build first, with a short guide to the one-time SmartScreen warning; macOS (needs notarisation) and code signing later, when a school needs them
+- ~~Concept-check questions~~: decided, drafted here for modules 1–5 (the pilot's scope) and marked for review by a teacher; modules 6–15 later
+- ~~Accessibility scope~~: decided, the list above
 
 ## Not yet covered
 

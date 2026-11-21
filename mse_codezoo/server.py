@@ -59,7 +59,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from mse_codezoo import __version__, ir, versions
+from mse_codezoo import __version__, ir, pilot, versions
 from mse_codezoo.cards import card_for_code, card_public, cards_html
 from mse_codezoo.game import (
     attempt_from_run,
@@ -91,9 +91,12 @@ DRAIN_LIMIT = 16 * 1024 * 1024  # larger bodies are not read; the connection is 
 DEFAULT_PORT = 8765
 PROGRESS_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/progress$")
 TIME_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/time$")
-PARENT_PATH = re.compile(r"^/api/parent/(?P<action>[a-z]+)$")
+PARENT_PATH = re.compile(r"^/api/parent/(?P<action>[a-z-]+)$")
 UNLOCK_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/unlock$")
 HABITAT_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/habitat$")
+PILOT_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/pilot$")
+CHECK_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/check$")
+QUESTIONS_PATH = re.compile(r"^/api/checks/(?P<module>[a-z0-9-]{1,40})$")
 MAX_MODULES = 5
 
 
@@ -152,6 +155,16 @@ def list_levels(
     return levels
 
 
+LEVEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
+
+
+def _find_level(level_id: str, extra: dict[str, Level] | None = None) -> Level:
+    """A level by id only: an API request never names a file (``find_level`` also would)."""
+    if not LEVEL_ID.match(level_id):
+        raise LevelError(f"No level called {level_id!r}.")
+    return (extra or {}).get(level_id) or find_level(level_id)
+
+
 def get_level(
     level_id: str,
     animal: str | None = None,
@@ -161,7 +174,7 @@ def get_level(
     if animal is not None and animal not in animal_names():
         animal = None
     try:
-        level = (extra or {}).get(level_id) or find_level(level_id)
+        level = _find_level(level_id, extra)
         return level_to_json(level, animal, python)
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
@@ -230,7 +243,7 @@ def api_run(
             level = _inline_level(body["levelData"])
         else:
             level_id = _text(body, "level")
-            level = (extra or {}).get(level_id) or find_level(level_id)
+            level = _find_level(level_id, extra)
         run = run_level(
             level,
             source,
@@ -252,6 +265,10 @@ def api_run(
         solved = run.check is not None and run.check.solved
         data["newStickers"] = store.award(player, levels) if solved else []
         data["suggestion"] = store.suggest(player, level, levels)
+        # pilot (phase 6): the first star's time and hints used; an "after" check when due
+        check = pilot.record_run(store, player, level, solved, body.get("hints"), levels)
+        if check:
+            data["pilotCheck"] = check  # "check" is the goal check of the run
     return data
 
 
@@ -337,6 +354,8 @@ def api_progress(profile_id: str, store: ProfileStore) -> dict[str, Any]:
             for level_id, entry in levels.items()
         },
         "today": store.today_status(profile_id),
+        "pilot": pilot.enabled(store),
+        "smileyDue": pilot.smiley_due(store, profile_id),
     }
 
 
@@ -347,7 +366,9 @@ def api_time(profile_id: str, body: dict[str, Any], store: ProfileStore) -> dict
     return store.add_time(profile_id, seconds)
 
 
-PARENT_ACTIONS = ("check", "settings", "report", "export", "remove", "import")
+PARENT_ACTIONS = (
+    "check", "settings", "report", "export", "remove", "import", "pilot-export", "age",
+)  # fmt: skip
 
 
 def api_parent(action: str, body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
@@ -366,6 +387,7 @@ def api_parent(action: str, body: dict[str, Any], store: ProfileStore) -> dict[s
             private_mode=body.get("privateMode"),
             new_pin=body.get("newPin") or None,
             clear_pin=bool(body.get("clearPin")),
+            pilot=body.get("pilot"),
         )
         return settings.public()
     store.check_pin(pin)
@@ -374,14 +396,47 @@ def api_parent(action: str, body: dict[str, Any], store: ProfileStore) -> dict[s
         if not isinstance(data, dict):
             raise ProfileError(t("This is not a CodeZoo profile file."))
         return asdict(store.import_(data))
+    if action == "pilot-export":  # anonymised, for the pilot (phase 6)
+        data = pilot.export(store, _all_levels())
+        return {"file": data, "contents": pilot.describe_export(data)}
     player = _text(body, "profile")
+    if action == "age":
+        return pilot.set_age_band(store, player, body.get("ageBand"))
     if action == "report":
-        return store.report(player, _all_levels())
+        report = store.report(player, _all_levels())
+        report["pilot"] = pilot_summary(store, player)
+        return report
     if action == "export":
         return store.export(player)
     if action == "remove":
         return {"removed": asdict(store.remove(player))}
     raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
+
+
+def pilot_summary(store: ProfileStore, player: str) -> dict[str, Any] | None:
+    """The pilot id, age band and concept checks (right answers before and after)."""
+    data = store.progress(player).get("pilot")
+    if not data:
+        return None
+    checks = {
+        module: {phase: (r["right"], r["of"]) for phase, r in done.items() if not r["skipped"]}
+        for module, done in data.get("checks", {}).items()
+    }
+    return {"id": data["id"], "ageBand": data.get("ageBand"), "checks": checks}
+
+
+def api_pilot_event(
+    profile_id: str, body: dict[str, Any], store: ProfileStore, extra: dict[str, Level] | None
+) -> dict[str, Any]:
+    event = body.get("event")
+    if event == "open":
+        level_id = _text(body, "level")
+        try:
+            level = _find_level(level_id, extra)
+        except LevelError as exc:
+            raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
+        return pilot.record_open(store, profile_id, level, _all_levels())
+    return pilot.record_event(store, profile_id, event, body.get("value"))
 
 
 def _text(body: dict[str, Any], key: str) -> str:
@@ -418,6 +473,8 @@ def dispatch(
             return store.habitat(match["id"])
         if path == "/api/animals":
             return api_animals()
+        if match := QUESTIONS_PATH.match(path):
+            return {"module": match["module"], "questions": pilot.questions(match["module"])}
         if path.startswith("/api/levels/"):
             return get_level(
                 unquote(path.removeprefix("/api/levels/")),
@@ -442,6 +499,12 @@ def dispatch(
         return api_unlock(match["id"], body, store)
     if match := HABITAT_PATH.match(path):
         return api_set_habitat(match["id"], body, store)
+    if match := PILOT_PATH.match(path):
+        return api_pilot_event(match["id"], body, store, extra_levels)
+    if match := CHECK_PATH.match(path):
+        return pilot.answer_check(
+            store, match["id"], _text(body, "module"), _text(body, "phase"), body.get("answers")
+        )
     if path == "/api/story":
         return api_story(body)
     if path == "/api/levels/check":

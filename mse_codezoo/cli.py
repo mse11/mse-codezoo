@@ -739,15 +739,20 @@ def parent_show() -> None:
     default=None,
     help="Private mode keeps only stars and solved levels.",
 )
+@click.option(
+    "--pilot/--no-pilot",
+    default=None,
+    help="Take part in a pilot: record the pilot metrics on this computer (see `codezoo pilot`).",
+)
 @_profile_errors
-def parent_set(daily_minutes: int | None, private_mode: bool | None) -> None:
-    """Change the daily limit or private mode."""
+def parent_set(daily_minutes: int | None, private_mode: bool | None, pilot: bool | None) -> None:
+    """Change the daily limit, private mode or pilot recording."""
     store = _store()
     pin = _ask_pin(store)
     minutes: int | None | str = "keep"
     if daily_minutes is not None:
         minutes = None if daily_minutes == 0 else daily_minutes
-    store.update_parent(pin=pin, daily_minutes=minutes, private_mode=private_mode)
+    store.update_parent(pin=pin, daily_minutes=minutes, private_mode=private_mode, pilot=pilot)
     click.echo("Saved.")
 
 
@@ -979,7 +984,13 @@ def graduate(program: Path, output: Path | None, run_it: bool) -> None:
     help="Where the page loads Pyodide from (a URL or a folder next to the page). "
     "Default: the jsDelivr CDN; the page caches it after the first visit.",
 )
-def build_web(output: Path, pyodide_url: str | None) -> None:
+@click.option(
+    "--pyodide-dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Copy this Pyodide distribution (for example node_modules/pyodide) into the site, "
+    "so nothing is loaded from a CDN.",
+)
+def build_web(output: Path, pyodide_url: str | None, pyodide_dir: Path | None) -> None:
     """Build the offline web version into OUTPUT: static files for any web host.
 
     The engine runs in the browser (Pyodide in a web worker); a service worker keeps
@@ -987,7 +998,7 @@ def build_web(output: Path, pyodide_url: str | None) -> None:
     """
     from mse_codezoo.webbuild import build
 
-    report = build(output, pyodide_url)
+    report = build(output, pyodide_url, pyodide_dir)
     click.echo(report)
 
 
@@ -1384,3 +1395,108 @@ def class_serve(class_name: str, host: str, port: int, open_browser: bool, verbo
         server.server_close()
     if hub.ended:
         click.echo("The workshop has ended and its data was deleted.")
+
+
+# --- pilots (phase 6) ---------------------------------------------------------------------
+
+
+@main.group("pilot")
+def pilot_() -> None:
+    """Pilot data: an anonymised export from this computer, and the report from many exports."""
+
+
+@pilot_.command("export")
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path), required=True)
+@_profile_errors
+def pilot_export(output: Path) -> None:
+    """Save this computer's pilot data (no names, pictures or programs) to a file."""
+    from mse_codezoo import pilot
+
+    store = _store()
+    _ask_pin(store)
+    data = pilot.export(store, _all_levels())
+    click.echo("The file holds:")
+    for line in pilot.describe_export(data):
+        click.echo(f"  - {line}")
+    output.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    click.echo(f"Saved {len(data['players'])} player(s) to {output}")
+
+
+METRIC_NAMES = {
+    "moduleCompletion": ("Module completion", "share", ">="),
+    "medianMinutesToFirstStar": ("Median minutes to the first star", "minutes", "<="),
+    "solvedBeforeLastHint": ("Solved before the last hint", "share", ">="),
+    "worstDropOff": ("Worst drop-off on one level", "share", "<="),
+    "learningGainShare": ("Better after the module than before", "share", ">="),
+    "playAgainShare": ("Want to play again (4-5 of 5)", "share", ">="),
+}
+
+
+def _metric(value: float | None, kind: str) -> str:
+    if value is None:
+        return "no data"
+    return f"{value:.0%}" if kind == "share" else f"{value:.1f}"
+
+
+@pilot_.command("report")
+@click.argument("files", nargs=-1, required=True, type=ProgramPath)
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path))
+def pilot_report(files: tuple[Path, ...], output: Path | None) -> None:
+    """Merge pilot exports into the pilot metrics table (Markdown), each with its target."""
+    from mse_codezoo import pilot
+
+    try:
+        loaded = [json.loads(f.read_text(encoding="utf-8")) for f in files]
+        result = pilot.report(loaded)
+    except (OSError, json.JSONDecodeError, ValueError, KeyError, TypeError) as exc:
+        raise click.ClickException(f"Can't read the pilot files: {exc}") from None
+    lines = [
+        f"# Pilot report ({result['players']} players, {len(files)} file(s))",
+        "",
+        "| Metric | Value | Target | Met |",
+        "| --- | --- | --- | --- |",
+    ]
+    for row in result["metrics"]:
+        name, kind, sign = METRIC_NAMES[row["metric"]]
+        met = {True: "yes", False: "no", None: "-"}[row["met"]]
+        value, target = _metric(row["value"], kind), _metric(row["target"], kind)
+        lines.append(f"| {name} | {value} | {sign} {target} | {met} |")
+    lines += [
+        "",
+        f"Level with the most drop-off: {result['worstLevel'] or '-'}",
+        f"Players with both concept checks in a module: {result['checkPairs']}",
+        f"Errors the page saw: {result['errors']}",
+    ]
+    text = "\n".join(lines) + "\n"
+    if output:
+        output.write_text(text, encoding="utf-8")
+        click.echo(f"wrote {output}")
+    else:
+        click.echo(text, nl=False)
+
+
+@main.command("teacher")
+@click.option("--port", default=8765, show_default=True, help="Port to listen on.")
+@click.pass_context
+@_profile_errors
+def teacher(ctx: click.Context, port: int) -> None:
+    """Start a class or workshop step by step (what the one-file teacher app runs)."""
+    ctx.ensure_object(dict)
+    store = _classes()
+    found = store.classes()
+    click.echo("CodeZoo classroom hub: children join from tablets on this network.\n")
+    for number, info in enumerate(found, 1):
+        click.echo(f"  {number}. {info.name} ({info.type})")
+    click.echo(f"  {len(found) + 1}. a new class or workshop")
+    choice = click.prompt("Which one", type=click.IntRange(1, len(found) + 1), default=1)
+    if choice <= len(found):
+        name = found[choice - 1].name
+    else:
+        name = click.prompt("Name of the class or workshop")
+        kind = click.prompt(
+            "Type (workshop: one session, data deleted at the end; class: meets regularly)",
+            type=click.Choice(["workshop", "class"]),
+            default="workshop",
+        )
+        name = store.create(name, kind).name
+    ctx.invoke(class_serve, class_name=name, host="0.0.0.0", port=port, open_browser=True)

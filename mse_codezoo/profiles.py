@@ -120,6 +120,7 @@ class Profile:
 class ParentSettings:
     daily_minutes: int | None = None  # None = no limit
     private_mode: bool = False
+    pilot: bool = False  # "take part in a pilot": record the pilot metrics (pilot.py)
     pin_salt: str | None = None
     pin_hash: str | None = None
 
@@ -131,6 +132,7 @@ class ParentSettings:
         return {
             "dailyMinutes": self.daily_minutes,
             "privateMode": self.private_mode,
+            "pilot": self.pilot,
             "hasPin": self.has_pin,
         }
 
@@ -471,7 +473,7 @@ class ProfileStore:
         data = self._read(self._parent_path, {})
         known = {
             k: data[k]
-            for k in ("daily_minutes", "private_mode", "pin_salt", "pin_hash")
+            for k in ("daily_minutes", "private_mode", "pilot", "pin_salt", "pin_hash")
             if k in data
         }
         return ParentSettings(**known)
@@ -493,6 +495,7 @@ class ProfileStore:
         private_mode: bool | None = None,
         new_pin: str | None = None,
         clear_pin: bool = False,
+        pilot: bool | None = None,
     ) -> ParentSettings:
         """Change grown-up settings. If a PIN is set, ``pin`` must match it."""
         self.check_pin(pin)
@@ -507,6 +510,8 @@ class ProfileStore:
             settings.daily_minutes = daily_minutes
         if private_mode is not None:
             settings.private_mode = bool(private_mode)
+        if pilot is not None:
+            settings.pilot = bool(pilot)
         if clear_pin:
             settings.pin_salt = settings.pin_hash = None
         if new_pin is not None:

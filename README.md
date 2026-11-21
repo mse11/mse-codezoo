@@ -82,6 +82,16 @@ uv run codezoo build-web site/
 
 Writes a static site to `site/`: the same web client, with the engine running in the browser (Pyodide 0.29.5, Python 3.13, in a web worker) instead of `codezoo serve`. A service worker keeps every file, and Pyodide after its first load, so it then works with no network; players' progress lives in the browser (IndexedDB). Put the folder on any static host (GitHub Pages, Cloudflare Pages), or try it with `python -m http.server --directory site`. `--pyodide URL` loads Pyodide from somewhere else (for example a copy next to the page). Release islands newer than Pyodide's Python show as locked there.
 
+## Pilots and accessibility
+
+Everything for running a pilot with children is in [docs/pilot/](docs/pilot/README.md): parent letter and consent form (English, Slovak), facilitator guide, observation sheet, device checklist and the teacher app guide.
+
+- **Pilot recording is opt-in.** A grown-up ticks "Take part in a pilot" in the Grown-ups area (or the teacher on the teacher's screen, or `codezoo parent set --pilot`). Only then does CodeZoo record, on this computer, what the pilot metrics need, and never in private mode. Players of modules 1–5 get 3 short questions before and after the module (the same ones, to measure learning; never scored in front of them), and once a day a "Would you like to play again?" smiley row after a solved level.
+- **Export with consent.** "Export pilot data" lists what the file holds and saves it only after "I agree": a random pilot id and an age band per player, tries, stars and hints per level, right answers before and after, minutes to the first star, errors and smileys. No names, pictures, programs or typed text, and nothing is ever sent. `codezoo pilot report FILES...` merges the files into the pilot metrics with their targets.
+- **Device check.** `check.html` tests a device in about 10 seconds: engine start, a level run, the 3D stage's frame rate, storage, and the hub. It offers the 2D stage when 3D is slow.
+- **Look and feel.** The "Aa" button: text size, easy-to-read text, high contrast, less motion, and big targets (bigger blocks and buttons; tap a palette block to add it to the end of the program). A screen reader hears the world described in words, and results, hints and errors as they happen. Blocks can be used with the keyboard (Blockly 13's built-in keyboard navigation).
+- **No installing.** Families: `codezoo build-web site/ --pyodide-dir node_modules/pyodide` puts Pyodide inside the site, so it loads nothing from a CDN; the "Pilot builds" workflow publishes it on GitHub Pages once Pages is on and the repository variable `CODEZOO_PAGES` is `true`. Teachers: `CodeZoo-Teacher.exe` (from the same workflow, or `scripts/build_teacher_app.py`) runs `codezoo teacher`, which asks for the class and starts the hub; it is not code-signed yet.
+
 ## Play in the terminal
 
 For adult beginners (and anyone who prefers a text editor): each level gets a `.py` file; edit it, save, and watch the monkey on a coloured character grid.
@@ -135,12 +145,14 @@ mse_codezoo/        the package (flat layout, no src/)
   server.py         stdlib HTTP server and JSON API behind `codezoo serve` (dispatch())
   classes.py        classes and workshops for the classroom hub (players, own levels, shares)
   hub.py            the classroom hub: class code, teacher's key, /api/class and /api/teacher
+  pilot.py          pilot recording (opt-in), concept checks, anonymised export, pilot report
   webbuild.py       `codezoo build-web`: the offline browser version
   web/              browser client: app.js, blocks.js (Blockly <-> IR), stage3d.js (three.js),
                     stage.js (2D), code.js, i18n.js (EN/SK), players.js (picker, grown-ups,
                     goodbye), layout.js (splitters), editor.html/js (level editor),
                     share.js (share links), offline.js + engine-worker.js + sw.template.js
-                    (the offline build), classroom.js (joining a class), teacher.html/js
+                    (the offline build), classroom.js (joining a class), pilot.js (checks,
+                    smileys), look.js (Look and feel), check.html/js (device check), teacher.html/js
                     (the teacher's screen)
   cli.py            click commands (the only module importing click)
   content/levels/   level JSON + reference solutions (<file>.solution.py)
@@ -172,10 +184,12 @@ scripts/            pyodide_smoke.mjs: the engine and every level inside Pyodide
 | `codezoo levels validate [--all] [PATHS...]` | Checks level files and that each reference solution earns every star (islands newer than this Python are skipped) |
 | `codezoo run/check ... --python 3.12` | Runs a program as written for that Python release |
 | `codezoo graduate PROGRAM.py [-o OUT.py] [--run]` | A plain `.py` that runs in normal Python: the zoo's commands become stand-ins that print |
-| `codezoo build-web OUT [--pyodide URL]` | The offline browser version as static files |
+| `codezoo build-web OUT [--pyodide URL] [--pyodide-dir DIR]` | The offline browser version as static files; `--pyodide-dir` copies Pyodide into the site |
 | `codezoo class new NAME [--type workshop\|class] [--names/--no-names] [--roster/--no-roster]` | A class or workshop for the classroom hub |
 | `codezoo class serve NAME [--host 0.0.0.0] [--port 8765]` | Runs the classroom hub on the local network and opens the teacher's screen |
 | `codezoo class list/add-player/add-level/export/delete` | Classes on this computer, their players, own levels and export; `class --data-dir PATH` keeps them elsewhere |
+| `codezoo teacher` | Asks which class to open (or makes one) and starts the hub: what the teacher app runs |
+| `codezoo parent set --pilot` / `codezoo pilot export -o FILE` / `codezoo pilot report FILES... [-o report.md]` | Pilot recording on this computer, its anonymised export, and the metrics from many exports |
 
 `LEVEL` is a level id (`m01-l01`) or a path to a level `.json` file. A program may `import` helper files that sit next to it (your own `tricks.py`), and the files a level brings with it. Every command takes `--lang en|sk` before the command name, for example `codezoo --lang sk check ...`.
 

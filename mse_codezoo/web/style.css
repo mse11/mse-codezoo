@@ -247,10 +247,10 @@ select {
 .feeling .face { font-size: 1.8rem; }
 .lang-select { min-height: 2.2rem; }
 
-@media (prefers-reduced-motion: reduce) {
-  .stage-svg .animal, .stage-svg .facing, .stage-svg .item { transition: none; }
-  .stage-svg .body, .mood3d { animation: none !important; }
-}
+/* less motion: look.js sets data-motion from the system setting or "Look and feel" */
+html[data-motion="reduce"] .stage-svg .animal, html[data-motion="reduce"] .stage-svg .facing,
+html[data-motion="reduce"] .stage-svg .item { transition: none; }
+html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d { animation: none !important; }
 
 @keyframes bump {
   0%, 100% { transform: translateX(0); }
@@ -459,9 +459,7 @@ select {
 .stage-svg .body.look-up { transform: translateY(-8px); transition: transform var(--dur, 250ms); }
 .stage-svg .body.shrug { animation: shrug 0.5s ease-in-out 2; }
 @keyframes shrug { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .stage-svg .ghost-target, .stage-svg .body.shrug { animation: none; }
-}
+html[data-motion="reduce"] .stage-svg .ghost-target, html[data-motion="reduce"] .stage-svg .body.shrug { animation: none; }
 
 /* --- classroom hub (codezoo class serve) ------------------------------------------- */
 
@@ -539,3 +537,62 @@ select {
 /* "Support CodeZoo": grown-ups area and teacher's screen only */
 .support p { color: var(--muted); margin: 0.3rem 0 0.6rem; }
 .support-link { display: inline-block; font-weight: 600; color: var(--accent); }
+
+/* pilots (phase 6): concept checks and the smiley row */
+.check-question { border: 1px solid var(--border); border-radius: 0.8rem; margin: 0 0 0.8rem; padding: 0.6rem 0.9rem; }
+.check-question legend { font-weight: 600; padding: 0 0.3rem; }
+.check-code { font-family: var(--code-font); background: var(--bg); padding: 0.5rem 0.7rem; border-radius: 0.5rem; margin: 0.4rem 0; white-space: pre; overflow-x: auto; }
+.check-choices { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.dialog label.check-choice { flex-direction: row; align-items: center; gap: 0.4rem; margin: 0; padding: 0.4rem 0.7rem; border: 1px solid var(--border); border-radius: 0.6rem; cursor: pointer; }
+.check-choice code { font-family: var(--code-font); white-space: pre; }
+.smiley-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.6rem; }
+.smiley { font-size: 1.6rem; min-width: 2.8rem; min-height: 2.8rem; padding: 0; }
+
+/* --- Look and feel (look.js): accessibility basics ---------------------------------------- */
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.look-button { font-weight: 700; min-width: 2.6rem; }
+
+html[data-text="large"] { font-size: 112.5%; }
+html[data-text="larger"] { font-size: 125%; }
+html[data-text="large"] body { font-size: 18px; }
+html[data-text="larger"] body { font-size: 20px; }
+
+/* easy-to-read: plain wide letters (no font is downloaded: the page works offline) and more space */
+html[data-easy="true"] body, html[data-easy="true"] button, html[data-easy="true"] select,
+html[data-easy="true"] input {
+  font-family: Verdana, Tahoma, "Segoe UI", Arial, sans-serif;
+  letter-spacing: 0.04em; word-spacing: 0.12em;
+}
+html[data-easy="true"] body { line-height: 1.6; }
+html[data-easy="true"] textarea, html[data-easy="true"] .gutter, html[data-easy="true"] pre,
+html[data-easy="true"] code { letter-spacing: 0.03em; line-height: 1.6; }
+
+html[data-contrast="true"] {
+  --bg: #ffffff; --panel: #ffffff; --text: #000000; --muted: #1a1a1a; --border: #000000;
+  --accent: #004d1a; --accent-text: #ffffff; --ok: #004d1a; --err: #9b0000;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-contrast="true"]:not([data-theme="light"]) {
+    --bg: #000000; --panel: #000000; --text: #ffffff; --muted: #f0f0f0; --border: #ffffff;
+    --accent: #7dffa8; --accent-text: #000000; --ok: #7dffa8; --err: #ff9c9c;
+  }
+}
+html[data-contrast="true"] button, html[data-contrast="true"] select,
+html[data-contrast="true"] input, html[data-contrast="true"] textarea { border-width: 2px; }
+html[data-contrast="true"] a { text-decoration: underline; }
+
+/* big targets: at least 48px for everything tapped */
+html[data-targets="true"] button, html[data-targets="true"] select,
+html[data-targets="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  min-height: 3rem; min-width: 3rem; padding-inline: 0.9rem;
+}
+html[data-targets="true"] input[type="checkbox"], html[data-targets="true"] input[type="radio"] {
+  width: 1.6rem; height: 1.6rem;
+}
+html[data-targets="true"] .picture-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+html[data-targets="true"] .picture-grid.small { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+html[data-targets="true"] .picture-tile .face { font-size: 3.2rem; }

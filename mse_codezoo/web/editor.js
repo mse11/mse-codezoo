@@ -4,6 +4,7 @@
 // Shared levels only ever run in the zoo's own interpreter, like every other level.
 
 import { api } from "./api.js";
+import "./look.js"; // the "Look and feel" settings apply here too
 import { initialLang, setLang, t, translatePage } from "./i18n.js";
 import { EMOJI } from "./stage.js";
 import { encodeShare } from "./share.js";

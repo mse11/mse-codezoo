@@ -258,7 +258,12 @@ def test_players_progress_time_and_grown_ups(base_url):
     status, data = get_json(base_url, "/api/profiles")
     assert status == 200
     assert "fox" in data["pictures"]
-    assert data["parent"] == {"dailyMinutes": None, "privateMode": False, "hasPin": False}
+    assert data["parent"] == {
+        "dailyMinutes": None,
+        "privateMode": False,
+        "pilot": False,
+        "hasPin": False,
+    }
 
     status, ema = get_json(base_url, "/api/profiles", {"name": "Ema", "picture": "fox"})
     assert status == 200 and ema["name"] == "Ema"

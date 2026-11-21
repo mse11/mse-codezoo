@@ -1,0 +1,137 @@
+{
+  "format": "codezoo-checks",
+  "version": 1,
+  "_comment": "Concept checks for pilots: the same questions before and after a module, so the difference is the learning gain. Drafted for modules 1-5; to be reviewed by a teacher (wording, difficulty, Slovak).",
+  "reviewed": false,
+  "modules": {
+    "sequences": [
+      {
+        "id": "seq-1",
+        "concept": "call",
+        "prompt": {"en": "The monkey starts on square 0 and walks to the right. Where does it stop?", "sk": "Opička začína na políčku 0 a ide doprava. Kde zastaví?"},
+        "code": "step(3)",
+        "choices": [{"en": "square 2", "sk": "políčko 2"}, {"en": "square 3", "sk": "políčko 3"}, {"en": "square 4", "sk": "políčko 4"}],
+        "answer": 1
+      },
+      {
+        "id": "seq-2",
+        "concept": "order",
+        "prompt": {"en": "A banana is 2 squares ahead. Which program gets it?", "sk": "Banán je o 2 políčka vpredu. Ktorý program ho získa?"},
+        "choices": [{"code": "grab()\nstep(2)"}, {"code": "step(2)\ngrab()"}, {"code": "step(1)\ngrab()"}],
+        "answer": 1
+      },
+      {
+        "id": "seq-3",
+        "concept": "call",
+        "prompt": {"en": "How many squares does the monkey walk in all?", "sk": "O koľko políčok sa opička posunie spolu?"},
+        "code": "step(2)\nstep(1)\nstep(2)",
+        "choices": [{"en": "4", "sk": "4"}, {"en": "5", "sk": "5"}, {"en": "6", "sk": "6"}],
+        "answer": 1
+      }
+    ],
+    "loops-1": [
+      {
+        "id": "loop-1",
+        "concept": "for",
+        "prompt": {"en": "How many times does the monkey say “hi”?", "sk": "Koľkokrát opička povie „hi“?"},
+        "code": "for i in range(3):\n    say(\"hi\")",
+        "choices": [{"en": "2 times", "sk": "2-krát"}, {"en": "3 times", "sk": "3-krát"}, {"en": "4 times", "sk": "4-krát"}],
+        "answer": 1
+      },
+      {
+        "id": "loop-2",
+        "concept": "for",
+        "prompt": {"en": "How many squares does the monkey walk?", "sk": "O koľko políčok sa opička posunie?"},
+        "code": "for i in range(4):\n    step(2)",
+        "choices": [{"en": "4", "sk": "4"}, {"en": "6", "sk": "6"}, {"en": "8", "sk": "8"}],
+        "answer": 2
+      },
+      {
+        "id": "loop-3",
+        "concept": "for",
+        "prompt": {"en": "Which command repeats?", "sk": "Ktorý príkaz sa opakuje?"},
+        "code": "for i in range(2):\n    step(1)\ngrab()",
+        "choices": [{"code": "step(1)"}, {"code": "grab()"}, {"en": "both", "sk": "oba"}],
+        "answer": 0
+      }
+    ],
+    "variables": [
+      {
+        "id": "var-1",
+        "concept": "variable",
+        "prompt": {"en": "What does the monkey say?", "sk": "Čo povie opička?"},
+        "code": "bananas = 3\nbananas = bananas + 2\nsay(bananas)",
+        "choices": [{"en": "3", "sk": "3"}, {"en": "5", "sk": "5"}, {"en": "32", "sk": "32"}],
+        "answer": 1
+      },
+      {
+        "id": "var-2",
+        "concept": "variable",
+        "prompt": {"en": "How many squares does the monkey walk?", "sk": "O koľko políčok sa opička posunie?"},
+        "code": "n = 2\nstep(n)\nn = 4",
+        "choices": [{"en": "2", "sk": "2"}, {"en": "4", "sk": "4"}, {"en": "6", "sk": "6"}],
+        "answer": 0
+      },
+      {
+        "id": "var-3",
+        "concept": "update",
+        "prompt": {"en": "What does the monkey say?", "sk": "Čo povie opička?"},
+        "code": "a = 1\nb = a\na = 5\nsay(b)",
+        "choices": [{"en": "1", "sk": "1"}, {"en": "5", "sk": "5"}, {"en": "6", "sk": "6"}],
+        "answer": 0
+      }
+    ],
+    "text": [
+      {
+        "id": "text-1",
+        "concept": "text",
+        "prompt": {"en": "What does the monkey say?", "sk": "Čo povie opička?"},
+        "code": "name = \"Zoo\"\nsay(name + \"!\")",
+        "choices": [{"code": "Zoo!"}, {"code": "name!"}, {"code": "Zoo + !"}],
+        "answer": 0
+      },
+      {
+        "id": "text-2",
+        "concept": "type",
+        "prompt": {"en": "What does the monkey say?", "sk": "Čo povie opička?"},
+        "code": "x = \"4\" + \"2\"\nsay(x)",
+        "choices": [{"code": "6"}, {"code": "42"}, {"code": "4 + 2"}],
+        "answer": 1
+      },
+      {
+        "id": "text-3",
+        "concept": "type",
+        "prompt": {"en": "What does the monkey say?", "sk": "Čo povie opička?"},
+        "code": "x = 4 + 2\nsay(x)",
+        "choices": [{"code": "6"}, {"code": "42"}, {"code": "4 + 2"}],
+        "answer": 0
+      }
+    ],
+    "conditions": [
+      {
+        "id": "if-1",
+        "concept": "if",
+        "prompt": {"en": "A rock is right in front of the monkey. What does it do?", "sk": "Priamo pred opičkou je kameň. Čo urobí?"},
+        "code": "if is_blocked():\n    turn_left()\nelse:\n    step(1)",
+        "choices": [{"en": "turns left", "sk": "otočí sa doľava"}, {"en": "steps forward", "sk": "urobí krok dopredu"}, {"en": "both", "sk": "oboje"}],
+        "answer": 0
+      },
+      {
+        "id": "if-2",
+        "concept": "compare",
+        "prompt": {"en": "What does the monkey say?", "sk": "Čo povie opička?"},
+        "code": "n = 7\nif n > 5:\n    say(\"big\")\nelse:\n    say(\"small\")",
+        "choices": [{"code": "big"}, {"code": "small"}, {"en": "nothing", "sk": "nič"}],
+        "answer": 0
+      },
+      {
+        "id": "if-3",
+        "concept": "and_or",
+        "prompt": {"en": "A banana is here, and nothing is in the way. Does the monkey grab it?", "sk": "Je tu banán a cesta je voľná. Chytí ho opička?"},
+        "code": "if item_here() and is_blocked():\n    grab()",
+        "choices": [{"en": "yes", "sk": "áno"}, {"en": "no", "sk": "nie"}],
+        "answer": 1
+      }
+    ]
+  }
+}

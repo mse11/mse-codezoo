@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeZoo device check</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="teacher.css">
+  <script type="module" src="check.js"></script>
+</head>
+<body class="teacher">
+  <header class="bar">
+    <h1 class="logo"><a href="index.html">CodeZoo</a></h1>
+    <span class="class-name" data-i18n>Device check</span>
+  </header>
+  <main class="t-main">
+    <section class="t-card" aria-labelledby="c-title">
+      <h2 id="c-title" data-i18n>Is this device ready for CodeZoo?</h2>
+      <p class="hint" data-i18n>Takes about 10 seconds. Nothing is sent anywhere; copy the results into the pilot's device checklist.</p>
+      <div class="row"><button id="c-start" type="button" class="primary" data-i18n>Check this device</button></div>
+      <div id="c-stage" class="c-stage" aria-hidden="true"></div>
+      <table class="t-table" id="c-results" aria-live="polite"></table>
+      <p id="c-advice" class="note" role="status"></p>
+      <div class="row">
+        <button id="c-copy" type="button" hidden data-i18n>Copy the results</button>
+        <button id="c-use2d" type="button" hidden data-i18n>Use the 2D stage on this device</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

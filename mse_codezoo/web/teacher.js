@@ -5,6 +5,7 @@
 
 import { api, setTeacherKey } from "./api.js";
 import { LANGS, concept, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
+import { openLook } from "./look.js";
 import { displayName, FACES } from "./players.js";
 
 const $ = (id) => document.getElementById(id);
@@ -76,7 +77,7 @@ function render() {
   $("t-end").textContent = info.settings.deleteAtEnd ? t("End the workshop and delete its data") : t("End the class");
   // redraw a part only when its data changed: a click must never land on a button
   // that a refresh is just replacing
-  changed("players", [data.players, data.pictures, lang()]) && renderPlayers();
+  changed("players", [data.players, data.pictures, data.pilot, lang()]) && renderPlayers();
   changed("shares", [data.shares, lang()]) && renderShares();
   changed("own", [data.levels, lang()]) && renderOwn();
   changed("report", [data.concepts, data.mistakes, data.levelStats, lang()]) && renderReport();
@@ -94,6 +95,7 @@ function renderPlayers() {
     el("th", {}, t("Modules")),
     el("th", {}, t("Stuck on")),
     el("th", {}, t("Minutes today")),
+    data.pilot ? el("th", {}, t("Age band")) : null,
     el("th", {}, ""),
   );
   const rows = data.players.map((p) => {
@@ -116,6 +118,7 @@ function renderPlayers() {
       el("td", { class: "t-modules-cell" }, ...modules),
       el("td", {}, ...(stuck.length ? stuck : ["–"])),
       el("td", {}, String(p.minutesToday)),
+      data.pilot ? el("td", {}, ageSelect(p)) : null,
       el(
         "td",
         { class: "t-actions" },
@@ -139,6 +142,18 @@ function renderPlayers() {
       .map((picture) => el("option", { value: picture }, `${face(picture)} ${displayName({ name: picture, picture })}`)),
   );
   if ([...select.options].some((o) => o.value === keep)) select.value = keep;
+}
+
+function ageSelect(player) {
+  const select = el(
+    "select",
+    { "aria-label": t("Age band") },
+    el("option", { value: "" }, t("age band?")),
+    ...data.ageBands.map((band) => el("option", { value: band }, t(band))),
+  );
+  select.value = player.ageBand || "";
+  select.addEventListener("change", () => act("player/age", { profile: player.id, ageBand: select.value }));
+  return select;
 }
 
 function renderLevels() {
@@ -280,6 +295,8 @@ function renderSettings() {
   $("t-roster").checked = s.roster;
   $("t-names").checked = s.names;
   $("t-delete").checked = s.deleteAtEnd;
+  $("t-pilot").checked = data.pilot;
+  $("t-pilot-box").hidden = !data.pilot;
 }
 
 // --- actions --------------------------------------------------------------------------
@@ -424,16 +441,39 @@ $("t-save-settings").addEventListener("click", async () => {
     roster: $("t-roster").checked,
     names: $("t-names").checked,
     deleteAtEnd: $("t-delete").checked,
+    pilot: $("t-pilot").checked,
   });
-  if (result) $("t-settings-msg").textContent = t("Saved.");
+  if (result) {
+    $("t-settings-msg").textContent = t("Saved.");
+    settingsDrawn = false;
+    drawn.players = null; // the age band column follows the pilot switch
+    render();
+  }
 });
 $("t-export").addEventListener("click", () =>
   act("export", {}, (file) => download(`codezoo-class-${safeName(data.class.name)}.json`, file)),
 );
+let pilotFile = null;
+$("t-pilot-export").addEventListener("click", async () => {
+  const result = await act("pilot-export", {}, () => {});
+  if (!result) return;
+  pilotFile = result.file;
+  $("t-pilot-contents").replaceChildren(...result.contents.map((line) => el("li", {}, line)));
+  $("t-pilot-agree").checked = false;
+  $("t-pilot-save").disabled = true;
+  $("t-pilot-consent").hidden = false;
+});
+$("t-pilot-agree").addEventListener("change", (event) => ($("t-pilot-save").disabled = !event.target.checked));
+$("t-pilot-save").addEventListener("click", () => {
+  if (!pilotFile || !$("t-pilot-agree").checked) return;
+  download(`codezoo-pilot-${safeName(data.class.name)}-${pilotFile.exported}.json`, pilotFile);
+  $("t-pilot-consent").hidden = true;
+});
 $("t-level-files").addEventListener("change", (event) => {
   addLevelFiles(event.target.files);
   event.target.value = "";
 });
+$("look").addEventListener("click", openLook);
 $("t-projector-close").addEventListener("click", () => $("t-projector").close());
 $("t-report-close").addEventListener("click", () => $("t-report-dialog").close());
 $("lang").addEventListener("change", (event) => {

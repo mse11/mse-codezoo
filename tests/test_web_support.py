@@ -28,5 +28,5 @@ def test_in_the_game_page_it_sits_inside_the_grown_up_panel():
 def test_the_link_opens_a_new_tab_without_telling_who_clicked():
     for name in ("index.html", "teacher.html"):
         page = (WEB / name).read_text(encoding="utf-8")
-        tag = re.search(rf'<a[^>]*{re.escape(LINK)}[^>]*>', page).group(0)
+        tag = re.search(rf"<a[^>]*{re.escape(LINK)}[^>]*>", page).group(0)
         assert 'target="_blank"' in tag and "noreferrer" in tag

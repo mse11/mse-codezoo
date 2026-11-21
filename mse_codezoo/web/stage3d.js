@@ -20,7 +20,8 @@ const GROUND = {
 };
 const ARMS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 const QUIET = new Set(["task", "thread", "lock", "file", "input", "import", "call", "return"]);
-const reducedMotion =window.matchMedia("(prefers-reduced-motion: reduce)");
+// less motion: the system setting or "Look and feel" (look.js sets data-motion on <html>)
+const reducedMotion = { get matches() { return document.documentElement.dataset.motion === "reduce"; } };
 
 export function webglAvailable() {
   try {

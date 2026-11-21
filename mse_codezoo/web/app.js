@@ -12,6 +12,8 @@ import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
 import { LANGS, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
+import { openLook } from "./look.js";
+import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
 import { Stage } from "./stage.js";
@@ -65,6 +67,8 @@ const classroom = new Classroom({
   onPlayLevel: playSharedLevel,
 });
 let inClass = false;
+// pilot readiness (phase 6): checks, smiley and error counts, only when the pilot is on
+const pilotUI = new Pilot({ getPlayer: () => state.player });
 
 // --- small helpers -----------------------------------------------------------------
 
@@ -134,6 +138,7 @@ async function blocksChanged() {
     invalidateRun();
   } catch (error) {
     showDiagnostics([{ line: 0, severity: "error", message: error.message }]);
+    pilotUI.error(); // blocks that couldn't become code: a sync problem for the pilot metrics
   }
 }
 
@@ -172,10 +177,13 @@ async function playerChosen(profile) {
   state.progress = {};
   state.over = false;
   state.outfit = "";
+  if (!profile) pilotUI.setProgress(null);
   if (profile) {
     const progress = await api.progress(profile.id);
     state.progress = progress.levels;
     applyToday(progress.today);
+    pilotUI.setProgress(progress);
+    if (state.level && !state.shared) pilotUI.opened(state.level);
     try {
       const habitat = await api.habitat(profile.id);
       state.outfit = habitat.outfits.find((o) => o.id === habitat.outfit)?.emoji || "";
@@ -204,6 +212,9 @@ async function checkToday() {
   try {
     const progress = await api.progress(state.player.id);
     applyToday(progress.today);
+    const wasOn = pilotUI.on;
+    pilotUI.setProgress(progress); // a grown-up may have turned the pilot on or off
+    if (pilotUI.on && !wasOn && state.level && !state.shared) pilotUI.opened(state.level);
   } catch {
     // the player was removed by a grown-up: ask who is playing
     players.choose();
@@ -297,7 +308,7 @@ function renderGoal() {
     rules.push(t("use {what}", { what: level.constraints.mustUse.map((n) => MUST_USE[n] || n).join(", ") }));
   }
   const hintButton = el("button", { type: "button", class: "small" }, t("Hint"));
-  const hint = el("span", { class: "hint" });
+  const hint = el("span", { class: "hint", "aria-live": "polite" }); // read out when shown
   const showHint = () => {
     hint.textContent = level.hints[state.hintsShown - 1] || "";
     hintButton.disabled = state.hintsShown >= level.hints.length;
@@ -340,6 +351,7 @@ function chooseWorld(index) {
   renderWorlds();
   renderGoal();
   stage.load(state.level, currentWorld(), currentGoal());
+  describeStage();
 }
 
 function renderAnimals() {
@@ -370,6 +382,7 @@ async function loadLevel(id) {
   location.hash = id;
   $("level-select").value = id;
   await showLevel(level);
+  pilotUI.opened(level);
 }
 
 // A level from the editor or a share link (index.html#play=...): checked by the engine like
@@ -411,6 +424,7 @@ async function showLevel(level) {
   renderAnimals();
   renderFiles();
   stage.load(level, currentWorld(), currentGoal());
+  describeStage();
   stage.setOutfit?.(state.outfit);
   showDiagnostics([]);
   const typing = level.mode === "both_editable" || level.mode === "code_first";
@@ -440,6 +454,28 @@ async function refreshLevels() {
   }
 }
 
+// For screen readers: the world in words (the stage itself is a picture).
+const DIRECTIONS = { north: "up", east: "right", south: "down", west: "left" };
+function describeStage() {
+  const world = currentWorld();
+  const pack = state.level.pack;
+  const items = (world.items || []).map(([x, y, tile]) =>
+    t("{item} at ({x}, {y})", { item: pack.itemNames?.[tile]?.one || pack.items?.[tile] || tile, x, y }),
+  );
+  const parts = [
+    t("{width} by {height} squares.", { width: world.size[0], height: world.size[1] }),
+    t("The {animal} is at ({x}, {y}), facing {direction}.", {
+      animal: pack.animalName || pack.animal,
+      x: world.position[0],
+      y: world.position[1],
+      direction: t(DIRECTIONS[world.facing] || world.facing),
+    }),
+    items.length ? `${items.join(", ")}.` : "",
+    world.walls?.length ? t("Rocks: {list}.", { list: world.walls.map(([x, y]) => `(${x}, ${y})`).join(", ") }) : "",
+  ];
+  $("stage-description").textContent = parts.filter(Boolean).join(" ");
+}
+
 // --- stage view: 2D or 3D -----------------------------------------------------------
 
 async function useView(want3d) {
@@ -466,6 +502,7 @@ async function useView(want3d) {
   if (state.level) {
     invalidateRun();
     stage.load(state.level, currentWorld(), currentGoal());
+    describeStage();
   }
 }
 
@@ -498,6 +535,7 @@ async function changeLanguage(code) {
   renderFiles();
   invalidateRun();
   stage.load(level, currentWorld(), currentGoal());
+  describeStage();
   blocks.redefine();
   blocks.setPalette(level.unlockedBlocks);
   const text = state.text;
@@ -634,7 +672,7 @@ async function ensureRun() {
   stage.reset();
   const result = state.shared
     ? await api.runLevelData(state.shared, state.text, state.variant)
-    : await api.run(state.level.id, state.text, state.player?.id, state.variant, { animal: state.level.pack.id });
+    : await api.run(state.level.id, state.text, state.player?.id, state.variant, { animal: state.level.pack.id, hints: state.hintsShown });
   state.run = result;
   state.stepIndex = 0;
   renderLanes(result);
@@ -670,6 +708,7 @@ async function play({ single = false } = {}) {
   } catch (error) {
     // e.g. the teacher paused the class, or picked other levels for today
     $("result").replaceChildren(el("div", { class: "message err" }, error.message));
+    if (error.status !== 423 && error.status !== 403) pilotUI.error();
     return;
   }
   if (!run.steps) {
@@ -798,7 +837,9 @@ function showResult(run) {
     }
     parts.push(tools);
   }
-  $("result").replaceChildren(...parts);
+  if (run.check?.solved) parts.push(pilotUI.smileyRow());
+  $("result").replaceChildren(...parts.filter(Boolean));
+  pilotUI.afterRun(run);
 }
 
 async function openStory(savedRun) {
@@ -1018,6 +1059,7 @@ $("animal-select").addEventListener("change", (event) => {
   else if (state.level) loadLevel(state.level.id);
 });
 $("zoo").addEventListener("click", () => openZoo());
+$("look").addEventListener("click", openLook);
 $("card-form").addEventListener("submit", (event) => {
   event.preventDefault();
   unlockCard($("card-code").value);

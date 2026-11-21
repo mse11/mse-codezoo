@@ -51,7 +51,7 @@ from http import HTTPStatus
 from typing import Any
 from urllib.parse import unquote
 
-from mse_codezoo import qr
+from mse_codezoo import pilot, qr
 from mse_codezoo.classes import (
     CLASS_PICTURES,
     LEVEL_ID,
@@ -319,6 +319,8 @@ class Hub:
                 for key in ("roster", "names", "deleteAtEnd", "locked", "assigned")
             }
             self.classes.update(self.class_id, **changes)
+            if body.get("pilot") is not None:  # pilot recording for this class (phase 6)
+                store.update_parent(pilot=bool(body["pilot"]))
             return self.overview()
         if route == "pause":
             self.paused = bool(body.get("paused"))
@@ -336,6 +338,11 @@ class Hub:
             return store.report(_text(body, "profile"), self._levels())
         if route == "player/export":
             return store.export(_text(body, "profile"))
+        if route == "player/age":
+            return pilot.set_age_band(store, _text(body, "profile"), body.get("ageBand"))
+        if route == "pilot-export":
+            data = pilot.export(store, self._levels())
+            return {"file": data, "contents": pilot.describe_export(data)}
         if route == "export":
             return self.classes.export(self.class_id)
         if route == "level":
@@ -430,6 +437,7 @@ class Hub:
                     "modules": per_module,
                     "stuck": stuck,
                     "minutesToday": store.today_status(profile.id)["minutesToday"],
+                    "ageBand": data.get("pilot", {}).get("ageBand"),
                 }
             )
         return {
@@ -438,6 +446,8 @@ class Hub:
             "joinUrl": self.join_url,
             "qr": qr.svg(self.join_url, module=6, label=t("Class code")),
             "paused": self.paused,
+            "pilot": pilot.enabled(store),
+            "ageBands": list(pilot.AGE_BANDS),
             "players": players,
             "pictures": list(CLASS_PICTURES),
             "modules": [
