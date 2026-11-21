@@ -29,6 +29,7 @@ from mse_codezoo.levels import (
     Level,
     LevelError,
     find_level,
+    is_cub,
     level_files,
     load_level,
     load_pack,
@@ -475,14 +476,17 @@ def play(
     store = _store()
     color = not no_color and sys.stdout.isatty()
     animate = sys.stdout.isatty()
-    all_levels = [load_level(path) for path in level_files()]
+    # Cub mode levels need pictures and a voice, so the terminal plays the main course only
+    all_levels = [lvl for lvl in map(load_level, level_files()) if not is_cub(lvl)]
     try:
         if player is not None:
             player = store.find(player).id
         index = _play_levels(all_levels, player, store)
         if level_ref is not None:
             wanted = find_level(level_ref).id
-            index = next(i for i, lvl in enumerate(all_levels) if lvl.id == wanted)
+            index = next((i for i, lvl in enumerate(all_levels) if lvl.id == wanted), None)
+            if index is None:
+                raise LevelError(f"{wanted} is a Cub mode level; play it in the browser.")
     except (LevelError, ProfileError) as exc:
         raise click.ClickException(str(exc)) from None
     if player is not None and store.today_status(player)["over"]:
@@ -662,18 +666,35 @@ def profile_list() -> None:
         levels = store.progress(p.id)["levels"]
         stars = sum(e.get("stars", 0) for e in levels.values())
         solved = sum(1 for e in levels.values() if e.get("solved"))
-        click.echo(f"{p.name:<{MAX_NAME}}  {p.picture:<8}  {solved} levels solved, {stars} stars")
+        cub = "  (Cub mode)" if p.cub else ""
+        click.echo(
+            f"{p.name:<{MAX_NAME}}  {p.picture:<8}  {solved} levels solved, {stars} stars{cub}"
+        )
     click.echo(f"{len(players)} player(s) in {store.root}")
 
 
 @profile.command("add")
 @click.argument("name")
 @click.option("--picture", type=click.Choice(PICTURES), default=PICTURES[0], show_default=True)
+@click.option("--cub", is_flag=True, help="Start in Cub mode (ages 6-8: icon blocks, read aloud).")
 @_profile_errors
-def profile_add(name: str, picture: str) -> None:
+def profile_add(name: str, picture: str, cub: bool) -> None:
     """Add a player."""
-    created = _store().add(name, picture)
-    click.echo(f"Added {created.name} ({created.picture}).")
+    created = _store().add(name, picture, cub=cub)
+    click.echo(f"Added {created.name} ({created.picture}){' in Cub mode' if cub else ''}.")
+
+
+@profile.command("cub")
+@click.argument("name")
+@click.option("--on/--off", "on", default=True, help="Turn Cub mode on (default) or off.")
+@_profile_errors
+def profile_cub(name: str, on: bool) -> None:
+    """Turn Cub mode (ages 6-8) on or off for a player (needs the grown-up PIN if set)."""
+    store = _store()
+    target = store.find(name)
+    _ask_pin(store)
+    changed = store.set_cub(target.id, on)
+    click.echo(f"{changed.name}: Cub mode {'on' if on else 'off'}.")
 
 
 @profile.command("remove")
@@ -1288,10 +1309,11 @@ def class_list() -> None:
 @click.argument("class_name")
 @click.argument("name")
 @click.option("--picture", required=True, help="One of the 32 class pictures (monkey, cat, ...).")
+@click.option("--cub", is_flag=True, help="Start in Cub mode (ages 6-8).")
 @_profile_errors
-def class_add_player(class_name: str, name: str, picture: str) -> None:
+def class_add_player(class_name: str, name: str, picture: str, cub: bool) -> None:
     """Add a player to a class's list."""
-    profile = _classes().players(class_name).add(name, picture)
+    profile = _classes().players(class_name).add(name, picture, cub=cub)
     click.echo(f"Added {profile.name} ({profile.picture}).")
 
 

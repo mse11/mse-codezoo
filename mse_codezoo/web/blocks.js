@@ -107,6 +107,23 @@ const PALETTE = {
   reach: { type: "cz_reach", inputs: { N: num(0) } },
 };
 
+// Cub mode (phase 7): pictures instead of words on the first blocks, for children who can't
+// read yet. Same block types, so the IR mapping and the code don't change.
+let cubIcons = false;
+const label = (words, icon) => (cubIcons ? icon : t(words));
+// the colour family of a block, for the colour-linked code pane (each also has a pattern)
+const FAMILY = {
+  cz_step: "motion", cz_turn_left: "motion", cz_turn_right: "motion", cz_grab: "action",
+  cz_say: "say", cz_print: "say", cz_repeat: "loop", cz_while: "loop", cz_for_each: "loop",
+  cz_if: "logic", cz_if_else: "logic",
+};
+if (!Blockly.Extensions.isRegistered("cz_cub_var")) {
+  // a cub's repeat block shows only the count: the loop variable stays, hidden
+  Blockly.Extensions.register("cz_cub_var", function hideVar() {
+    if (cubIcons) this.getField("VAR")?.setVisible(false);
+  });
+}
+
 const statement = { previousStatement: null, nextStatement: null };
 const value = { output: null };
 const dropdown = (name, options) => ({ type: "field_dropdown", name, options: options.map((o) => [o, o]) });
@@ -115,16 +132,16 @@ export function defineBlocks() {
   Blockly.common.defineBlocksWithJsonArray([
     {
       type: "cz_step",
-      message0: t("step %1"),
+      message0: label("step %1", "👣 %1"),
       args0: [{ type: "input_value", name: "N" }],
       inputsInline: true,
       colour: COLOURS.motion,
       tooltip: `step() · ${t("Walk forward this many squares.")}`,
       ...statement,
     },
-    { type: "cz_turn_left", message0: t("turn left ↺"), colour: COLOURS.motion, tooltip: `turn_left() · ${t("Turn a quarter to the left.")}`, ...statement },
-    { type: "cz_turn_right", message0: t("turn right ↻"), colour: COLOURS.motion, tooltip: `turn_right() · ${t("Turn a quarter to the right.")}`, ...statement },
-    { type: "cz_grab", message0: t("grab"), colour: COLOURS.action, tooltip: `grab() · ${t("Pick up what is on this square.")}`, ...statement },
+    { type: "cz_turn_left", message0: label("turn left ↺", "↺"), colour: COLOURS.motion, tooltip: `turn_left() · ${t("Turn a quarter to the left.")}`, ...statement },
+    { type: "cz_turn_right", message0: label("turn right ↻", "↻"), colour: COLOURS.motion, tooltip: `turn_right() · ${t("Turn a quarter to the right.")}`, ...statement },
+    { type: "cz_grab", message0: label("grab", "✋"), colour: COLOURS.action, tooltip: `grab() · ${t("Pick up what is on this square.")}`, ...statement },
     {
       type: "cz_say",
       message0: t("say %1"),
@@ -145,7 +162,7 @@ export function defineBlocks() {
     },
     {
       type: "cz_repeat",
-      message0: t("repeat %1 times (count with %2)"),
+      message0: label("repeat %1 times (count with %2)", "🔁 %1 × %2"),
       args0: [
         { type: "input_value", name: "COUNT" },
         { type: "field_input", name: "VAR", text: "i" },
@@ -155,6 +172,7 @@ export function defineBlocks() {
       inputsInline: true,
       colour: COLOURS.loop,
       tooltip: `for … in range() · ${t("Do the blocks inside again and again.")}`,
+      extensions: ["cz_cub_var"],
       ...statement,
     },
     {
@@ -623,7 +641,9 @@ const currentTheme = () => {
 
 // "Big targets" in Look and feel (look.js): bigger blocks, and a tap on a palette block adds
 // it to the end of the program, for children who find precise dragging hard.
-const big = () => document.documentElement.dataset.targets === "true";
+// Cub mode always has big targets.
+const big = () =>
+  document.documentElement.dataset.targets === "true" || document.documentElement.dataset.cub === "true";
 
 function lastInStack(block) {
   let last = block;
@@ -634,6 +654,7 @@ function lastInStack(block) {
 function bigTargets(workspace) {
   const scale = () => workspace.setScale(big() ? 1.25 : 0.8);
   window.addEventListener("codezoo-look", scale);
+  window.addEventListener("codezoo-cub", scale);
   if (big()) scale();
   const flyout = workspace.getFlyout()?.getWorkspace();
   flyout?.addChangeListener((event) => {
@@ -643,6 +664,7 @@ function bigTargets(workspace) {
     const state = Blockly.serialization.blocks.save(source, { addCoordinates: false });
     const top = workspace.getTopBlocks(true).find((b) => b.previousConnection || b.nextConnection);
     const block = Blockly.serialization.blocks.append(state, workspace);
+    workspace.cubTapped?.(block); // read the new block aloud
     const last = top && top !== block ? lastInStack(top) : null;
     if (last?.nextConnection && block.previousConnection) {
       last.nextConnection.connect(block.previousConnection);
@@ -669,6 +691,12 @@ export function createWorkspace(container, onChange) {
   workspace.addChangeListener((event) => {
     if (loading || event.isUiEvent) return;
     onChange();
+  });
+  // a tap on a block in the program: read it aloud (Cub mode, or Read aloud in Look and feel)
+  workspace.addChangeListener((event) => {
+    if (event.type !== Blockly.Events.CLICK || !event.blockId || event.targetType !== "block") return;
+    const block = workspace.getBlockById(event.blockId);
+    if (block) workspace.cubTapped?.(block);
   });
   window.addEventListener("resize", () => Blockly.svgResize(workspace));
   darkQuery.addEventListener("change", () => workspace.setTheme(currentTheme()));
@@ -701,6 +729,34 @@ export function createWorkspace(container, onChange) {
       defineBlocks();
       api.setPalette(unlocked);
     },
+    // Cub mode: picture labels and big blocks; load() the program again after.
+    setCub(on) {
+      if (cubIcons === Boolean(on)) return false;
+      cubIcons = Boolean(on);
+      api.redefine();
+      window.dispatchEvent(new CustomEvent("codezoo-cub"));
+      return true;
+    },
+    // called with a block the child tapped (or added with a tap)
+    onTap(callback) {
+      workspace.cubTapped = callback;
+    },
+    // the colour family of the block for an IR statement id (null: no block, or no family)
+    familyOf(id) {
+      const block = workspace.getBlockById(id);
+      return block ? FAMILY[block.type] || null : null;
+    },
+    // a code line was tapped: make its block wiggle so the child sees which one it is
+    wiggle(id) {
+      const block = workspace.getBlockById(id);
+      const svg = block?.getSvgRoot?.();
+      if (!svg) return;
+      block.select?.();
+      svg.classList.remove("cz-wiggle");
+      void svg.getBoundingClientRect();
+      svg.classList.add("cz-wiggle");
+      setTimeout(() => svg.classList.remove("cz-wiggle"), 700);
+    },
     toProgram(names) {
       return workspaceToProgram(workspace, names);
     },
@@ -712,6 +768,37 @@ export function createWorkspace(container, onChange) {
     },
   };
   return api;
+}
+
+// What a block says when it is read aloud: "Step 3", "Repeat 4 times".
+export function describeBlock(block) {
+  const number = (name) => {
+    const target = block.getInputTargetBlock(name);
+    return target?.type === "cz_number" ? target.getFieldValue("NUM") : "";
+  };
+  switch (block.type) {
+    case "cz_step":
+      return t("Step {n}", { n: number("N") || 1 });
+    case "cz_turn_left":
+      return t("Turn left");
+    case "cz_turn_right":
+      return t("Turn right");
+    case "cz_grab":
+      return t("Grab");
+    case "cz_repeat": {
+      const inside = [];
+      for (let child = block.getInputTargetBlock("DO"); child; child = child.getNextBlock()) {
+        inside.push(describeBlock(child));
+      }
+      const times = t("Repeat {n} times", { n: number("COUNT") || "" });
+      return inside.length ? `${times}: ${inside.join(", ")}` : times;
+    }
+    default: {
+      const tip = block.getTooltip?.();
+      const text = typeof tip === "string" ? tip : "";
+      return text.split(" · ").pop() || "";
+    }
+  }
 }
 
 // --- IR -> blocks ------------------------------------------------------------

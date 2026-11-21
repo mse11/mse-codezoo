@@ -7,7 +7,7 @@
 //                  With a player chosen, the engine saves the result to their progress.
 
 import { api, setPython } from "./api.js";
-import { createWorkspace } from "./blocks.js";
+import { createWorkspace, describeBlock } from "./blocks.js";
 import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
 import { LANGS, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
@@ -16,7 +16,8 @@ import { openLook } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
-import { Stage } from "./stage.js";
+import { canSpeak, isMuted, onVoices, readAloudOn, setCub, setMuted, speak } from "./speech.js";
+import { EMOJI, Stage } from "./stage.js";
 
 const $ = (id) => document.getElementById(id);
 const HEARTBEAT_SECONDS = 30;
@@ -44,6 +45,9 @@ const state = {
   animal: null, // the animal chosen for core levels (null: the level's own)
   outfit: "", // what the animal wears, from the player's habitat
   stack: [], // the call stack while a run plays: one burrow per function call
+  cub: false, // Cub mode (ages 6-8, phase 7): the player's setting, from their progress
+  guess: null, // a "predict" cub level: the square the child tapped, [x, y]
+  tinted: new Set(), // statement ids whose code lines were tinted last time (new ones glow)
 };
 
 const stage2d = new Stage($("stage"));
@@ -55,8 +59,10 @@ const code = new CodeView({
   gutter: $("gutter"),
   mark: $("line-mark"),
   onInput: (text) => debounce("parse", 350, () => codeChanged(text)),
+  onLineTap: (line) => lineTapped(line),
 });
 const blocks = createWorkspace($("blockly"), () => debounce("print", 150, blocksChanged));
+blocks.onTap((block) => speak(describeBlock(block)));
 const players = new Players({ onChoose: playerChosen, onSettingsChanged: checkToday });
 // on a classroom hub (`codezoo class serve`); stays unused at home
 const classroom = new Classroom({
@@ -86,7 +92,7 @@ function el(tag, attrs = {}, ...children) {
     if (key === "class") node.className = value;
     else node.setAttribute(key, value);
   }
-  node.append(...children);
+  node.append(...children.filter((child) => child !== null && child !== undefined));
   return node;
 }
 
@@ -134,6 +140,7 @@ async function blocksChanged() {
     state.text = printed.text;
     state.sourceMap = printed.sourceMap;
     code.setText(printed.text);
+    renderTints();
     showDiagnostics([]);
     invalidateRun();
   } catch (error) {
@@ -152,12 +159,16 @@ async function codeChanged(text) {
   if (!parsed.ok) return; // keep the last good blocks; the error is listed under the code
   state.sourceMap = parsed.positions;
   blocks.load(parsed.program, state.level.pack.actions, text, parsed.positions);
+  renderTints();
 }
 
 async function loadProgram(text) {
+  state.tinted = new Set(); // a new program: nothing glows as "new"
   if (!text) {
     code.setText("");
+    state.sourceMap = {};
     blocks.load({ type: "Program", id: "program", body: [] }, state.level.pack.actions, "", {});
+    renderTints();
     return;
   }
   const parsed = await api.parse(text);
@@ -167,8 +178,210 @@ async function loadProgram(text) {
     state.sourceMap = parsed.positions;
     blocks.load(parsed.program, state.level.pack.actions, text, parsed.positions);
   }
+  renderTints();
   showDiagnostics(parsed.diagnostics);
 }
+
+// --- Cub mode (ages 6-8, phase 7) ----------------------------------------------------
+// Same game, a different face: picture blocks, everything read aloud, its own levels
+// (predict, fix, make), code lines in their block's colour. A grown-up turns it on per player.
+
+// Each block's lines in its colour, so a child sees the code grow as they build.
+function renderTints() {
+  if (!state.cub) {
+    code.setTints([]);
+    return;
+  }
+  const tints = [];
+  const now = new Set();
+  for (const [id, span] of Object.entries(state.sourceMap)) {
+    const family = blocks.familyOf(id);
+    if (!family || !span?.line) continue;
+    now.add(id);
+    const fresh = state.tinted.size > 0 && !state.tinted.has(id);
+    tints.push({ line: span.line, endLine: span.end_line || span.line, family, fresh });
+  }
+  // a loop's tint first, so the lines inside it are drawn on top
+  tints.sort((a, b) => a.line - b.line || b.endLine - a.endLine);
+  // lines inside a loop sit a little to the right, so the loop's own bar stays in sight
+  for (const tint of tints) {
+    tint.depth = tints.filter((o) => o !== tint && o.line <= tint.line && o.endLine >= tint.endLine && (o.line < tint.line || o.endLine > tint.endLine)).length;
+  }
+  state.tinted = now.size ? now : new Set(["-"]); // "-": the program was empty, so all is new
+  code.setTints(tints);
+}
+
+// a tap on a code line: its block wiggles and is read aloud
+function lineTapped(line) {
+  const id = blockAtLine(line);
+  if (!id) return;
+  blocks.wiggle(id);
+  const block = blocks.workspace.getBlockById(id);
+  if (block) speak(describeBlock(block));
+}
+
+// main-course players never see cub levels, cubs see only theirs (or every level there
+// is, when a teacher picked no cub levels for today)
+function visibleLevels() {
+  const mine = state.levels.filter((l) => Boolean(l.cub) === state.cub);
+  return mine.length ? mine : state.levels;
+}
+
+async function applyCub(on) {
+  const changed = state.cub !== Boolean(on);
+  state.cub = Boolean(on);
+  document.documentElement.dataset.cub = String(state.cub);
+  setCub(state.cub);
+  const relabelled = blocks.setCub(state.cub);
+  if (!changed && !relabelled) return;
+  renderLevelOptions();
+  if (!state.level) return;
+  if (!state.shared && !visibleLevels().some((l) => l.id === state.level.id)) {
+    const next = visibleLevels().find((l) => !state.progress[l.id]?.solved) || visibleLevels()[0];
+    if (next) await loadLevel(next.id);
+    return;
+  }
+  renderGoal();
+  await loadProgram(state.text);
+}
+
+// the cub level strip: big numbered buttons with stars, instead of a list to read
+function renderCubLevels() {
+  const strip = $("cub-levels");
+  if (!state.cub) {
+    strip.replaceChildren();
+    return;
+  }
+  const modules = new Map();
+  for (const level of visibleLevels()) {
+    if (!modules.has(level.module)) modules.set(level.module, []);
+    modules.get(level.module).push(level);
+  }
+  const groups = [...modules.values()].map((levels, m) =>
+    el(
+      "div",
+      { class: "cub-module", role: "group", "aria-label": t("Part {n}", { n: m + 1 }) },
+      el("span", { class: "cub-module-icon", "aria-hidden": "true" }, m === 0 ? "🐾" : "🔂"),
+      ...levels.map((level, i) => {
+        const stars = state.progress[level.id]?.stars || 0;
+        const starsText = stars ? `, ${t("{n} of 3 stars", { n: stars })}` : "";
+        const button = el(
+          "button",
+          {
+            type: "button",
+            class: "cub-level",
+            "aria-label": `${i + 1}. ${level.title}${starsText}`,
+            ...(state.level?.id === level.id ? { "aria-current": "true" } : {}),
+          },
+          el("span", { class: "cub-number" }, String(i + 1)),
+          el("span", { class: "cub-stars", "aria-hidden": "true" }, stars ? "★".repeat(stars) : "·"),
+        );
+        button.addEventListener("click", () => loadLevel(level.id));
+        return button;
+      }),
+    ),
+  );
+  strip.replaceChildren(...groups);
+}
+
+// what Cub mode says the goal is: short, and read aloud
+function cubGoalText(level) {
+  const animal = level.pack.animalName || level.pack.animal;
+  if (level.cub === "predict") return t("Where will the {animal} stop? Tap a square, then press Run.", { animal });
+  if (level.cub === "fix") return t("Oops! One block is wrong. Watch, then fix it.");
+  return `${describeGoal(level, currentGoal())}.`;
+}
+
+// "predict": a small picture grid of the world; the child taps where the animal will stop
+function predictGrid(level) {
+  const world = currentWorld();
+  const [width, height] = world.size;
+  const walls = new Set((world.walls || []).map(([x, y]) => `${x},${y}`));
+  const items = new Map((world.items || []).map(([x, y, tile]) => [`${x},${y}`, tile]));
+  const arrows = { north: "⬆", east: "➡", south: "⬇", west: "⬅" };
+  const grid = el("div", {
+    class: "predict-grid",
+    role: "group",
+    "aria-label": t("Where will it stop?"),
+    style: `grid-template-columns: repeat(${width}, minmax(0, 4.5rem))`,
+  });
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const key = `${x},${y}`;
+      const start = world.position[0] === x && world.position[1] === y;
+      const tile = items.get(key);
+      let picture = "";
+      if (walls.has(key)) picture = "🪨";
+      else if (start) picture = `${EMOJI[level.pack.animal] || "🐾"}${arrows[world.facing] || ""}`;
+      else if (tile) picture = EMOJI[level.pack.items[tile]] || "•";
+      const guessed = Boolean(state.guess && state.guess[0] === x && state.guess[1] === y);
+      const cell = el(
+        "button",
+        {
+          type: "button",
+          class: `predict-cell${guessed ? " guessed" : ""}`,
+          "aria-label": t("Square {x}, {y}", { x: x + 1, y: y + 1 }) + (start ? `, ${t("start")}` : ""),
+          "aria-pressed": String(guessed),
+          "data-x": String(x),
+          "data-y": String(y),
+          ...(walls.has(key) ? { disabled: "" } : {}),
+        },
+        el("span", { "aria-hidden": "true" }, guessed ? `🤔${start ? picture : ""}` : picture),
+      );
+      cell.addEventListener("click", () => {
+        state.guess = [x, y];
+        renderGoal();
+        updateButtons();
+        speak(t("You think it stops here. Press Run to see!"));
+      });
+      grid.append(cell);
+    }
+  }
+  return grid;
+}
+
+// after a "predict" run: was the guess right? Never a score, just a look at what happened.
+function predictFeedback(run) {
+  if (state.level?.cub !== "predict" || !state.guess || !run.world) return null;
+  const [x, y] = run.world.position;
+  const right = state.guess[0] === x && state.guess[1] === y;
+  const cell = document.querySelector(`.predict-cell[data-x="${x}"][data-y="${y}"]`);
+  if (cell) {
+    cell.classList.add("actual");
+    cell.append(el("span", { class: "actual-star", "aria-hidden": "true" }, "⭐"));
+    cell.setAttribute("aria-label", `${cell.getAttribute("aria-label")}, ${t("it stopped here")}`);
+  }
+  return right ? t("You guessed right! 🎉") : t("Good guess! It stopped on another square: look for the star.");
+}
+
+function readAloudButtons() {
+  if (!(state.cub || readAloudOn()) || !canSpeak()) return null;
+  const again = el("button", { type: "button", class: "small speak-again", "aria-label": t("Read it to me"), title: t("Read it to me") }, "🔊");
+  again.addEventListener("click", () => speak(goalSpeech(), { force: true }));
+  if (!state.cub) return again;
+  const mute = el(
+    "button",
+    { type: "button", class: "small", "aria-pressed": String(isMuted()) },
+    isMuted() ? t("🔇 Quiet") : t("🔈 Talking"),
+  );
+  mute.addEventListener("click", () => {
+    setMuted(!isMuted());
+    renderGoal();
+  });
+  return el("span", { class: "speak-buttons" }, again, mute);
+}
+
+function goalSpeech() {
+  const level = state.level;
+  if (!level) return "";
+  return `${level.title}. ${state.cub ? cubGoalText(level) : `${describeGoal(level, currentGoal())}.`}`;
+}
+
+// a predict level's flag would give the answer away
+const stageGoal = () => (state.level?.cub === "predict" ? { type: "none" } : currentGoal());
+
+onVoices(() => state.level && renderGoal());
+
 
 // --- players and the daily limit ----------------------------------------------------
 
@@ -177,12 +390,16 @@ async function playerChosen(profile) {
   state.progress = {};
   state.over = false;
   state.outfit = "";
-  if (!profile) pilotUI.setProgress(null);
+  if (!profile) {
+    pilotUI.setProgress(null);
+    await applyCub(false); // a guest plays the main course
+  }
   if (profile) {
     const progress = await api.progress(profile.id);
     state.progress = progress.levels;
     applyToday(progress.today);
     pilotUI.setProgress(progress);
+    await applyCub(progress.cub);
     if (state.level && !state.shared) pilotUI.opened(state.level);
     try {
       const habitat = await api.habitat(profile.id);
@@ -214,6 +431,7 @@ async function checkToday() {
     applyToday(progress.today);
     const wasOn = pilotUI.on;
     pilotUI.setProgress(progress); // a grown-up may have turned the pilot on or off
+    await applyCub(progress.cub); // ... or Cub mode
     if (pilotUI.on && !wasOn && state.level && !state.shared) pilotUI.opened(state.level);
   } catch {
     // the player was removed by a grown-up: ask who is playing
@@ -234,8 +452,9 @@ setInterval(async () => {
 
 function renderLevelOptions() {
   const select = $("level-select");
+  renderCubLevels();
   select.replaceChildren(
-    ...state.levels.map((l) => {
+    ...visibleLevels().map((l) => {
       const stars = starText(state.progress[l.id]?.stars || 0);
       const only = l.signature ? `${animalEmoji(l.animal)} ` : "";
       const island = l.minPython ? ` [${l.locked ? "🔒 " : ""}Python ${l.minPython}]` : "";
@@ -316,11 +535,19 @@ function renderGoal() {
   hintButton.addEventListener("click", () => {
     if (state.hintsShown < level.hints.length) state.hintsShown += 1;
     showHint();
+    speak(hint.textContent);
   });
   showHint();
   hintButton.disabled = level.hints.length === 0 || state.hintsShown >= level.hints.length;
+  if (state.cub) {
+    const cubParts = [el("h2", {}, level.title, " ", readAloudButtons()), el("p", { class: "cub-goal" }, cubGoalText(level))];
+    if (level.cub === "predict") cubParts.push(predictGrid(level));
+    cubParts.push(el("div", { class: "hint-row" }, hintButton, hint));
+    $("goal").replaceChildren(...cubParts.filter(Boolean));
+    return;
+  }
   const parts = [
-    el("h2", {}, level.title),
+    el("h2", {}, level.title, " ", readAloudButtons()),
     el("p", {}, `${describeGoal(level, currentGoal())}.`),
     el("p", {}, t("Stars for: {rules}", { rules: rules.length ? rules.join("; ") : t("just solving it") })),
   ];
@@ -350,7 +577,7 @@ function chooseWorld(index) {
   invalidateRun();
   renderWorlds();
   renderGoal();
-  stage.load(state.level, currentWorld(), currentGoal());
+  stage.load(state.level, currentWorld(), stageGoal());
   describeStage();
 }
 
@@ -415,6 +642,7 @@ async function showLevel(level) {
   state.level = level;
   state.variant = 0;
   state.hintsShown = 0;
+  state.guess = null;
   state.text = "";
   state.sourceMap = {};
   invalidateRun();
@@ -423,7 +651,8 @@ async function showLevel(level) {
   renderWorlds();
   renderAnimals();
   renderFiles();
-  stage.load(level, currentWorld(), currentGoal());
+  renderCubLevels();
+  stage.load(level, currentWorld(), stageGoal());
   describeStage();
   stage.setOutfit?.(state.outfit);
   showDiagnostics([]);
@@ -431,8 +660,10 @@ async function showLevel(level) {
   $("edit-code").checked = typing;
   code.setEditable(typing);
   blocks.setPalette(level.unlockedBlocks);
-  await loadProgram(level.starter);
+  await loadProgram(level.cub === "predict" ? level.predict : level.starter);
   blocks.resize();
+  updateButtons();
+  speak(goalSpeech());
 }
 
 // A classmate's program from the class gallery: their level with their code in the panes.
@@ -449,8 +680,8 @@ async function playSharedProgram(payload) {
 async function refreshLevels() {
   state.levels = await api.levels(state.animal);
   renderLevelOptions();
-  if (!state.shared && state.levels.length && !state.levels.some((l) => l.id === state.level?.id)) {
-    await loadLevel(state.levels[0].id);
+  if (!state.shared && state.levels.length && !visibleLevels().some((l) => l.id === state.level?.id)) {
+    await loadLevel(visibleLevels()[0].id);
   }
 }
 
@@ -534,7 +765,7 @@ async function changeLanguage(code) {
   renderAnimals();
   renderFiles();
   invalidateRun();
-  stage.load(level, currentWorld(), currentGoal());
+  stage.load(level, currentWorld(), stageGoal());
   describeStage();
   blocks.redefine();
   blocks.setPalette(level.unlockedBlocks);
@@ -545,6 +776,7 @@ async function changeLanguage(code) {
   } else {
     blocks.load({ type: "Program", id: "program", body: [] }, level.pack.actions, "", {});
   }
+  renderTints();
 }
 
 // --- running -----------------------------------------------------------------------
@@ -583,7 +815,10 @@ function stopPlayback() {
 
 function updateButtons() {
   $("run").textContent = state.playing ? t("⏸ Pause") : t("▶ Run");
-  $("run").disabled = state.over && !state.playing;
+  // a predict level: first tap where the animal will stop
+  const guessFirst = state.cub && state.level?.cub === "predict" && !state.guess && !state.playing;
+  $("run").disabled = (state.over && !state.playing) || guessFirst;
+  $("run").title = guessFirst ? t("Tap a square first: where will it stop?") : "";
   $("step").disabled = state.over;
 }
 
@@ -838,7 +1073,10 @@ function showResult(run) {
     parts.push(tools);
   }
   if (run.check?.solved) parts.push(pilotUI.smileyRow());
+  const guess = predictFeedback(run);
+  if (guess) parts.unshift(el("div", { class: "message ok predict-feedback" }, guess));
   $("result").replaceChildren(...parts.filter(Boolean));
+  speak([guess, run.feeling?.text, run.check?.message].filter(Boolean).join(" "));
   pilotUI.afterRun(run);
 }
 
@@ -1045,7 +1283,7 @@ window.addEventListener("hashchange", () => {
     loadShared(id.slice(5));
     return;
   }
-  if (id !== state.level?.id && state.levels.some((l) => l.id === id)) loadLevel(id);
+  if (id !== state.level?.id && visibleLevels().some((l) => l.id === id)) loadLevel(id);
 });
 $("grownups").addEventListener("click", () => players.openGrownups());
 $("animal-select").addEventListener("change", (event) => {
@@ -1113,7 +1351,8 @@ async function start() {
   renderLevelOptions();
   const wanted = location.hash.slice(1);
   if (!(wanted.startsWith("play=") && (await loadShared(wanted.slice(5))))) {
-    await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : state.levels[0].id);
+    // any level in the address; Cub mode (known once the player is) moves on if it isn't theirs
+    await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : visibleLevels()[0].id);
   }
   if (!inClass) await players.start(); // in a class, joining picked the player
 }

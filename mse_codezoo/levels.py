@@ -24,6 +24,11 @@ ANIMALS_DIR = CONTENT_DIR / "animals"
 
 REQUIRED_KEYS = ("id", "module", "concepts", "world", "goal")
 DEFAULT_ANIMAL = "monkey"
+# Cub mode (ages 6-8, phase 7): a cub level is one step of the simplified PRIMM pattern.
+# "predict": the reference solution is shown, the child taps where the animal will stop,
+# then runs it; "fix": the starter program has one wrong block; "make": build it yourself.
+CUB_STEPS = ("predict", "fix", "make")
+CUB_PREFIX = "cub-"  # cub levels live in their own modules: "cub-sequences", "cub-loops"
 
 
 # `{B}`, `{B.few}`, `{B.many}` in a title or hint: the item on tile B, named by the animal
@@ -73,6 +78,7 @@ class Level:
     files: dict[str, str] = field(default_factory=dict)  # helper files: {"tricks": "def ..."}
     i18n: dict[str, dict[str, Any]] = field(default_factory=dict)  # lang -> title, hints
     min_python: tuple[int, int] | None = None  # a release island: "minPython": "3.12"
+    cub: str | None = None  # Cub mode step: "predict", "fix" or "make" (CUB_STEPS)
     path: Path | None = None
 
     def _text(self, key: str, default: Any) -> Any:
@@ -125,6 +131,7 @@ class Level:
             files=dict(data.get("files", {})),
             i18n=dict(data.get("i18n", {})),
             min_python=parse_version(data.get("minPython")),
+            cub=data.get("cub"),
             path=path,
         )
 
@@ -278,6 +285,7 @@ def validate_level_data(
         report.errors.append("starter must be Python code as text")
     elif starter and not parse(starter).ok:
         report.errors.append("starter is not valid Python")
+    report.errors += _cub_errors(data)
 
     animal = data.get("animal", DEFAULT_ANIMAL)
     if not (ANIMALS_DIR / animal / "pack.json").is_file():
@@ -303,6 +311,31 @@ def validate_level_data(
                 'uses terrain or tricks, so it must be a signature level ("signature": true)'
             )
     return report
+
+
+def _cub_errors(data: dict[str, Any]) -> list[str]:
+    """A cub level names its step and sits in a cub module; only cub levels do."""
+    step = data.get("cub")
+    in_cub_module = str(data.get("module", "")).startswith(CUB_PREFIX)
+    if step is None:
+        return [f'a level in a cub module needs "cub": one of {", ".join(CUB_STEPS)}'] * int(
+            in_cub_module
+        )
+    errors = []
+    if step not in CUB_STEPS:
+        errors.append(f"cub must be one of {', '.join(CUB_STEPS)}")
+    if not in_cub_module:
+        errors.append(f'a cub level belongs in a module whose name starts with "{CUB_PREFIX}"')
+    if step == "fix" and not data.get("starter"):
+        errors.append('a "fix" cub level needs a starter program with one wrong block')
+    if step == "predict" and data.get("starter"):
+        errors.append('a "predict" cub level shows its solution, so it has no starter')
+    return errors
+
+
+def is_cub(level: Level | dict[str, Any]) -> bool:
+    module = level.module if isinstance(level, Level) else str(level.get("module", ""))
+    return module.startswith(CUB_PREFIX)
 
 
 def core_animals(level: Level) -> list[str]:

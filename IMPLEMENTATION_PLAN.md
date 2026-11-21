@@ -210,6 +210,7 @@ The code stays visible from day one, so "blocks make code" is something a 6-year
 - No new runtime: Cub mode is a UI profile over the same program model. The block mapper gets an icon-only label set; the Python adapter's source map (node id ↔ line range) already gives the block-to-line links used for colouring.
 - Narration: recorded audio per block and per language, with the browser's speech synthesis as fallback.
 - Decide at the phase 1 gate whether Cub mode joins the MVP: if pilot families ask for it, build it in phase 2 for modules 1–2, otherwise in phase 3. Narration starts with the browser's speech synthesis; recorded voices only for English and Slovak at first.
+- *Built in phase 7 (Nov 21, 2026), before that gate*, as a per-player option, so the first pilot can try it with younger children instead of deciding without it. See "Phase 7 steps" under [Risks, open questions and next steps](#risks-open-questions-and-next-steps).
 
 Research basis: [ScratchJr (MIT)](https://news.mit.edu/2014/scratchjr-coding-kindergarten), [KIBO tangible coding](https://kinderlabrobotics.com/blog/robotics-in-early-learning-robotics-makes-coding-tangible-concreteand-screen-free/), [PRIMM](https://static.teachcomputing.org/pedagogy/QR11-PRIMM.pdf), [Four P's](https://www.media.mit.edu/posts/cultivating-creativity-during-the-coronavirus-crisis/), [rewards in Scratch](https://lcl.media.mit.edu/resources/readings/chapter3-gamification.pdf), [hybrid blocks/text](https://arxiv.org/abs/1906.03060v1).
 
@@ -419,6 +420,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | 4 Advanced and offline | 25–36 | Modules 11–15 (13–15 optional); octopus and bee; concurrency lanes, release islands 3.12–3.15, offline browser build on Pyodide, full level editor | Same team × 12 weeks | Runs offline on the cheapest target tablet and Chromebook |
 | 5 Classes | Later (built Nov 21, 2026; gate open) | Classroom hub on the local network (no cloud), join with class code + picture, teacher class view, class-only sharing | One developer + coding agent | Privacy review passed; one real workshop or class run on the hub |
 | 6 Pilot readiness | Built Nov 21, 2026; gate open | Families play without installing anything, teachers get a one-file hub app, concept checks before and after each module, pilot metrics recorded on the device and exported with consent, a pilot kit, accessibility basics | One developer + coding agent | The first pilot (5–8 children) runs with the kit and returns its metrics |
+| 7 Cub mode and read aloud | Built Nov 21, 2026; gate open | Cub mode for ages 6–8 per player (picture blocks, colour-linked code, two cub modules in the predict–fix–make pattern), read aloud with the device's speech voices, a grown-up's "ready for the main course?" | One developer + coding agent | 3–5 children aged 6–8 play the cub modules with a grown-up nearby; read aloud works on the pilot devices in English and Slovak |
 
 **The interpreter grows module by module.** Each phase adds only the constructs its modules need, each with its own differential tests: phase 0 calls, `for` and assignment; phase 2 `if`, `while` and strings; phase 3 functions, imports, exceptions, collections, recursion and comprehensions; phase 4 classes, decorators and `async`.
 
@@ -490,7 +492,7 @@ Parsing now uses CPython's own `ast`, so the biggest earlier risk shrinks to the
 
 **Open questions**
 
-- Age hand-over: at what age (8 or 9?) should learners move from Cub mode to the main course, and should the app suggest it?
+- ~~Age hand-over~~: decided (Nov 21, 2026), no age rule. When every cub level is solved, the Grown-ups area asks "Ready for the main course?" and the grown-up decides; nothing is said to the child.
 - ~~Free or paid; open source or closed?~~ Decided: free and open source, donations welcome, no cloud sync or accounts (see [Future improvements](#3-free-or-paid-open-or-closed)).
 - Which interface languages at launch (English only, or translations from the start)?
 - Should module 14 use real `threading`, `asyncio`, or both? Plan assumes `asyncio` first, threads shown as a comparison.
@@ -546,7 +548,7 @@ Moved to phase 1 with the web prototype: block editor spike (Blockly vs. own), t
 - [x] `codezoo play`: terminal client with a coloured, animated grid, one program file per level, run / edit in `$EDITOR` / watch for saves / hints / worlds / level list, progress and daily limit per player; ASCII fallback on consoles that can't show ★
 - [x] Grown-up report: new mistake kinds (endless loops, mixing up types) with try-at-home tips; concept names and statuses translated
 - [x] CI job imports the engine wheel in Pyodide 0.29.5 (Python 3.13) and solves every level there (`scripts/pyodide_smoke.mjs`)
-- [ ] Cub mode for modules 1–2: waits for the phase 1 gate decision (no pilot yet), so not built
+- [x] ~~Cub mode for modules 1–2: waits for the phase 1 gate decision (no pilot yet), so not built~~ Built in phase 7 as its own two cub modules
 - [ ] Slovak texts reviewed by a native speaker who teaches children; recorded narration (open point, does not block finishing phase 2)
 - [ ] Pilot against the MVP metrics; device and performance testing of the 3D stage on the cheapest target tablet and Chromebook
 - [x] Decide free or paid, open or closed before the pilot: free and open source, donations welcome (see [Future improvements](#3-free-or-paid-open-or-closed))
@@ -672,6 +674,25 @@ Open points for phase 6 (to discuss before building):
 - ~~The teacher app~~: decided, an unsigned Windows build first, with a short guide to the one-time SmartScreen warning; macOS (needs notarisation) and code signing later, when a school needs them
 - ~~Concept-check questions~~: decided, drafted here for modules 1–5 (the pilot's scope) and marked for review by a teacher; modules 6–15 later
 - ~~Accessibility scope~~: decided, the list above
+
+**Phase 7 steps (decided and built Nov 21, 2026): Cub mode and read aloud**
+
+Cub mode has waited since phase 1 for a pilot that hasn't run. It is built now as an option per player, so the first pilot can include 6–8-year-olds. Read aloud is built with it: cubs need it, and it is the accessibility step phase 6 left out. No new runtime: Cub mode is a face over the same engine, blocks and program model.
+
+Decisions (Nov 21, 2026): Cub mode is set **per player** (siblings on one device can differ); cubs get **new cub levels**, not the existing modules 1–2 with icons; **the grown-up decides** when to move on (no age rule, nothing said to the child); read aloud is **on in Cub mode and an opt-in for everyone else**, with the device's own voices only.
+
+- [x] Cub levels (`content/levels/cub1-sequences/`, `cub2-loops/`): two modules of 10, "Cub: steps and turns" and "Cub: repeat", on grids of at most 6 × 4 with 1–7 blocks. Each module follows the simplified PRIMM pattern from the Cub mode section: **predict** (the reference solution is shown; the child taps the square where the animal will stop, then runs it; the goal flag is hidden), **fix** (one wrong block in the starter), **make**. A level's `"cub"` key names its step; validation checks that cub levels sit in a `cub-` module, that fix levels have a starter and predict levels don't. English and Slovak titles and hints; every solution earns 3 stars for every animal
+- [x] Per-player switch: `Profile.cub`; a "Cub mode for ages 6–8" box when a player is added; the switch in the Grown-ups area (behind the gate, `POST /api/parent/cub`); on the teacher's screen per child (`/api/teacher/player/cub`) and "New players start in Cub mode" for the class; `codezoo profile add --cub`, `codezoo profile cub NAME --on/--off`, `codezoo class add-player --cub`. Export and import keep it; older player files read as "off"
+- [x] Two courses kept apart: cubs see only the cub levels (big numbered buttons with stars instead of the level list), everyone else never sees them; practice suggestions and the concept report stay in the player's own course; finishing a cub module gives its own sticker. A teacher's "today's levels" without any cub level shows a cub everything picked
+- [x] Picture blocks: 👣 step, ↺ / ↻ turn, ✋ grab, 🔁 repeat (the loop variable hidden), the same block types and IR, so code and blocks stay in sync. Big blocks and tap-to-place are always on in Cub mode. No typing, no Python release menu, no level editor link, and the star rules ("no line limit") are hidden; the stars, feelings and storybook stay
+- [x] Colour-linked code pane: each block's lines are tinted in its family colour with a bar whose pattern also names the family (motion solid, action dashed, loop dotted, say double), so colour is never the only signal; lines inside a loop are indented so the loop's bar stays visible; new lines glow for a second (not with less motion); tapping a code line makes its block glow and reads it aloud
+- [x] Read aloud (`web/speech.js`): goals, hints, results with the feeling, the predict question and answer, and tapped blocks ("Repeat 3 times: step 1, grab"), with the browser's speech synthesis and the device's own voice for the page's language (offline voices first); emoji and stars are left out of what is spoken. On in Cub mode with a 🔊 "read it to me" button and a mute button kept per browser; for everyone else "Read aloud" in Look and feel. *Without a voice for the language nothing is read*, and Look and feel says so with a "Try the voice" button
+- [x] Grown-ups: the report shows "Cub levels: N of 20 solved" and, once all are solved, "Ready for the main course?" with a button that turns Cub mode off
+- [x] The terminal client (`codezoo play`) leaves the cub levels out: they need pictures and a voice
+- [x] Tests: `tests/test_phase7_cub.py` (the levels and their pattern, validation, every solution for every animal, the predict program, the switch with the PIN, the new-player box, old files, export and import, the ready report, stickers, suggestions, the hub, the CLI, the web pieces, read aloud without any network, the offline build). Checked in the browser at tablet size: switching on and off, a right and a wrong prediction, a fix level, picture blocks, tap-to-place, tints and the glow, what is spoken (English; this computer has no Slovak voice, so Slovak correctly says nothing), the teacher's column and class setting
+- [ ] *Not built from the Cub mode section*: free Story mode (no goal), "help the confused penguin" framing beyond the existing feelings, co-play prompts for grown-ups, ghost icons at the end of code lines, mini-games on the code pane, cub levels for the other animals' tricks and for conditions (age 7+), recorded voices
+- [ ] Not checked: real Slovak voices (Windows, Android and iOS each have their own; many devices have none), speech on the cheapest tablet, children who can't read using it without help
+- [ ] Gate: 3–5 children aged 6–8 play the cub modules with a grown-up nearby (the pilot kit's facilitator guide needs a short cub section); read aloud is tried on the pilot devices in English and Slovak
 
 ## Not yet covered
 

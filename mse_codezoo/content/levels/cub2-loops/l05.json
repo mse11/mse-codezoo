@@ -1,0 +1,53 @@
+{
+  "id": "cub2-l05",
+  "title": "Down the vine",
+  "module": "cub-loops",
+  "cub": "make",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".",
+      "B",
+      "B"
+    ],
+    "start": [
+      0,
+      0,
+      "south"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Loops work going down too.",
+    "Repeat 2 times: step 1, grab."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Dole po liane",
+      "hints": [
+        "Cykly fungujú aj smerom dole.",
+        "Opakuj 2-krát: krok 1, chyť."
+      ]
+    }
+  }
+}

@@ -596,3 +596,66 @@ html[data-targets="true"] input[type="checkbox"], html[data-targets="true"] inpu
 html[data-targets="true"] .picture-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
 html[data-targets="true"] .picture-grid.small { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
 html[data-targets="true"] .picture-tile .face { font-size: 3.2rem; }
+
+/* --- Cub mode (ages 6-8, phase 7): picture blocks, read aloud, colour-linked code --- */
+.cub-levels { display: none; }
+html[data-cub="true"] .cub-levels {
+  display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; padding: 0.5rem 0.8rem 0;
+}
+.cub-module { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.cub-module-icon { font-size: 1.6rem; }
+.cub-level {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 3rem; min-height: 3rem; padding: 0.2rem 0.4rem; border-radius: 1rem; line-height: 1.1;
+}
+.cub-level .cub-number { font-size: 1.2rem; font-weight: 700; }
+.cub-level .cub-stars { font-size: 0.7rem; color: var(--star); }
+.cub-level[aria-current="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.cub-level[aria-current="true"] .cub-stars { color: var(--accent-text); }
+/* what a cub doesn't need: the level list to read, Python releases, typing, the editor */
+html[data-cub="true"] #level-select, html[data-cub="true"] #python-select,
+html[data-cub="true"] .edit-toggle, html[data-cub="true"] .editor-link { display: none; }
+html[data-cub="true"] .goal h2 { font-size: 1.5rem; }
+.cub-goal { font-size: 1.25rem; }
+html[data-cub="true"] button, html[data-cub="true"] select { min-height: 3rem; min-width: 3rem; }
+.speak-buttons { display: inline-flex; gap: 0.3rem; vertical-align: middle; }
+.speak-again { font-size: 1.1rem; }
+
+.predict-grid { display: grid; gap: 0.3rem; margin: 0.4rem 0; }
+.predict-cell {
+  position: relative; aspect-ratio: 1; min-width: 3rem; padding: 0; font-size: 1.8rem;
+  background: var(--tile); border: 2px solid var(--tile-line); border-radius: 0.6rem;
+}
+.predict-cell:disabled { background: var(--wall); opacity: 1; }
+.predict-cell.guessed { border-color: var(--accent); border-width: 4px; }
+.predict-cell.actual { box-shadow: 0 0 0 4px var(--star); }
+.predict-cell .actual-star { position: absolute; top: -0.4rem; right: -0.3rem; font-size: 1.2rem; }
+
+/* each block's code lines tinted in its colour; the bar's pattern names the family too */
+.code-tints { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.code-tint { position: absolute; left: 0; right: 0; border-left: 6px solid var(--tint); background: color-mix(in srgb, var(--tint) 16%, transparent); }
+.code-tint.family-motion { --tint: #4C97FF; }
+.code-tint.family-action { --tint: #FFAB19; border-left-style: dashed; }
+.code-tint.family-say { --tint: #CF63CF; border-left-style: double; }
+.code-tint.family-loop {
+  --tint: #59C059; border-left: 0; padding-left: 6px;
+  background:
+    radial-gradient(circle, var(--tint) 2px, transparent 2.5px) 0 0 / 6px 6px repeat-y,
+    color-mix(in srgb, var(--tint) 12%, transparent);
+}
+.code-tint.family-logic { --tint: #5CA6A6; border-left-style: dotted; }
+.code-tint.fresh { animation: cz-fresh 1.1s ease-out; }
+@keyframes cz-fresh {
+  from { background: color-mix(in srgb, var(--tint) 60%, transparent); }
+}
+/* a tapped code line: its block glows */
+.cz-wiggle .blocklyPath { animation: cz-glow 0.7s ease-in-out; }
+@keyframes cz-glow {
+  50% { filter: drop-shadow(0 0 6px #ffd400) drop-shadow(0 0 2px #ffd400); }
+}
+html[data-motion="reduce"] .code-tint.fresh, html[data-motion="reduce"] .cz-wiggle .blocklyPath { animation: none; }
+html[data-motion="reduce"] .cz-wiggle .blocklyPath { filter: drop-shadow(0 0 4px #ffd400); }
+.cub-part { margin-top: 0.5rem; }
+.cub-ready { font-weight: 600; }
+/* the star rules ("no line limit") are for readers; cubs see the stars and the message */
+html[data-cub="true"] .result > ul { display: none; }

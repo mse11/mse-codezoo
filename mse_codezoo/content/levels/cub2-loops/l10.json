@@ -1,0 +1,51 @@
+{
+  "id": "cub2-l10",
+  "title": "Five {B.many}",
+  "module": "cub-loops",
+  "cub": "make",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBBBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Count the {B.many}: that is how many times to repeat.",
+    "Repeat 5 times: step 1, grab."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Päť kúskov: {B.many}",
+      "hints": [
+        "Spočítaj ich: toľkokrát opakuj.",
+        "Opakuj 5-krát: krok 1, chyť."
+      ]
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "id": "cub1-l06",
+  "title": "Up we go",
+  "module": "cub-sequences",
+  "cub": "predict",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...",
+      "...",
+      "..."
+    ],
+    "start": [
+      0,
+      2,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      1,
+      0
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "After turning left it faces up."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Hore",
+      "hints": [
+        "Po otočení doľava sa pozerá hore."
+      ]
+    }
+  }
+}

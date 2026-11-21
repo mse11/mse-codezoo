@@ -457,7 +457,7 @@ def test_cards_page_and_editor_check(base_url):
     status, page = call(base_url, "/cards.html?animal=fox")
     assert status == 200 and "<svg" in page
     assert call(base_url, "/cards.html?animal=dragon")[0] == 404
-    level = json.loads(level_files()[0].read_text(encoding="utf-8"))
+    level = json.loads(find_level("m01-l01").path.read_text(encoding="utf-8"))
     status, result = call_json(
         base_url, "/api/levels/check", {"level": level, "solution": "step(4)\ngrab()\n"}
     )

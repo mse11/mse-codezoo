@@ -1,0 +1,50 @@
+{
+  "id": "cub1-l07",
+  "title": "The wrong way",
+  "module": "cub-sequences",
+  "cub": "fix",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...",
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 4
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "It turns the wrong way. Which turn block is wrong?",
+    "Use turn right instead."
+  ],
+  "mode": "blocks_only",
+  "starter": "step(2)\nturn_left()\nstep(1)\ngrab()\n",
+  "i18n": {
+    "sk": {
+      "title": "Zlým smerom",
+      "hints": [
+        "Otočí sa zlým smerom. Ktorá otočka je zlá?",
+        "Použi otočku doprava."
+      ]
+    }
+  }
+}

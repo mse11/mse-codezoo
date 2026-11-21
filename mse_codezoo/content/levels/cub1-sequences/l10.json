@@ -1,0 +1,49 @@
+{
+  "id": "cub1-l10",
+  "title": "Around the rock",
+  "module": "cub-sequences",
+  "cub": "make",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".#B",
+      "..."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 7
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "The rock is in the way. Go below it.",
+    "Down 1, along 2, up 1, grab."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Okolo skaly",
+      "hints": [
+        "Skala zavadzia. Choď popod ňu.",
+        "Dole 1, rovno 2, hore 1, chyť."
+      ]
+    }
+  }
+}

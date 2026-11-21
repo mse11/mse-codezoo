@@ -1,0 +1,49 @@
+{
+  "id": "cub1-l09",
+  "title": "Past the rock",
+  "module": "cub-sequences",
+  "cub": "predict",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".#.",
+      "...",
+      "..."
+    ],
+    "start": [
+      0,
+      1,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      2,
+      0
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Follow it with your finger."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Popri skale",
+      "hints": [
+        "Sleduj ho prstom."
+      ]
+    }
+  }
+}

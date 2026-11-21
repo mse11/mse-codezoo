@@ -395,10 +395,24 @@ def level_to_json(
         ],
         "unlockedBlocks": level.unlocked_blocks,
         "starter": reskin_source(level.starter, own, pack),
+        "cub": level.cub,
+        "predict": reskin_source(predict_program(level), own, pack)
+        if level.cub == "predict"
+        else "",
         "pack": pack.public(),
         "world": world_to_json(level.world, pack),
         "worlds": [world_to_json(spec, pack) for spec, _goal in worlds],
     }
+
+
+def predict_program(level: Level) -> str:
+    """The program a "predict" cub level shows: its reference solution."""
+    if level.path is None:
+        return ""
+    try:
+        return solution_path(level.path).read_text(encoding="utf-8")
+    except OSError:
+        return ""
 
 
 def attempt_from_run(run: LevelRun, source: str) -> Attempt:

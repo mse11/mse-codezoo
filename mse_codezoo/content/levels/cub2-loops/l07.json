@@ -1,0 +1,52 @@
+{
+  "id": "cub2-l07",
+  "title": "Grab too early",
+  "module": "cub-loops",
+  "cub": "fix",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".BBB"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "It grabs before it gets there.",
+    "Put the step before the grab."
+  ],
+  "mode": "blocks_only",
+  "starter": "for i in range(3):\n    grab()\n    step(1)\n",
+  "i18n": {
+    "sk": {
+      "title": "Chytá priskoro",
+      "hints": [
+        "Chytá skôr, ako tam príde.",
+        "Daj krok pred chytenie."
+      ]
+    }
+  }
+}

@@ -116,6 +116,7 @@ def test_levels_list(base_url):
         "module": "sequences",
         "animal": "monkey",
         "signature": False,
+        "cub": None,
         "worlds": 1,
         "minPython": None,
         "locked": None,

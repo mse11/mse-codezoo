@@ -38,7 +38,8 @@ def test_class_types_set_the_defaults(tmp_path):
     workshop = store.create("Saturday club", "workshop")
     regular = store.create("3.B", "class")
     assert workshop.settings == {
-        "roster": False, "names": False, "deleteAtEnd": True, "assigned": [], "locked": False,
+        "roster": False, "names": False, "deleteAtEnd": True, "cub": False, "assigned": [],
+        "locked": False,
     }  # fmt: skip
     assert regular.settings["roster"] and regular.settings["names"]
     assert not regular.settings["deleteAtEnd"]
@@ -138,7 +139,7 @@ def test_the_class_code_is_needed(hub_server):
     assert call(base, "/api/levels")[0] == 403
     assert call(base, "/api/levels", code="WRONG-1")[0] == 403
     status, levels = call(base, "/api/levels", code=hub.code.lower())
-    assert status == 200 and levels[0]["id"] == "m01-l01"
+    assert status == 200 and [lv for lv in levels if not lv["cub"]][0]["id"] == "m01-l01"
     status, page = 0, b""
     with urllib.request.urlopen(base + "/teacher.html", timeout=10) as response:
         status, page = response.status, response.read()

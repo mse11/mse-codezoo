@@ -1,0 +1,49 @@
+{
+  "id": "cub1-l04",
+  "title": "Not far enough",
+  "module": "cub-sequences",
+  "cub": "fix",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 2
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Watch where it stops. One square is missing.",
+    "Change the 2 to a 3."
+  ],
+  "mode": "blocks_only",
+  "starter": "step(2)\ngrab()\n",
+  "i18n": {
+    "sk": {
+      "title": "Nie dosť ďaleko",
+      "hints": [
+        "Pozri, kde zastane. Chýba jedno políčko.",
+        "Zmeň 2 na 3."
+      ]
+    }
+  }
+}

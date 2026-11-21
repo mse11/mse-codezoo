@@ -448,5 +448,7 @@
   "no names, no pictures, no programs, nothing typed": "žiadne mená, obrázky, programy ani nič napísané",
   "per level: tries, solved or not, stars, and hints used before solving": "pre každý level: pokusy, či je vyriešený, hviezdičky a rady použité pred vyriešením",
   "the questions before and after each module: how many were right": "otázky pred modulom a po ňom: koľko odpovedí bolo správnych",
-  "{count} player(s), each with a random pilot id and an age band": "hráči: {count}, každý s náhodným id v pilote a vekovou skupinou"
+  "{count} player(s), each with a random pilot id and an age band": "hráči: {count}, každý s náhodným id v pilote a vekovou skupinou",
+  "Cub: steps and turns": "Mláďatá: kroky a otočky",
+  "Cub: repeat": "Mláďatá: opakovanie"
 }

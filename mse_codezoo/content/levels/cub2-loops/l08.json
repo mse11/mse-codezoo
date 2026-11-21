@@ -1,0 +1,53 @@
+{
+  "id": "cub2-l08",
+  "title": "Stairs",
+  "module": "cub-loops",
+  "cub": "make",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...",
+      ".B.",
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 6,
+    "mustUse": [
+      "For"
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "One stair: step, turn, step, turn back, grab.",
+    "Repeat that 2 times."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Schody",
+      "hints": [
+        "Jeden schod: krok, otočka, krok, otočka späť, chyť.",
+        "Opakuj to 2-krát."
+      ]
+    }
+  }
+}

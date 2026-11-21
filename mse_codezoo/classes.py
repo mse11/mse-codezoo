@@ -35,8 +35,9 @@ from mse_codezoo.profiles import CLASS_PICTURES, ProfileError, ProfileStore, def
 CLASS_TYPES = ("workshop", "class")
 DEFAULTS: dict[str, dict[str, Any]] = {
     # roster: only the teacher adds players; names: children may type a first name
-    "workshop": {"roster": False, "names": False, "deleteAtEnd": True},
-    "class": {"roster": True, "names": True, "deleteAtEnd": False},
+    # cub: new players start in Cub mode (ages 6-8, phase 7)
+    "workshop": {"roster": False, "names": False, "deleteAtEnd": True, "cub": False},
+    "class": {"roster": True, "names": True, "deleteAtEnd": False, "cub": False},
 }
 CLASS_ID = re.compile(r"^c[0-9a-f]{8}$")
 LEVEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
@@ -183,7 +184,7 @@ class ClassStore:
         """Change settings: roster, names, deleteAtEnd, locked (bools) and assigned (ids)."""
         info = self.find(ref)
         data = self._read(info.id)
-        for key in ("roster", "names", "deleteAtEnd", "locked"):
+        for key in ("roster", "names", "deleteAtEnd", "locked", "cub"):
             if changes.get(key) is not None:
                 data["settings"][key] = bool(changes[key])
         if changes.get("assigned") is not None:

@@ -1,0 +1,49 @@
+{
+  "id": "cub1-l05",
+  "title": "Turn and grab",
+  "module": "cub-sequences",
+  "cub": "make",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..",
+      ".B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 4
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Step, turn, step, grab.",
+    "Turn right after the first step."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Otoč sa a chyť",
+      "hints": [
+        "Krok, otočka, krok, chyť.",
+        "Po prvom kroku sa otoč doprava."
+      ]
+    }
+  }
+}

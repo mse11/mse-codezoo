@@ -41,6 +41,7 @@
 
   <main class="panes" id="panes">
     <section class="pane stage-pane active" data-pane="stage" aria-label="Stage" data-i18n-label="Stage">
+      <nav id="cub-levels" class="cub-levels" aria-label="Levels" data-i18n-label="Levels"></nav>
       <div id="goal" class="goal"></div>
       <div class="stage-tools">
         <div id="worlds" class="worlds" role="group"></div>
@@ -92,6 +93,7 @@
       <h3 data-i18n>New player</h3>
       <label><span data-i18n>Name</span> <input id="new-name" maxlength="24" autocomplete="off" required></label>
       <div id="new-picture" class="picture-grid small" role="radiogroup" aria-label="Picture" data-i18n-label="Picture"></div>
+      <label class="check"><input type="checkbox" id="new-cub"> <span data-i18n>Cub mode for ages 6–8: picture blocks, read aloud (a grown-up can change it later)</span></label>
       <p id="new-error" class="error" role="alert"></p>
       <button type="submit" class="primary" data-i18n>Start playing</button>
     </form>

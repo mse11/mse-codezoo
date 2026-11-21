@@ -1,11 +1,24 @@
 // The code pane: a plain textarea with line numbers and a line highlight.
+// In Cub mode (phase 7) the lines are tinted in their block's colour, with a bar whose
+// pattern names the family too (colour is never the only signal); new lines glow.
 
 export class CodeView {
-  constructor({ textarea, gutter, mark, onInput }) {
+  constructor({ textarea, gutter, mark, onInput, onLineTap }) {
     this.textarea = textarea;
     this.gutter = gutter;
     this.mark = mark;
     this.markedLine = 0;
+    this.tintList = [];
+    this.tintLayer = document.createElement("div");
+    this.tintLayer.className = "code-tints";
+    this.tintLayer.setAttribute("aria-hidden", "true");
+    mark.parentElement.insertBefore(this.tintLayer, mark);
+    // a tap (or the cursor) on a line: which line, for its block to wiggle
+    const tapped = () => {
+      const line = textarea.value.slice(0, textarea.selectionStart).split("\n").length;
+      onLineTap?.(line);
+    };
+    textarea.addEventListener("click", tapped);
     textarea.addEventListener("input", () => {
       this.renderGutter();
       onInput(textarea.value);
@@ -13,6 +26,7 @@ export class CodeView {
     textarea.addEventListener("scroll", () => {
       gutter.scrollTop = textarea.scrollTop;
       this.positionMark();
+      this.positionTints();
     });
     textarea.addEventListener("keydown", (event) => {
       if (event.key === "Tab" && !textarea.readOnly && !event.shiftKey) {
@@ -61,6 +75,30 @@ export class CodeView {
       view.scrollTop = Math.max(0, top - view.clientHeight / 2);
     }
     this.positionMark();
+  }
+
+  // [{line, endLine, family, fresh}] for the lines of each block; [] turns tints off
+  setTints(list) {
+    this.tintList = list;
+    this.tintLayer.replaceChildren(
+      ...list.map((tint) => {
+        const node = document.createElement("div");
+        node.className = `code-tint family-${tint.family}${tint.fresh ? " fresh" : ""}`;
+        return node;
+      }),
+    );
+    this.positionTints();
+  }
+
+  positionTints() {
+    if (!this.tintList.length) return;
+    const { lineHeight, padding } = this.metrics();
+    this.tintList.forEach((tint, i) => {
+      const node = this.tintLayer.children[i];
+      node.style.top = `${padding + (tint.line - 1) * lineHeight - this.textarea.scrollTop}px`;
+      node.style.height = `${(tint.endLine - tint.line + 1) * lineHeight}px`;
+      node.style.left = `${(tint.depth || 0) * 8}px`;
+    });
   }
 
   positionMark() {

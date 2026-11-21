@@ -1,0 +1,49 @@
+{
+  "id": "cub1-l03",
+  "title": "Round the corner",
+  "module": "cub-sequences",
+  "cub": "predict",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...",
+      "...",
+      "..."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      2,
+      1
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "After the turn it faces down."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Za roh",
+      "hints": [
+        "Po otočení sa pozerá dole."
+      ]
+    }
+  }
+}

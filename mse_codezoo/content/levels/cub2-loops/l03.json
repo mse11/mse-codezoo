@@ -1,0 +1,48 @@
+{
+  "id": "cub2-l03",
+  "title": "Round and round",
+  "module": "cub-loops",
+  "cub": "predict",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..",
+      ".."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      0,
+      0
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Step and turn, four times. Where does that end?"
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Dokola",
+      "hints": [
+        "Krok a otočka, štyrikrát. Kde to skončí?"
+      ]
+    }
+  }
+}

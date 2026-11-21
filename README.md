@@ -92,6 +92,16 @@ Everything for running a pilot with children is in [docs/pilot/](docs/pilot/READ
 - **Look and feel.** The "Aa" button: text size, easy-to-read text, high contrast, less motion, and big targets (bigger blocks and buttons; tap a palette block to add it to the end of the program). A screen reader hears the world described in words, and results, hints and errors as they happen. Blocks can be used with the keyboard (Blockly 13's built-in keyboard navigation).
 - **No installing.** Families: `codezoo build-web site/ --pyodide-dir node_modules/pyodide` puts Pyodide inside the site, so it loads nothing from a CDN; the "Pilot builds" workflow publishes it on GitHub Pages once Pages is on and the repository variable `CODEZOO_PAGES` is `true`. Teachers: `CodeZoo-Teacher.exe` (from the same workflow, or `scripts/build_teacher_app.py`) runs `codezoo teacher`, which asks for the class and starts the hub; it is not code-signed yet.
 
+## Cub mode (ages 6–8) and read aloud
+
+For children who can't read yet. A grown-up turns it on per player: "Cub mode" when adding a player, the switch in the Grown-ups area, the teacher's screen (per child, or "New players start in Cub mode" for the class), or `codezoo profile add NAME --cub` / `codezoo profile cub NAME --on|--off`.
+
+- **Its own levels.** Two modules of 10: steps and turns, then repeat. Each follows *predict, fix, make*: watch a ready program after tapping the square where you think the animal stops; fix a program with one wrong block; build your own. Big numbered buttons replace the level list.
+- **Picture blocks.** 👣 step, ↺ ↻ turn, ✋ grab, 🔁 repeat: the same blocks and the same Python underneath. A tap on a palette block adds it to the program.
+- **Colour-linked code.** Each block's code lines are tinted in its colour, with a bar pattern of its own (colour is never the only signal); new lines glow, and tapping a line makes its block glow and reads it aloud.
+- **Read aloud.** Goals, hints, results, feelings and tapped blocks, with the device's own speech voices (nothing is recorded or sent). Always on in Cub mode (with a mute button); for everyone else it's "Read aloud" in Look and feel. Without a voice for the language nothing is read, and Look and feel says so.
+- **Moving on.** When every cub level is solved, the Grown-ups area asks "Ready for the main course?". Nothing is said to the child, and there is no age rule.
+
 ## Play in the terminal
 
 For adult beginners (and anyone who prefers a text editor): each level gets a `.py` file; edit it, save, and watch the monkey on a coloured character grid.
@@ -170,7 +180,8 @@ scripts/            pyodide_smoke.mjs: the engine and every level inside Pyodide
 | `codezoo check LEVEL PROGRAM.py [--profile NAME]` | Goal, stars and a hint; exit code 0 only when solved; `--profile` saves the result |
 | `codezoo blocks PROGRAM.py` | Block outline with each block's lines and node id |
 | `codezoo serve [--port 8765] [--open] [--data-dir PATH]` | Local web UI with stage, blocks and code |
-| `codezoo profile list/add/remove/export/import` | Players on this computer; `add NAME --picture fox` |
+| `codezoo profile list/add/remove/export/import` | Players on this computer; `add NAME --picture fox [--cub]` |
+| `codezoo profile cub NAME [--on/--off]` | Cub mode (ages 6–8) on or off for a player |
 | `codezoo parent show/set/pin/report` | Grown-up settings: `set --daily-minutes 30 --private`, `pin`, `report NAME` |
 | `codezoo run ... --save RUN.json` | Also saves the run for `replay` and `story export` |
 | `codezoo replay RUN` | Replays a saved run on the terminal grid |
@@ -213,7 +224,7 @@ Not supported (kept as raw code with a note): `async for`, async generators, `:=
 
 ## Levels
 
-166 levels in fifteen modules and five release islands: 1 Sequences (12), 2 Loops (11), 3 Variables (11), 4 Types and text (12), 5 Conditions (11), 6 Loops II (11), 7 Functions (12), 8 Errors and debugging (9), 9 Collections (10), 10 Recursion (10), 11 Comprehensions and generators (9), 12 Objects (9), 13 Decorators (8), 14 Concurrency (8), 15 First real project (6), and the islands baseline 3.10/3.11 (5), 3.12 (3), 3.13 (2), 3.14 (3), 3.15 (4). Every module has debugging levels whose starter program has a bug to fix. Signature levels belong to one animal; all other levels can be played by every animal, and `codezoo levels validate --all` checks every reference solution for every animal that can play it. Goals can ask the animal to collect items, avoid some, reach a square, say exact text, build a dam, print lines, leave text in a file, or be done by a tick of the clock. Every level has a Slovak title and hints.
+186 levels: two Cub mode modules (Steps and turns, Repeat; 10 each), and 166 in fifteen modules and five release islands: 1 Sequences (12), 2 Loops (11), 3 Variables (11), 4 Types and text (12), 5 Conditions (11), 6 Loops II (11), 7 Functions (12), 8 Errors and debugging (9), 9 Collections (10), 10 Recursion (10), 11 Comprehensions and generators (9), 12 Objects (9), 13 Decorators (8), 14 Concurrency (8), 15 First real project (6), and the islands baseline 3.10/3.11 (5), 3.12 (3), 3.13 (2), 3.14 (3), 3.15 (4). Every module has debugging levels whose starter program has a bug to fix. Signature levels belong to one animal; all other levels can be played by every animal, and `codezoo levels validate --all` checks every reference solution for every animal that can play it. Goals can ask the animal to collect items, avoid some, reach a square, say exact text, build a dam, print lines, leave text in a file, or be done by a tick of the clock. Every level has a Slovak title and hints.
 
 ## Third-party software
 

@@ -1,0 +1,47 @@
+{
+  "id": "cub1-l01",
+  "title": "Where will it stop?",
+  "module": "cub-sequences",
+  "cub": "predict",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "....."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      3,
+      0
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Count the squares as it walks: one, two, three."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Kde zastane?",
+      "hints": [
+        "Počítaj políčka, ako ide: jeden, dva, tri."
+      ]
+    }
+  }
+}

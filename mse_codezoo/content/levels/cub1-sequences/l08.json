@@ -1,0 +1,48 @@
+{
+  "id": "cub1-l08",
+  "title": "Two {B.many}",
+  "module": "cub-sequences",
+  "cub": "make",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B.B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 3
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "There is one right under it!",
+    "Grab, step 2, grab."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Dva kúsky: {B.few}",
+      "hints": [
+        "Jeden je hneď pod ním!",
+        "Chyť, krok 2, chyť."
+      ]
+    }
+  }
+}

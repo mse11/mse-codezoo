@@ -186,6 +186,7 @@ export class Players {
     this.renderPictureChoice(data.pictures);
     $("new-error").textContent = "";
     $("new-name").value = "";
+    $("new-cub").checked = false;
     this.playerDialog.showModal();
     if (!data.profiles.length) $("new-name").focus();
   }
@@ -209,7 +210,7 @@ export class Players {
 
   async createPlayer() {
     try {
-      const profile = await api.addProfile($("new-name").value, this.picture);
+      const profile = await api.addProfile($("new-name").value, this.picture, $("new-cub").checked);
       this.playerDialog.close();
       this.select({ ...profile, stars: 0, solved: 0 });
     } catch (error) {
@@ -337,6 +338,7 @@ export class Players {
         ? el("p", {}, t("Often: {list}.", { list: report.mistakes.map((m) => m.text).join("; ") }))
         : null,
       top && AT_HOME[top.kind] ? el("p", {}, t("Try at home: {tip}", { tip: t(AT_HOME[top.kind]) })) : null,
+      this.cubPart(profile, report.cub),
       this.pilotPart(profile, report.pilot),
     );
     const actions = el(
@@ -347,6 +349,35 @@ export class Players {
     );
     card.append(actions);
     return card;
+  }
+
+  // Cub mode (phase 7): on or off per player; the grown-up decides when to move on
+  cubPart(profile, cub) {
+    if (!cub) return null;
+    const box = el("input", { type: "checkbox", ...(cub.on ? { checked: "" } : {}) });
+    const save = async (on) => {
+      try {
+        await api.parent("cub", { pin: this.pin, profile: profile.id, on });
+        await this.renderReports();
+      } catch {
+        box.checked = !on;
+      }
+    };
+    box.addEventListener("change", () => save(box.checked));
+    const part = el(
+      "div",
+      { class: "cub-part" },
+      el("label", { class: "check" }, box, " ", el("span", {}, t("Cub mode (ages 6–8): picture blocks, read aloud, the cub levels"))),
+    );
+    if (cub.on) {
+      part.append(el("p", {}, t("Cub levels: {solved} of {levels} solved.", cub)));
+    }
+    if (cub.ready) {
+      const move = el("button", { type: "button", class: "primary small" }, t("Move to the main course"));
+      move.addEventListener("click", () => save(false));
+      part.append(el("p", { class: "cub-ready" }, t("Every cub level is solved. Ready for the main course? Nothing is said to the child; you decide."), " ", move));
+    }
+    return part;
   }
 
   // pilot (phase 6): show what the file holds, then save it only after "I agree"

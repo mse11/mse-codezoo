@@ -101,7 +101,7 @@ export const api = {
   story: (run) => call("POST", "/api/story", { run }),
 
   profiles: () => call("GET", "/api/profiles"),
-  addProfile: (name, picture) => call("POST", "/api/profiles", { name, picture }),
+  addProfile: (name, picture, cub = false) => call("POST", "/api/profiles", { name, picture, cub }),
   progress: (id) => call("GET", `/api/profiles/${id}/progress`),
   addTime: (id, seconds) => call("POST", `/api/profiles/${id}/time`, { seconds }),
   parent: (action, body = {}) => call("POST", `/api/parent/${action}`, body),

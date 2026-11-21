@@ -1,0 +1,48 @@
+{
+  "id": "cub1-l02",
+  "title": "One {B}",
+  "module": "cub-sequences",
+  "cub": "make",
+  "concepts": [
+    "call",
+    "order"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {
+    "maxLines": 2
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab"
+  ],
+  "hints": [
+    "Walk to the {B}, then grab it.",
+    "Step 3, then grab."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Jeden kúsok: {B}",
+      "hints": [
+        "Dôjdi k jedlu: {B}, potom ho chyť.",
+        "Krok 3, potom chyť."
+      ]
+    }
+  }
+}

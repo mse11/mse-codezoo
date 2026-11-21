@@ -4,9 +4,12 @@
 // every page (game, editor, teacher's screen) can follow them with CSS.
 
 import { t } from "./i18n.js";
+import { canSpeak, speak } from "./speech.js";
 
 const KEY = "codezoo.look";
-const DEFAULTS = { text: "normal", easy: false, contrast: false, motion: "system", targets: false };
+const DEFAULTS = {
+  text: "normal", easy: false, contrast: false, motion: "system", targets: false, read: false,
+};
 
 function read() {
   try {
@@ -35,6 +38,7 @@ export function applyLook() {
   root.dataset.contrast = String(settings.contrast);
   root.dataset.motion = reducedMotion() ? "reduce" : "full";
   root.dataset.targets = String(settings.targets);
+  root.dataset.read = String(settings.read); // read aloud (speech.js, phase 7)
   window.dispatchEvent(new CustomEvent("codezoo-look", { detail: settings }));
 }
 
@@ -72,6 +76,19 @@ function select(key, label, options) {
   return el("label", {}, el("span", {}, label), box);
 }
 
+// Read aloud uses the device's own voices; say so when there is none for this language
+function voiceNote() {
+  if (!("speechSynthesis" in window)) {
+    return el("p", { class: "hint" }, t("This browser can't read aloud."));
+  }
+  if (!canSpeak()) {
+    return el("p", { class: "hint" }, t("This device has no voice for this language, so nothing is read aloud. A voice can be added in the device's settings (speech or text-to-speech)."));
+  }
+  const test = el("button", { type: "button", class: "small" }, t("Try the voice"));
+  test.addEventListener("click", () => speak(t("Hello! I will read the goals to you."), { force: true }));
+  return el("p", { class: "hint" }, test);
+}
+
 // The dialog is built here, so every page gets the same one from a single button.
 export function openLook() {
   let dialog = document.getElementById("look-dialog");
@@ -93,6 +110,8 @@ export function openLook() {
       ["full", t("all animations")],
     ]),
     checkbox("targets", t("Big targets: bigger blocks and buttons; tap a block to add it")),
+    checkbox("read", t("Read aloud: goals, hints, results and tapped blocks")),
+    voiceNote(),
     el("p", { class: "hint" }, t("These settings are kept in this browser only.")),
     el(
       "div",

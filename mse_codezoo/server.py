@@ -19,7 +19,8 @@ otherwise the browser's ``Accept-Language`` decides. Titles, hints and messages 
     GET  /api/profiles/<id>/progress   stars per level, today's minutes and limit
     POST /api/profiles/<id>/time {seconds} -> today's minutes and limit
     POST /api/parent/<action> {pin?, ...}  check | settings | report | export | remove |
-                                       import {data} (a file from `profile export`)
+                                       import {data} (a file from `profile export`) |
+                                       cub {profile, on} (Cub mode, phase 7)
 
 Phase 3:
     GET  /api/animals                  every animal pack, ready to draw
@@ -145,6 +146,7 @@ def list_levels(
                 "module": level.module,
                 "animal": level.animal,
                 "signature": level.signature,
+                "cub": level.cub,
                 "worlds": len(level.worlds()),
                 "minPython": versions.version_text(level.min_python) if level.min_python else None,
                 "locked": lock_reason(level, python),
@@ -340,13 +342,15 @@ def api_profiles(store: ProfileStore) -> dict[str, Any]:
 
 
 def api_add_profile(body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
-    return asdict(store.add(_text(body, "name"), _text(body, "picture")))
+    cub = body.get("cub") is True  # Cub mode (ages 6-8), ticked when the player is added
+    return asdict(store.add(_text(body, "name"), _text(body, "picture"), cub=cub))
 
 
 def api_progress(profile_id: str, store: ProfileStore) -> dict[str, Any]:
     data = store.progress(profile_id)
     levels = data["levels"]
     return {
+        "cub": store.find(profile_id).cub,
         "stickers": len(data.get("stickers", [])),
         "outfit": data.get("outfit", "none"),
         "levels": {
@@ -367,7 +371,7 @@ def api_time(profile_id: str, body: dict[str, Any], store: ProfileStore) -> dict
 
 
 PARENT_ACTIONS = (
-    "check", "settings", "report", "export", "remove", "import", "pilot-export", "age",
+    "check", "settings", "report", "export", "remove", "import", "pilot-export", "age", "cub",
 )  # fmt: skip
 
 
@@ -402,6 +406,8 @@ def api_parent(action: str, body: dict[str, Any], store: ProfileStore) -> dict[s
     player = _text(body, "profile")
     if action == "age":
         return pilot.set_age_band(store, player, body.get("ageBand"))
+    if action == "cub":  # Cub mode on or off for one player (phase 7)
+        return asdict(store.set_cub(player, body.get("on") is True))
     if action == "report":
         report = store.report(player, _all_levels())
         report["pilot"] = pilot_summary(store, player)

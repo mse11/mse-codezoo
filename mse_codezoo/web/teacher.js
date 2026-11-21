@@ -95,6 +95,7 @@ function renderPlayers() {
     el("th", {}, t("Modules")),
     el("th", {}, t("Stuck on")),
     el("th", {}, t("Minutes today")),
+    el("th", {}, t("Cub mode")),
     data.pilot ? el("th", {}, t("Age band")) : null,
     el("th", {}, ""),
   );
@@ -118,6 +119,7 @@ function renderPlayers() {
       el("td", { class: "t-modules-cell" }, ...modules),
       el("td", {}, ...(stuck.length ? stuck : ["–"])),
       el("td", {}, String(p.minutesToday)),
+      el("td", {}, cubBox(p)),
       data.pilot ? el("td", {}, ageSelect(p)) : null,
       el(
         "td",
@@ -131,7 +133,7 @@ function renderPlayers() {
   });
   $("t-players").replaceChildren(
     el("thead", {}, head),
-    el("tbody", {}, ...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "7" }, t("Nobody has joined yet.")))])),
+    el("tbody", {}, ...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "8" }, t("Nobody has joined yet.")))])),
   );
   const used = new Set(data.players.map((p) => p.picture));
   const select = $("t-add-picture");
@@ -142,6 +144,13 @@ function renderPlayers() {
       .map((picture) => el("option", { value: picture }, `${face(picture)} ${displayName({ name: picture, picture })}`)),
   );
   if ([...select.options].some((o) => o.value === keep)) select.value = keep;
+}
+
+// Cub mode (ages 6-8, phase 7) per child: picture blocks, read aloud, the cub levels
+function cubBox(player) {
+  const box = el("input", { type: "checkbox", "aria-label": t("Cub mode for {name}", { name: displayName(player) }), ...(player.cub ? { checked: "" } : {}) });
+  box.addEventListener("change", () => act("player/cub", { profile: player.id, on: box.checked }));
+  return box;
 }
 
 function ageSelect(player) {
@@ -295,6 +304,7 @@ function renderSettings() {
   $("t-roster").checked = s.roster;
   $("t-names").checked = s.names;
   $("t-delete").checked = s.deleteAtEnd;
+  $("t-cub").checked = Boolean(s.cub);
   $("t-pilot").checked = data.pilot;
   $("t-pilot-box").hidden = !data.pilot;
 }
@@ -441,6 +451,7 @@ $("t-save-settings").addEventListener("click", async () => {
     roster: $("t-roster").checked,
     names: $("t-names").checked,
     deleteAtEnd: $("t-delete").checked,
+    cub: $("t-cub").checked,
     pilot: $("t-pilot").checked,
   });
   if (result) {

@@ -1,0 +1,50 @@
+{
+  "id": "cub2-l09",
+  "title": "Long way down",
+  "module": "cub-loops",
+  "cub": "predict",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".",
+      ".",
+      ".",
+      "."
+    ],
+    "start": [
+      0,
+      0,
+      "south"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      0,
+      3
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "It goes down one square each time."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Dlhá cesta dole",
+      "hints": [
+        "Zakaždým ide o políčko dole."
+      ]
+    }
+  }
+}

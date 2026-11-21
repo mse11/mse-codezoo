@@ -26,7 +26,8 @@ Routes on top of ``server.dispatch``:
     POST /api/class/report {share}          -> hides a share until the teacher looks at it
 
     GET  /api/teacher/overview              -> everything the teacher's screen shows
-    POST /api/teacher/settings {roster?, names?, deleteAtEnd?, locked?, assigned?}
+    POST /api/teacher/settings {roster?, names?, deleteAtEnd?, locked?, assigned?, cub?}
+    POST /api/teacher/player/cub {profile, on}   Cub mode for one child (phase 7)
     POST /api/teacher/pause {paused}
     POST /api/teacher/player {name, picture}          (also /rename, /remove, /report, /export)
     POST /api/teacher/level {level, solution}         (also /remove {id})
@@ -266,7 +267,7 @@ class Hub:
                 raise ClassError(t("Someone already has that picture. Pick another one."))
             name = body.get("name") if info.settings["names"] else None
             name = " ".join(str(name or "").split()) or picture
-            profile = store.add(name, picture)
+            profile = store.add(name, picture, cub=bool(info.settings.get("cub")))
             return {"id": profile.id, "name": profile.name, "picture": profile.picture}
         if route == "import":
             if info.settings["roster"]:
@@ -316,7 +317,7 @@ class Hub:
         if route == "settings":
             changes = {
                 key: body.get(key)
-                for key in ("roster", "names", "deleteAtEnd", "locked", "assigned")
+                for key in ("roster", "names", "deleteAtEnd", "locked", "assigned", "cub")
             }
             self.classes.update(self.class_id, **changes)
             if body.get("pilot") is not None:  # pilot recording for this class (phase 6)
@@ -326,8 +327,14 @@ class Hub:
             self.paused = bool(body.get("paused"))
             return self._state()
         if route == "player":
-            profile = store.add(_text(body, "name"), _text(body, "picture"))
+            cub = body.get("cub") if isinstance(body.get("cub"), bool) else None
+            if cub is None:
+                cub = bool(self.info().settings.get("cub"))
+            profile = store.add(_text(body, "name"), _text(body, "picture"), cub=cub)
             return {"id": profile.id, "name": profile.name, "picture": profile.picture}
+        if route == "player/cub":
+            profile = store.set_cub(_text(body, "profile"), body.get("on") is True)
+            return {"id": profile.id, "cub": profile.cub}
         if route == "player/rename":
             profile = store.rename(_text(body, "profile"), _text(body, "name"))
             return {"id": profile.id, "name": profile.name, "picture": profile.picture}
@@ -437,6 +444,7 @@ class Hub:
                     "modules": per_module,
                     "stuck": stuck,
                     "minutesToday": store.today_status(profile.id)["minutesToday"],
+                    "cub": profile.cub,
                     "ageBand": data.get("pilot", {}).get("ageBand"),
                 }
             )

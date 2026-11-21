@@ -60,6 +60,8 @@ ERROR_KINDS = {  # LearnerError.kind (or "syntax") -> mistake kind
     "key": "type_mixup",
 }
 MODULE_EMOJI = {
+    "cub-sequences": "🐾",
+    "cub-loops": "🔂",
     "sequences": "👣",
     "loops-1": "🔁",
     "variables": "📦",
@@ -114,6 +116,7 @@ class Profile:
     name: str
     picture: str
     created: str
+    cub: bool = False  # Cub mode (ages 6-8): icon blocks, read aloud, the cub levels
 
 
 @dataclass
@@ -218,8 +221,11 @@ class ProfileStore:
     def _save_profiles(self, profiles: list[Profile]) -> None:
         self._write(self._profiles_path, {"profiles": [asdict(p) for p in profiles]})
 
-    def add(self, name: str, picture: str, *, any_picture: bool = False) -> Profile:
-        """A new player; ``any_picture`` also takes a class picture (for imported files)."""
+    def add(
+        self, name: str, picture: str, *, any_picture: bool = False, cub: bool = False
+    ) -> Profile:
+        """A new player; ``any_picture`` also takes a class picture (for imported files);
+        ``cub`` starts them in Cub mode (ages 6-8)."""
         name = " ".join(str(name).split())
         if not name:
             raise ProfileError(t("Please type a name."))
@@ -232,7 +238,7 @@ class ProfileStore:
         profiles = self.profiles()
         if any(p.name.casefold() == name.casefold() for p in profiles):
             raise ProfileError(t("There is already a player called {name}.", name=name))
-        profile = Profile(f"p{secrets.token_hex(4)}", name, picture, today())
+        profile = Profile(f"p{secrets.token_hex(4)}", name, picture, today(), bool(cub))
         self._save_profiles([*profiles, profile])
         return profile
 
@@ -255,6 +261,13 @@ class ProfileStore:
             raise ProfileError(t("There is already a player called {name}.", name=name))
         profile.name = name
         self._save_profiles([profile if p.id == profile.id else p for p in profiles])
+        return profile
+
+    def set_cub(self, ref: str, on: bool) -> Profile:
+        """Cub mode on or off for one player; a grown-up decides (no age rule)."""
+        profile = self.find(ref)
+        profile.cub = bool(on)
+        self._save_profiles([profile if p.id == profile.id else p for p in self.profiles()])
         return profile
 
     def remove(self, ref: str) -> Profile:
@@ -338,7 +351,7 @@ class ProfileStore:
         picture = info.get("picture")
         if picture not in CLASS_PICTURES:
             picture = self.pictures[0]
-        profile = self.add(name, picture, any_picture=True)
+        profile = self.add(name, picture, any_picture=True, cub=info.get("cub") is True)
         clean = {key: progress.get(key, {}) for key in ("levels", "mistakes", "time", "habitat")}
         stickers = progress.get("stickers", [])
         if not all(isinstance(value, dict) for value in clean.values()) or not (
@@ -455,7 +468,12 @@ class ProfileStore:
         if level.id not in order:
             return None
         before = levels[: order.index(level.id)]
-        shared = [lv for lv in before if set(lv.concepts) & set(level.concepts)]
+        cub = level.module.startswith("cub-")  # cubs practise on cub levels, others never do
+        shared = [
+            lv
+            for lv in before
+            if set(lv.concepts) & set(level.concepts) and lv.module.startswith("cub-") == cub
+        ]
         if not shared:
             return None
 
@@ -527,7 +545,9 @@ class ProfileStore:
         profile = self.find(ref)
         data = self.progress(profile.id)
         concepts: dict[str, dict[str, int]] = {}
-        for level in levels:
+        # a cub's ideas come from the cub levels, everyone else's from the main course
+        own_course = [lv for lv in levels if lv.module.startswith("cub-") == profile.cub]
+        for level in own_course or levels:
             entry = data["levels"].get(level.id)
             for concept in level.concepts:
                 row = concepts.setdefault(
@@ -550,6 +570,8 @@ class ProfileStore:
                 status = "not yet"
             rows.append({"concept": concept, "status": status, **row})
         mistakes = sorted(data["mistakes"].items(), key=lambda kv: -kv[1])
+        cub_ids = [lv.id for lv in levels if lv.module.startswith("cub-")]
+        cub_solved = sum(1 for i in cub_ids if data["levels"].get(i, {}).get("solved"))
         week = [(dt.date.today() - dt.timedelta(days=d)).isoformat() for d in range(7)]
         return {
             "profile": asdict(profile),
@@ -560,11 +582,21 @@ class ProfileStore:
             "levelsSolved": sum(1 for e in data["levels"].values() if e.get("solved")),
             "stars": sum(e.get("stars", 0) for e in data["levels"].values()),
             "minutesThisWeek": round(sum(data["time"].get(day, 0) for day in week) / 60, 1),
+            # Cub mode: the grown-up decides when to move on; "ready" once every cub level
+            # is solved (nothing is said to the child)
+            "cub": {
+                "on": profile.cub,
+                "solved": cub_solved,
+                "levels": len(cub_ids),
+                "ready": profile.cub and bool(cub_ids) and cub_solved == len(cub_ids),
+            },
         }
 
 
 def module_name(module: str) -> str:
     names = {
+        "cub-sequences": t("Cub: steps and turns"),
+        "cub-loops": t("Cub: repeat"),
         "sequences": t("Sequences"),
         "loops-1": t("Loops"),
         "variables": t("Variables"),

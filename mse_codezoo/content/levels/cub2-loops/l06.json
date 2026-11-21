@@ -1,0 +1,49 @@
+{
+  "id": "cub2-l06",
+  "title": "Two big steps",
+  "module": "cub-loops",
+  "cub": "predict",
+  "concepts": [
+    "for"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "...",
+      "...",
+      "..."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      2,
+      2
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "hints": [
+    "Each time: two squares, then a turn."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Dva veľké kroky",
+      "hints": [
+        "Zakaždým: dve políčka, potom otočka."
+      ]
+    }
+  }
+}
