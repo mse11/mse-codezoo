@@ -10,13 +10,14 @@ import { api, setPython } from "./api.js";
 import { createWorkspace, describeBlock } from "./blocks.js";
 import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
-import { LANGS, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
+import { LANGS, deviceLang, initialLang, lang, langLabel, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
 import { openLook } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
 import { canSpeak, isMuted, onVoices, readAloudOn, setCub, setMuted, speak } from "./speech.js";
+import { describeGoal } from "./goals.js";
 import { EMOJI, Stage } from "./stage.js";
 
 const $ = (id) => document.getElementById(id);
@@ -25,7 +26,7 @@ const VIEW_KEY = "codezoo.view";
 const ANIMAL_KEY = "codezoo.animal";
 const PYTHON_KEY = "codezoo.python";
 
-setLang(initialLang());
+setLang(initialLang(), { save: false });
 
 const state = {
   levels: [],
@@ -69,6 +70,12 @@ const classroom = new Classroom({
   players,
   onLevelsChanged: refreshLevels,
   onPause: stopPlayback,
+  onViews: applyViews,
+  // the teacher picked a language for the class or for this child (null: the device's own)
+  onLang: (code) => {
+    const next = code || deviceLang();
+    if (next !== lang()) changeLanguage(next, { save: false });
+  },
   onPlayProgram: playSharedProgram,
   onPlayLevel: playSharedLevel,
 });
@@ -220,10 +227,11 @@ function lineTapped(line) {
   if (block) speak(describeBlock(block));
 }
 
-// main-course players never see cub levels, cubs see only theirs (or every level there
-// is, when a teacher picked no cub levels for today)
+// main-course players never see cub levels and cubs see only theirs, except the teacher's
+// picks for today, which everyone sees (and every level, if nothing else is left)
 function visibleLevels() {
-  const mine = state.levels.filter((l) => Boolean(l.cub) === state.cub);
+  // the teacher's picks for today show for everyone, whichever course they are in
+  const mine = state.levels.filter((l) => Boolean(l.cub) === state.cub || l.assigned);
   return mine.length ? mine : state.levels;
 }
 
@@ -269,7 +277,7 @@ function renderCubLevels() {
           "button",
           {
             type: "button",
-            class: "cub-level",
+            class: `cub-level${level.assigned ? " today" : ""}`,
             "aria-label": `${i + 1}. ${level.title}${starsText}`,
             ...(state.level?.id === level.id ? { "aria-current": "true" } : {}),
           },
@@ -374,7 +382,8 @@ function readAloudButtons() {
 function goalSpeech() {
   const level = state.level;
   if (!level) return "";
-  return `${level.title}. ${state.cub ? cubGoalText(level) : `${describeGoal(level, currentGoal())}.`}`;
+  const short = state.cub || level.cub === "predict"; // predict: never say where it stops
+  return `${level.title}. ${short ? cubGoalText(level) : `${describeGoal(level, currentGoal())}.`}`;
 }
 
 // a predict level's flag would give the answer away
@@ -453,14 +462,26 @@ setInterval(async () => {
 function renderLevelOptions() {
   const select = $("level-select");
   renderCubLevels();
-  select.replaceChildren(
-    ...visibleLevels().map((l) => {
-      const stars = starText(state.progress[l.id]?.stars || 0);
-      const only = l.signature ? `${animalEmoji(l.animal)} ` : "";
-      const island = l.minPython ? ` [${l.locked ? "🔒 " : ""}Python ${l.minPython}]` : "";
-      return el("option", { value: l.id }, `${l.id} · ${only}${l.title}${island}${stars ? `  ${stars}` : ""}`);
-    }),
-  );
+  const option = (l) => {
+    const stars = starText(state.progress[l.id]?.stars || 0);
+    const only = l.signature ? `${animalEmoji(l.animal)} ` : "";
+    const island = l.minPython ? ` [${l.locked ? "🔒 " : ""}Python ${l.minPython}]` : "";
+    return el("option", { value: l.id }, `${l.id} · ${only}${l.title}${island}${stars ? `  ${stars}` : ""}`);
+  };
+  const levels = [...visibleLevels()];
+  // a level opened by its link that isn't in this player's list still shows in the menu
+  const open = state.levels.find((l) => l.id === state.level?.id);
+  if (open && !levels.includes(open)) levels.unshift(open);
+  // in a class: the teacher's picks for today first, then every other level
+  const today = levels.filter((l) => l.assigned);
+  if (today.length && today.length < levels.length) {
+    select.replaceChildren(
+      el("optgroup", { label: t("⭐ Today") }, ...today.map(option)),
+      el("optgroup", { label: t("All levels") }, ...levels.filter((l) => !l.assigned).map(option)),
+    );
+  } else {
+    select.replaceChildren(...levels.map(option));
+  }
   if (state.level) select.value = state.level.id;
 }
 
@@ -479,45 +500,6 @@ const MUST_USE = {
 
 const animalEmoji = (id) => state.animals.find((a) => a.id === id)?.emoji || "🐾";
 
-function describeGoal(level, goal) {
-  const pack = level.pack;
-  const animal = pack.animalName || pack.animal;
-  const one = (tile) => pack.itemNames?.[tile]?.one || pack.items[tile] || "item";
-  const many = (tile) => pack.itemNames?.[tile]?.many || one(tile);
-  switch (goal.type) {
-    case "collect_all": {
-      let text = t("Help the {animal} collect every {item}", { animal, item: one(goal.item), items: many(goal.item) });
-      if (goal.avoid) text += `, ${t("but leave every {item} alone", { item: one(goal.avoid) })}`;
-      return text;
-    }
-    case "reach":
-      return t("Help the {animal} reach square ({x}, {y})", { animal, x: goal.at[0], y: goal.at[1] });
-    case "say":
-      if (goal.texts) return t("Make the {animal} say: {texts}", { animal, texts: goal.texts.map((x) => `“${x}”`).join(", ") });
-      return t("Make the {animal} say “{text}”", { animal, text: goal.text });
-    case "avoid":
-      return t("Leave every {item} alone", { item: one(goal.item) });
-    case "print":
-      if (goal.lines) return t("Make the program print: {texts}", { texts: goal.lines.map((x) => `“${x}”`).join(", ") });
-      return t("Make the program print “{text}”", { text: goal.text });
-    case "time":
-      return t("Be done by tick {n} of the clock", { n: goal.within });
-    case "file":
-      return t("Leave the right text in the file {name}", { name: goal.name });
-    case "build":
-      return t("Build a dam from exactly: {logs}", {
-        logs: Object.entries(goal.logs).map(([log, n]) => `${n} × ${log}`).join(", "),
-      });
-    case "all":
-      return goal.goals
-        .map((part, i) => {
-          const text = describeGoal(level, part);
-          return i ? text.charAt(0).toLowerCase() + text.slice(1) : text;
-        })
-        .join("; ");
-  }
-  return goal.type;
-}
 
 function renderGoal() {
   const level = state.level;
@@ -546,15 +528,18 @@ function renderGoal() {
     $("goal").replaceChildren(...cubParts.filter(Boolean));
     return;
   }
+  // a predict level shows its program: the goal ("reach square (2, 1)") would give the answer
+  const predict = level.cub === "predict";
   const parts = [
     el("h2", {}, level.title, " ", readAloudButtons()),
-    el("p", {}, `${describeGoal(level, currentGoal())}.`),
+    el("p", {}, predict ? cubGoalText(level) : `${describeGoal(level, currentGoal())}.`),
+    predict ? predictGrid(level) : null,
     el("p", {}, t("Stars for: {rules}", { rules: rules.length ? rules.join("; ") : t("just solving it") })),
   ];
   if (level.starter) parts.push(el("p", {}, t("This program has a bug. Run it, watch, then fix it!")));
   if (level.locked) parts.push(el("p", { class: "message err" }, `🔒 ${level.locked}`));
   parts.push(el("div", { class: "hint-row" }, hintButton, hint));
-  $("goal").replaceChildren(...parts);
+  $("goal").replaceChildren(...parts.filter(Boolean));
 }
 
 function renderWorlds() {
@@ -651,7 +636,7 @@ async function showLevel(level) {
   renderWorlds();
   renderAnimals();
   renderFiles();
-  renderCubLevels();
+  if (!state.shared) renderLevelOptions(); // also the cub strip; marks the open level
   stage.load(level, currentWorld(), stageGoal());
   describeStage();
   stage.setOutfit?.(state.outfit);
@@ -680,7 +665,12 @@ async function playSharedProgram(payload) {
 async function refreshLevels() {
   state.levels = await api.levels(state.animal);
   renderLevelOptions();
-  if (!state.shared && state.levels.length && !visibleLevels().some((l) => l.id === state.level?.id)) {
+  if (state.shared || !state.levels.length) return;
+  // the teacher picked today's levels: go to the first one (unless already on one of them)
+  const today = visibleLevels().filter((l) => l.assigned);
+  if (today.length && !today.some((l) => l.id === state.level?.id)) {
+    await loadLevel(today[0].id);
+  } else if (!visibleLevels().some((l) => l.id === state.level?.id)) {
     await loadLevel(visibleLevels()[0].id);
   }
 }
@@ -709,7 +699,18 @@ function describeStage() {
 
 // --- stage view: 2D or 3D -----------------------------------------------------------
 
-async function useView(want3d) {
+// The teacher can allow only one stage view for the class (a slow tablet: 2D only). Then the
+// 3D switch goes away and the child's own choice is kept for later; with both allowed it's back.
+let classViews = null;
+async function applyViews(views) {
+  classViews = views.length === 1 ? views[0] : null;
+  $("view-3d").closest("label").hidden = Boolean(classViews);
+  const want3d = classViews ? classViews === "3d" : readSetting(VIEW_KEY) !== "2d";
+  $("view-3d").checked = want3d;
+  if (want3d !== (stage !== stage2d)) await useView(want3d, { save: false });
+}
+
+async function useView(want3d, { save = true } = {}) {
   stopPlayback();
   let next = stage2d;
   if (want3d) {
@@ -729,10 +730,10 @@ async function useView(want3d) {
   stage = next;
   stage.setOutfit?.(state.outfit);
   stage.setSpeed(Number($("speed").value));
-  saveSetting(VIEW_KEY, stage === stage2d ? "2d" : "3d");
+  if (save && !classViews) saveSetting(VIEW_KEY, stage === stage2d ? "2d" : "3d");
   if (state.level) {
     invalidateRun();
-    stage.load(state.level, currentWorld(), currentGoal());
+    stage.load(state.level, currentWorld(), stageGoal());
     describeStage();
   }
 }
@@ -741,14 +742,14 @@ async function useView(want3d) {
 
 function renderLanguages() {
   $("lang").replaceChildren(
-    ...Object.entries(LANGS).map(([code, label]) => el("option", { value: code }, label)),
+    ...Object.keys(LANGS).map((code) => el("option", { value: code }, langLabel(code))),
   );
   $("lang").value = lang();
 }
 
-async function changeLanguage(code) {
+async function changeLanguage(code, { save = true } = {}) {
   stopPlayback();
-  setLang(code);
+  setLang(code, { save });
   translatePage();
   players.relabel();
   updateButtons();
@@ -816,7 +817,7 @@ function stopPlayback() {
 function updateButtons() {
   $("run").textContent = state.playing ? t("⏸ Pause") : t("▶ Run");
   // a predict level: first tap where the animal will stop
-  const guessFirst = state.cub && state.level?.cub === "predict" && !state.guess && !state.playing;
+  const guessFirst = state.level?.cub === "predict" && !state.guess && !state.playing;
   $("run").disabled = (state.over && !state.playing) || guessFirst;
   $("run").title = guessFirst ? t("Tap a square first: where will it stop?") : "";
   $("step").disabled = state.over;
@@ -1332,7 +1333,17 @@ async function start() {
   state.animal = readSetting(ANIMAL_KEY);
   const info = await api.info();
   if (info.hub) {
-    // a classroom hub: join with the class code before anything else (levels need it)
+    // a classroom hub: open in the class's language (unless the link names one); a child
+    // can still switch, and that choice is remembered in this browser
+    if (info.hub.lang && !urlLang() && info.hub.lang !== lang()) {
+      setLang(info.hub.lang, { save: false });
+      translatePage();
+      players.relabel();
+      renderLanguages();
+      updateButtons();
+      blocks.redefine();
+    }
+    // join with the class code before anything else (levels need it)
     inClass = true;
     players.classroom = classroom;
     await classroom.start(info);
@@ -1352,7 +1363,8 @@ async function start() {
   const wanted = location.hash.slice(1);
   if (!(wanted.startsWith("play=") && (await loadShared(wanted.slice(5))))) {
     // any level in the address; Cub mode (known once the player is) moves on if it isn't theirs
-    await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : visibleLevels()[0].id);
+    const first = visibleLevels().find((l) => l.assigned) || visibleLevels()[0]; // today's first
+    await loadLevel(state.levels.some((l) => l.id === wanted) ? wanted : first.id);
   }
   if (!inClass) await players.start(); // in a class, joining picked the player
 }

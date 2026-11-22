@@ -38,8 +38,8 @@ def test_class_types_set_the_defaults(tmp_path):
     workshop = store.create("Saturday club", "workshop")
     regular = store.create("3.B", "class")
     assert workshop.settings == {
-        "roster": False, "names": False, "deleteAtEnd": True, "cub": False, "assigned": [],
-        "locked": False,
+        "roster": False, "names": True, "deleteAtEnd": True, "cub": False, "assigned": [],
+        "locked": True,
     }  # fmt: skip
     assert regular.settings["roster"] and regular.settings["names"]
     assert not regular.settings["deleteAtEnd"]
@@ -135,7 +135,11 @@ def call(base, path, body=None, *, code=None, key=None):
 def test_the_class_code_is_needed(hub_server):
     base, hub, _ = hub_server
     status, info = call(base, "/api/info")
-    assert status == 200 and info["hub"] == {"name": "Saturday club", "type": "workshop"}
+    assert status == 200 and info["hub"] == {
+        "name": "Saturday club",
+        "type": "workshop",
+        "lang": None,
+    }
     assert call(base, "/api/levels")[0] == 403
     assert call(base, "/api/levels", code="WRONG-1")[0] == 403
     status, levels = call(base, "/api/levels", code=hub.code.lower())
@@ -151,7 +155,7 @@ def test_joining_and_wrong_codes(hub_server):
     status, joined = call(base, "/api/class/join", {"code": hub.code.replace("-", " ")})
     assert status == 200
     assert joined["code"] == hub.code
-    assert joined["class"]["roster"] is False and len(joined["free"]) == 32
+    assert joined["class"]["roster"] is False and len(joined["pictures"]) == 32
     for _ in range(10):
         assert call(base, "/api/class/join", {"code": "NOPE-100"})[0] == 403
     status, answer = call(base, "/api/class/join", {"code": hub.code})
@@ -159,15 +163,22 @@ def test_joining_and_wrong_codes(hub_server):
     assert "Wait" in answer["error"]
 
 
-def test_children_pick_a_free_picture(hub_server):
+def test_children_may_share_a_picture_and_names_tell_them_apart(hub_server):
     base, hub, _ = hub_server
-    status, me = call(base, "/api/class/me", {"picture": "cat", "name": "Ema"}, code=hub.code)
-    assert status == 200
-    assert me["picture"] == "cat" and me["name"] == "cat"  # names are off in a workshop
-    status, answer = call(base, "/api/class/me", {"picture": "cat"}, code=hub.code)
-    assert status == 400 and "picture" in answer["error"]
+    key = hub.teacher_token
+    status, ema = call(base, "/api/class/me", {"picture": "cat", "name": " Ema "}, code=hub.code)
+    assert status == 200 and ema["picture"] == "cat" and ema["name"] == "Ema"
+    status, again = call(base, "/api/class/me", {"picture": "dog", "name": "ema"}, code=hub.code)
+    assert status == 400 and "already a player" in again["error"]  # a typed name is taken
+    _, cat = call(base, "/api/class/me", {"picture": "cat"}, code=hub.code)
+    _, cat2 = call(base, "/api/class/me", {"picture": "cat", "name": ""}, code=hub.code)
+    assert (cat["picture"], cat["name"]) == ("cat", "cat")
+    assert (cat2["picture"], cat2["name"]) == ("cat", "cat 2")  # no name: numbered
+    call(base, "/api/teacher/settings", {"names": False}, key=key)
+    _, cat3 = call(base, "/api/class/me", {"picture": "cat", "name": "Leo"}, code=hub.code)
+    assert cat3["name"] == "cat 3"  # names off: the typed name is ignored
     status, joined = call(base, "/api/class/join", {"code": hub.code})
-    assert "cat" not in joined["free"] and joined["players"][0]["id"] == me["id"]
+    assert [p["picture"] for p in joined["players"]].count("cat") == 4
 
 
 def test_a_roster_class_only_lets_the_teacher_add_players(hub_server):
@@ -235,12 +246,15 @@ def test_todays_levels_and_the_pause(hub_server):
     base, hub, _ = hub_server
     key = hub.teacher_token
     assigned = ["m01-l03", "m01-l02"]
+    _, levels = call(base, "/api/levels", code=hub.code)
+    assert len(levels) > 2  # nothing saved yet: every level
     call(base, "/api/teacher/settings", {"assigned": assigned}, key=key)
+    _, levels = call(base, "/api/levels", code=hub.code)
+    assert [lv["id"] for lv in levels] == assigned  # saved picks only, in the teacher's order
+    call(base, "/api/teacher/settings", {"locked": False}, key=key)
     _, levels = call(base, "/api/levels", code=hub.code)
     assert len(levels) > 2 and {lv["id"] for lv in levels if lv["assigned"]} == set(assigned)
     call(base, "/api/teacher/settings", {"locked": True}, key=key)
-    _, levels = call(base, "/api/levels", code=hub.code)
-    assert [lv["id"] for lv in levels] == assigned  # in the teacher's order
     status, _ = call(base, "/api/run", {"level": "m01-l01", "source": SOLUTION}, code=hub.code)
     assert status == 403
     assert call(base, "/api/run", {"level": "m01-l02", "source": "step()"}, code=hub.code)[0] == 200
@@ -318,7 +332,7 @@ def test_progress_goes_home_and_comes_back(hub_server, tmp_path):
     assert home.progress(player.id)["levels"]["m01-l01"]["solved"]
     # and back to class: the picture is taken, so the child gets a free one
     status, again = call(base, "/api/class/import", {"data": home.export(player.id)}, code=hub.code)
-    assert status == 200 and again["picture"] != "panda"
+    assert status == 200 and again["picture"] == "panda" and again["name"] == "panda 2"
 
 
 def test_the_whole_class_in_one_file(hub_server):
@@ -409,3 +423,102 @@ def test_class_commands(tmp_path, monkeypatch):
     assert result.exit_code == 0 and ClassStore(tmp_path).classes() == []
     result = runner.invoke(main, ["class", "delete", "3.B", "--yes"])
     assert result.exit_code != 0 and "No class" in result.output
+
+
+def test_the_class_language_goes_into_the_join_link(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("2.A", "class", lang="sk").id, base_url="http://h/")
+    assert hub.join_url == f"http://h/?class={hub.code}&lang=sk"
+    head = {"X-Teacher-Token": hub.teacher_token}
+    info = hub.handle("GET", "/api/info", {}, {}, {}, "c")
+    assert info["hub"]["lang"] == "sk"
+    overview = hub.handle("POST", "/api/teacher/settings", {}, {"lang": ""}, head, "t")
+    assert overview["class"]["lang"] is None and overview["joinUrl"].endswith(hub.code)
+    with pytest.raises(ClassError):
+        hub.handle("POST", "/api/teacher/settings", {}, {"lang": "de"}, head, "t")
+    with pytest.raises(ClassError):
+        classes.create("3.A", "class", lang="xx")
+
+
+def test_a_served_class_waits_until_the_teacher_starts_the_lesson(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("1.B", "workshop").id, start_paused=True)
+    code, head = {"X-Class-Code": hub.code}, {"X-Teacher-Token": hub.teacher_token}
+    state = hub.handle("GET", "/api/class/state", {}, {}, code, "c")
+    assert state["paused"] and state["started"] is False
+    body = {"level": "m01-l01", "source": "step(4)\ngrab()\n"}
+    with pytest.raises(Exception) as caught:
+        hub.handle("POST", "/api/run", {}, body, code, "c")
+    assert "getting the lesson ready" in str(caught.value)
+    assert not hub.handle("GET", "/api/teacher/overview", {}, {}, head, "t")["started"]
+    hub.handle("POST", "/api/teacher/pause", {}, {"paused": False}, head, "t")
+    assert hub.handle("POST", "/api/run", {}, body, code, "c")["check"]["solved"]
+    hub.handle("POST", "/api/teacher/pause", {}, {"paused": True}, head, "t")
+    state = hub.handle("GET", "/api/class/state", {}, {}, code, "c")
+    assert state["paused"] and state["started"]  # a pause now, not "getting ready"
+
+
+def test_the_teacher_picks_the_stage_views(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("4.C", "class").id)
+    code, head = {"X-Class-Code": hub.code}, {"X-Teacher-Token": hub.teacher_token}
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["views"] == ["2d", "3d"]
+    overview = hub.handle("POST", "/api/teacher/settings", {}, {"views": ["2d"]}, head, "t")
+    assert overview["class"]["views"] == ["2d"]
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["views"] == ["2d"]
+    for wrong in ([], ["4d"], "2d"):
+        with pytest.raises(ClassError):
+            hub.handle("POST", "/api/teacher/settings", {}, {"views": wrong}, head, "t")
+
+
+def test_a_child_can_have_their_own_stage_and_language(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("5.D", "class", lang="sk").id)
+    code, head = {"X-Class-Code": hub.code}, {"X-Teacher-Token": hub.teacher_token}
+    hub.handle("POST", "/api/teacher/settings", {}, {"views": ["3d"]}, head, "t")
+    ema = hub.handle(
+        "POST", "/api/teacher/player", {}, {"name": "Ema", "picture": "cat"}, head, "t"
+    )
+    leo = hub.handle(
+        "POST", "/api/teacher/player", {}, {"name": "Leo", "picture": "dog"}, head, "t"
+    )
+
+    def state(player):
+        return hub.handle("GET", "/api/class/state", {"profile": player["id"]}, {}, code, "c")
+
+    assert (state(ema)["views"], state(ema)["lang"]) == (["3d"], "sk")  # the class's
+    body = {"profile": ema["id"], "views": "2d", "lang": "device"}
+    assert hub.handle("POST", "/api/teacher/player/settings", {}, body, head, "t") == {
+        "views": ["2d"],
+        "lang": None,
+    }
+    assert (state(ema)["views"], state(ema)["lang"]) == (["2d"], None)  # Ema's own
+    assert (state(leo)["views"], state(leo)["lang"]) == (["3d"], "sk")  # Leo: the class's
+    players = hub.handle("GET", "/api/teacher/overview", {}, {}, head, "t")["players"]
+    assert {p["name"]: p["own"] for p in players} == {
+        "Ema": {"views": ["2d"], "lang": None},
+        "Leo": {},
+    }
+    body = {"profile": ema["id"], "views": "class"}
+    hub.handle("POST", "/api/teacher/player/settings", {}, body, head, "t")
+    assert state(ema)["views"] == ["3d"] and state(ema)["lang"] is None  # lang still her own
+    for wrong in ({"views": "4d"}, {"lang": "de"}, {"profile": "p00000000", "views": "2d"}):
+        with pytest.raises(Exception):  # noqa: B017 - ClassError or ProfileError
+            hub.handle(
+                "POST",
+                "/api/teacher/player/settings",
+                {},
+                {"profile": ema["id"], **wrong},
+                head,
+                "t",
+            )
+    hub.handle("POST", "/api/teacher/player/remove", {}, {"profile": ema["id"]}, head, "t")
+    assert ema["id"] not in classes.player_settings("5.D")

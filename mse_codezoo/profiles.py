@@ -607,7 +607,15 @@ def module_name(module: str) -> str:
         "errors": t("Errors and debugging"),
         "collections": t("Collections"),
         "recursion": t("Recursion"),
+        "comprehensions-and-generators": t("Comprehensions and generators"),
+        "objects": t("Objects"),
+        "decorators": t("Decorators"),
+        "concurrency": t("Concurrency"),
+        "first-project": t("First real project"),
+        "island-baseline": t("Python island: 3.10 and 3.11"),
     }
+    if module.startswith("island-3."):
+        return t("Python island: {version}", version=module.removeprefix("island-"))
     return names.get(module, module)
 
 

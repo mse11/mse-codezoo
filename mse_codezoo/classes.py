@@ -28,7 +28,7 @@ from typing import Any
 
 from mse_codezoo.cards import WORDS
 from mse_codezoo.game import solution_errors
-from mse_codezoo.i18n import t
+from mse_codezoo.i18n import LANGS, t
 from mse_codezoo.levels import Level, LevelError, find_level, validate_level_data
 from mse_codezoo.profiles import CLASS_PICTURES, ProfileError, ProfileStore, default_home
 
@@ -36,9 +36,10 @@ CLASS_TYPES = ("workshop", "class")
 DEFAULTS: dict[str, dict[str, Any]] = {
     # roster: only the teacher adds players; names: children may type a first name
     # cub: new players start in Cub mode (ages 6-8, phase 7)
-    "workshop": {"roster": False, "names": False, "deleteAtEnd": True, "cub": False},
+    "workshop": {"roster": False, "names": True, "deleteAtEnd": True, "cub": False},
     "class": {"roster": True, "names": True, "deleteAtEnd": False, "cub": False},
 }
+VIEWS = ("2d", "3d")  # the stage: the 2D drawing (any device) and the 3D scene (needs WebGL)
 CLASS_ID = re.compile(r"^c[0-9a-f]{8}$")
 LEVEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
 MAX_CLASS_NAME = 40
@@ -80,6 +81,11 @@ class ClassInfo:
             "type": self.type,
             "roster": bool(self.settings.get("roster")),
             "names": bool(self.settings.get("names")),
+            # the language children's devices open in (None: each device's own); a child
+            # can still switch it
+            "lang": self.settings.get("lang") if self.settings.get("lang") in LANGS else None,
+            # the stage views children may use: both (each child picks), or only "2d" or "3d"
+            "views": [v for v in VIEWS if v in self.settings.get("views", VIEWS)] or list(VIEWS),
         }
 
 
@@ -121,7 +127,7 @@ class ClassStore:
     def _info(data: dict[str, Any]) -> ClassInfo:
         settings = {**DEFAULTS.get(data["type"], DEFAULTS["class"]), **data["settings"]}
         settings.setdefault("assigned", [])
-        settings.setdefault("locked", False)
+        settings.setdefault("locked", True)  # saved picks are all children see (Nov 22, 2026)
         return ClassInfo(data["id"], data["name"], data["type"], data["created"], settings)
 
     # --- classes -----------------------------------------------------------------
@@ -138,7 +144,9 @@ class ClassStore:
                     continue
         return sorted(found, key=lambda c: (c.created, c.name.casefold()))
 
-    def create(self, name: str, class_type: str = "workshop", **settings: Any) -> ClassInfo:
+    def create(
+        self, name: str, class_type: str = "workshop", lang: str | None = None, **settings: Any
+    ) -> ClassInfo:
         name = " ".join(str(name).split())
         if not name:
             raise ClassError(t("Please type a name."))
@@ -149,7 +157,13 @@ class ClassStore:
         if any(c.name.casefold() == name.casefold() for c in self.classes()):
             raise ClassError(t("There is already a class called {name}.", name=name))
         class_id = f"c{secrets.token_hex(4)}"
-        clean = {k: bool(v) for k, v in settings.items() if k in DEFAULTS[class_type]}
+        clean: dict[str, Any] = {
+            k: bool(v) for k, v in settings.items() if k in DEFAULTS[class_type]
+        }
+        if lang is not None:
+            if lang not in LANGS:
+                raise ClassError(t("Pick one of these languages: {names}.", names=", ".join(LANGS)))
+            clean["lang"] = lang
         data = {
             "format": "codezoo-class",
             "version": 1,
@@ -181,9 +195,20 @@ class ClassStore:
         return ProfileStore(self._dir(self.find(ref).id), pictures=CLASS_PICTURES)
 
     def update(self, ref: str, **changes: Any) -> ClassInfo:
-        """Change settings: roster, names, deleteAtEnd, locked (bools) and assigned (ids)."""
+        """Change settings: roster, names, deleteAtEnd, locked, cub (bools), assigned (ids)
+        and lang ("en", "sk", or "" for each device's own language)."""
         info = self.find(ref)
         data = self._read(info.id)
+        if changes.get("views") is not None:
+            views = changes["views"]
+            if not isinstance(views, list) or not views or not set(views) <= set(VIEWS):
+                raise ClassError(t("Tick 2D, 3D or both."))
+            data["settings"]["views"] = [v for v in VIEWS if v in views]
+        if changes.get("lang") is not None:
+            lang = changes["lang"] or None
+            if lang is not None and lang not in LANGS:
+                raise ClassError(t("Pick one of these languages: {names}.", names=", ".join(LANGS)))
+            data["settings"]["lang"] = lang
         for key in ("roster", "names", "deleteAtEnd", "locked", "cub"):
             if changes.get(key) is not None:
                 data["settings"][key] = bool(changes[key])
@@ -254,6 +279,62 @@ class ClassStore:
         data["levels"][level_id] = {"level": level, "solution": solution}
         self._write(info.id, data)
         return []
+
+    # --- one player's own settings (over the class's) ------------------------------------
+
+    def player_settings(self, ref: str) -> dict[str, dict[str, Any]]:
+        """Per player id: the settings the teacher set for that child only. A missing key
+        means "as the class"; "lang": None means "the device's own language"."""
+        return dict(self._read(self.find(ref).id).get("playerSettings", {}))
+
+    def set_player_settings(
+        self, ref: str, player: str, views: str | None = None, lang: str | None = None
+    ) -> dict[str, Any]:
+        """``views``: "class", "2d", "3d" or "both"; ``lang``: "class", "device", "en" or
+        "sk". None leaves that setting as it is."""
+        info = self.find(ref)
+        self.players(info.id).find(player)  # the player must be in the class
+        data = self._read(info.id)
+        every = data.setdefault("playerSettings", {})
+        mine = dict(every.get(player, {}))
+        if views is not None:
+            choices = {"2d": ["2d"], "3d": ["3d"], "both": list(VIEWS)}
+            if views == "class":
+                mine.pop("views", None)
+            elif views in choices:
+                mine["views"] = choices[views]
+            else:
+                raise ClassError(t("Tick 2D, 3D or both."))
+        if lang is not None:
+            if lang == "class":
+                mine.pop("lang", None)
+            elif lang == "device" or lang in LANGS:
+                mine["lang"] = None if lang == "device" else lang
+            else:
+                raise ClassError(t("Pick one of these languages: {names}.", names=", ".join(LANGS)))
+        if mine:
+            every[player] = mine
+        else:
+            every.pop(player, None)
+        self._write(info.id, data)
+        return mine
+
+    def forget_player(self, ref: str, player: str) -> None:
+        """A removed player's own settings go too."""
+        info = self.find(ref)
+        data = self._read(info.id)
+        if data.get("playerSettings", {}).pop(player, None) is not None:
+            self._write(info.id, data)
+
+    def effective(self, ref: str, player: str | None) -> dict[str, Any]:
+        """The stage views and language a player's device uses: their own, else the class's."""
+        info = self.find(ref)
+        public = info.public()
+        mine = self.player_settings(info.id).get(player or "", {})
+        return {
+            "views": mine.get("views", public["views"]),
+            "lang": mine["lang"] if "lang" in mine else public["lang"],
+        }
 
     def remove_level(self, ref: str, level_id: str) -> None:
         info = self.find(ref)

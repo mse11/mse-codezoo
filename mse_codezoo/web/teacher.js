@@ -4,7 +4,8 @@
 // The teacher's key comes in the address (#key=...) printed in the terminal.
 
 import { api, setTeacherKey } from "./api.js";
-import { LANGS, concept, initialLang, lang, setLang, t, translatePage } from "./i18n.js";
+import { describeGoal } from "./goals.js";
+import { LANGS, concept, initialLang, lang, langLabel, setLang, t, translatePage } from "./i18n.js";
 import { openLook } from "./look.js";
 import { displayName, FACES } from "./players.js";
 
@@ -72,8 +73,18 @@ function render() {
   $("t-qr").innerHTML = data.qr; // made by the engine's own QR encoder (mse_codezoo/qr.py)
   $("t-url").textContent = data.joinUrl.split("?")[0];
   $("t-code").textContent = data.code;
-  $("t-pause").textContent = data.paused ? t("▶ Let everyone play again") : t("⏸ Pause everyone");
-  $("t-pause").classList.toggle("paused", data.paused);
+  $("t-link").textContent = data.joinUrl; // the QR code's link: opens the class with the code filled in
+  $("t-link").href = data.joinUrl;
+  // the hub starts paused: the teacher sets up the lesson, then starts it
+  $("t-pause").textContent = !data.started
+    ? t("▶ Start the lesson")
+    : data.paused
+      ? t("▶ Let everyone play again")
+      : t("⏸ Pause everyone");
+  // red stops the class, green lets it play
+  $("t-pause").classList.toggle("stop", !data.paused);
+  pauseButtonState();
+  $("t-waiting").hidden = data.started;
   $("t-end").textContent = info.settings.deleteAtEnd ? t("End the workshop and delete its data") : t("End the class");
   // redraw a part only when its data changed: a click must never land on a button
   // that a refresh is just replacing
@@ -82,6 +93,8 @@ function render() {
   changed("own", [data.levels, lang()]) && renderOwn();
   changed("report", [data.concepts, data.mistakes, data.levelStats, lang()]) && renderReport();
   if (!levelsDrawn) renderLevels();
+  levelsEditable();
+  needsPause();
   if (!settingsDrawn) renderSettings();
 }
 
@@ -96,6 +109,7 @@ function renderPlayers() {
     el("th", {}, t("Stuck on")),
     el("th", {}, t("Minutes today")),
     el("th", {}, t("Cub mode")),
+    el("th", {}, t("Stage and language")),
     data.pilot ? el("th", {}, t("Age band")) : null,
     el("th", {}, ""),
   );
@@ -120,6 +134,7 @@ function renderPlayers() {
       el("td", {}, ...(stuck.length ? stuck : ["–"])),
       el("td", {}, String(p.minutesToday)),
       el("td", {}, cubBox(p)),
+      el("td", { class: "t-own" }, ownSettings(p)),
       data.pilot ? el("td", {}, ageSelect(p)) : null,
       el(
         "td",
@@ -127,20 +142,18 @@ function renderPlayers() {
         el("button", { type: "button", class: "small", onclick: () => openReport(p) }, t("Report")),
         el("button", { type: "button", class: "small", onclick: () => renamePlayer(p) }, t("Rename")),
         el("button", { type: "button", class: "small", onclick: () => exportPlayer(p) }, t("Save to a file")),
-        el("button", { type: "button", class: "small", onclick: () => removePlayer(p) }, t("Remove")),
+        el("button", { type: "button", class: "small", "data-needs-pause": "", onclick: () => removePlayer(p) }, t("Remove")),
       ),
     );
   });
   $("t-players").replaceChildren(
     el("thead", {}, head),
-    el("tbody", {}, ...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "8" }, t("Nobody has joined yet.")))])),
+    el("tbody", {}, ...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "9" }, t("Nobody has joined yet.")))])),
   );
-  const used = new Set(data.players.map((p) => p.picture));
   const select = $("t-add-picture");
   const keep = select.value;
   select.replaceChildren(
     ...data.pictures
-      .filter((picture) => !used.has(picture))
       .map((picture) => el("option", { value: picture }, `${face(picture)} ${displayName({ name: picture, picture })}`)),
   );
   if ([...select.options].some((o) => o.value === keep)) select.value = keep;
@@ -148,9 +161,35 @@ function renderPlayers() {
 
 // Cub mode (ages 6-8, phase 7) per child: picture blocks, read aloud, the cub levels
 function cubBox(player) {
-  const box = el("input", { type: "checkbox", "aria-label": t("Cub mode for {name}", { name: displayName(player) }), ...(player.cub ? { checked: "" } : {}) });
+  const box = el("input", { type: "checkbox", "data-needs-pause": "", "aria-label": t("Cub mode for {name}", { name: displayName(player) }), ...(player.cub ? { checked: "" } : {}) });
   box.addEventListener("change", () => act("player/cub", { profile: player.id, on: box.checked }));
   return box;
+}
+
+// This child's own stage view and language, over the class's settings ("as the class")
+function ownSettings(player) {
+  const own = player.own || {};
+  const views = el(
+    "select",
+    { "aria-label": t("Stage for {name}", { name: displayName(player) }) },
+    el("option", { value: "class" }, t("Stage as the class")),
+    el("option", { value: "2d" }, "2D"),
+    el("option", { value: "3d" }, "3D"),
+    el("option", { value: "both" }, t("2D and 3D")),
+  );
+  views.value = !own.views ? "class" : own.views.length === 2 ? "both" : own.views[0];
+  views.addEventListener("change", () => act("player/settings", { profile: player.id, views: views.value }));
+  const language = el(
+    "select",
+    { "aria-label": t("Language for {name}", { name: displayName(player) }) },
+    el("option", { value: "class" }, t("Language as the class")),
+    el("option", { value: "device" }, `🌐 ${t("Each device's own language")}`),
+    ...Object.keys(LANGS).map((code) => el("option", { value: code }, langLabel(code))),
+  );
+  language.value = !("lang" in own) ? "class" : own.lang === null ? "device" : own.lang;
+  language.addEventListener("change", () => act("player/settings", { profile: player.id, lang: language.value }));
+  for (const box of [views, language]) box.classList.toggle("t-own-set", box.value !== "class");
+  return el("div", { class: "t-own-settings" }, views, language);
 }
 
 function ageSelect(player) {
@@ -169,8 +208,7 @@ function renderLevels() {
   levelsDrawn = true;
   const assigned = new Set(data.class.settings.assigned);
   $("t-locked").checked = data.class.settings.locked;
-  $("t-modules").replaceChildren(
-    ...data.modules.map((module) => {
+  const drawn = data.modules.map((module) => {
       const boxes = module.levels.map((level) =>
         el(
           "label",
@@ -182,18 +220,87 @@ function renderLevels() {
       const count = module.levels.filter((l) => assigned.has(l.id)).length;
       const all = el("button", { type: "button", class: "small" }, t("Tick all"));
       all.addEventListener("click", () => {
-        for (const box of details.querySelectorAll("input")) box.checked = true;
+        // only the levels the filter shows
+        for (const label of details.querySelectorAll(".t-level-boxes label:not([hidden])")) label.querySelector("input").checked = true;
+        levelsTicked();
       });
       const details = el(
         "details",
-        count ? { open: "" } : {},
-        el("summary", {}, `${module.name}${count ? ` (${count})` : ""}`),
+        { "data-module": module.id, "data-name": module.name, ...(count ? { open: "" } : {}) },
+        el("summary", {}, el("span", {}, module.name), " ", el("span", { class: "t-count" })),
         all,
         el("div", { class: "t-level-boxes" }, ...boxes),
       );
       return details;
-    }),
+  });
+  // the built-in modules, then the class's own levels in their own part of the card
+  $("t-modules").replaceChildren(...drawn.filter((details) => details.dataset.module !== "mine"));
+  const own = drawn.filter((details) => details.dataset.module === "mine");
+  for (const details of own) details.open = true;
+  $("t-modules-own").replaceChildren(...own);
+  if (!own.length) $("t-modules-own").replaceChildren(el("p", { class: "hint" }, t("None yet. Make one in the level editor, then add it here.")));
+  levelsTicked();
+  filterLevels();
+}
+
+// Do the ticks (or "Only these levels") differ from what the children get?
+function levelsUnsaved() {
+  if (!levelsDrawn) return false;
+  const saved = new Set(data.class.settings.assigned);
+  const ticked = savedLevels();
+  return (
+    ticked.length !== saved.size ||
+    ticked.some((id) => !saved.has(id)) ||
+    $("t-locked").checked !== Boolean(data.class.settings.locked)
   );
+}
+
+// What is ticked right now (saved or not): a count per module and one line for all of them.
+function levelsTicked() {
+  const saved = new Set(data.class.settings.assigned);
+  const ticked = savedLevels();
+  const parts = [];
+  for (const details of document.querySelectorAll(".t-modules details")) {
+    const boxes = [...details.querySelectorAll("input")];
+    const on = boxes.filter((box) => box.checked).length;
+    const count = details.querySelector(".t-count");
+    count.textContent = on ? `${on} / ${boxes.length}` : "";
+    count.classList.toggle("on", on > 0);
+    if (on) parts.push(`${details.dataset.name} ${on}`);
+  }
+  const changed = levelsUnsaved();
+  let text = ticked.length
+    ? t("Ticked: {n} ({list})", { n: ticked.length, list: parts.join(", ") })
+    : t("Nothing ticked: children can play every level.");
+  if (changed) text += ` ${t("Not saved yet.")}`;
+  $("t-picked").textContent = text;
+  $("t-picked").classList.toggle("unsaved", changed);
+  $("t-save-levels").classList.toggle("attention", changed); // children see only what is saved
+  $("t-discard-levels").hidden = !changed;
+  pauseButtonState();
+  if ($("t-only-picked").checked) filterLevels();
+}
+
+// letters without accents and case, so "kroky" finds "Kroky" and "otocky" finds "otočky"
+const plain = (text) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+// The search box and "Only ticked": hide what doesn't match, open the modules that do.
+function filterLevels() {
+  const words = plain($("t-level-filter").value.trim());
+  const onlyTicked = $("t-only-picked").checked;
+  const filtering = Boolean(words) || onlyTicked;
+  for (const details of document.querySelectorAll(".t-modules details")) {
+    const moduleHit = words && plain(details.dataset.name).includes(words);
+    let shown = 0;
+    for (const label of details.querySelectorAll(".t-level-boxes label")) {
+      const box = label.querySelector("input");
+      const hit = (!words || moduleHit || plain(label.textContent).includes(words)) && (!onlyTicked || box.checked);
+      label.hidden = !hit;
+      shown += hit ? 1 : 0;
+    }
+    details.hidden = filtering && shown === 0;
+    if (filtering && shown) details.open = true;
+  }
 }
 
 function renderShares() {
@@ -225,14 +332,45 @@ function shareCard(share) {
     "div",
     { class: `share-card status-${share.status}` },
     el("span", { class: "face", "aria-hidden": "true" }, face(share.picture)),
-    el(
-      "div",
-      { class: "share-text" },
-      el("strong", {}, share.title),
-      el("span", { class: "hint" }, `${displayName(share)} · ${t(share.kind === "level" ? "a level" : "a program")} · ${t(STATUS[share.status])}`),
-    ),
+    shareText(share),
     el("div", { class: "share-actions" }, ...buttons),
   );
+}
+
+// The level behind a share, ready to describe: a program names a level by id, a shared
+// level carries itself. Kept per level, so the 5-second refresh doesn't load it again.
+const shareLevels = new Map();
+function shareLevel(share) {
+  const { level, animal } = share.payload || {};
+  const key = share.kind === "level" ? `share:${share.id}` : `${level}:${animal || ""}:${lang()}`;
+  if (!shareLevels.has(key)) {
+    const load = share.kind === "level" ? api.previewLevel(level, animal) : api.level(level, animal);
+    shareLevels.set(key, load.catch(() => null));
+  }
+  return shareLevels.get(key);
+}
+
+// What was shared: the level (id, title and its goal) and the program itself, so the
+// teacher knows what they are approving
+function shareText(share) {
+  const title = el("strong", {}, share.title);
+  const goal = el("span", { class: "share-goal" });
+  const box = el(
+    "div",
+    { class: "share-text" },
+    title,
+    goal,
+    el("span", { class: "hint" }, `${displayName(share)} · ${t(share.kind === "level" ? "a level" : "a program")} · ${t(STATUS[share.status])}`),
+  );
+  if (share.kind === "program" && share.payload?.source) {
+    box.append(el("details", { class: "share-code" }, el("summary", {}, t("Show the program")), el("pre", {}, share.payload.source)));
+  }
+  shareLevel(share).then((level) => {
+    if (!level) return;
+    title.textContent = share.kind === "level" ? `${share.title} · ${level.title}` : `${level.id} · ${level.title}`;
+    goal.textContent = `${describeGoal(level, level.goal)}.`;
+  });
+  return box;
 }
 
 function renderOwn() {
@@ -243,11 +381,12 @@ function renderOwn() {
             "li",
             {},
             `${level.id} · ${level.title} `,
-            el("button", { type: "button", class: "small", onclick: () => act("level/remove", { id: level.id }) }, t("Remove")),
+            el("button", { type: "button", class: "small", "data-needs-pause": "", onclick: () => act("level/remove", { id: level.id }) }, t("Remove")),
           ),
         )
-      : [el("li", { class: "hint" }, t("None yet. Make one in the level editor, then add it here."))]),
+      : []),
   );
+  if (!data.levels.length) document.querySelector(".t-own-manage").open = true; // show how to add one
   let library = {};
   try {
     library = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "{}");
@@ -305,6 +444,9 @@ function renderSettings() {
   $("t-names").checked = s.names;
   $("t-delete").checked = s.deleteAtEnd;
   $("t-cub").checked = Boolean(s.cub);
+  $("t-class-lang").value = data.class.lang || "";
+  $("t-view-2d").checked = data.class.views.includes("2d");
+  $("t-view-3d").checked = data.class.views.includes("3d");
   $("t-pilot").checked = data.pilot;
   $("t-pilot-box").hidden = !data.pilot;
 }
@@ -422,29 +564,92 @@ async function endClass() {
 }
 
 function savedLevels() {
-  return [...document.querySelectorAll("#t-modules input:checked")].map((box) => box.value);
+  return [...document.querySelectorAll(".t-modules input:checked")].map((box) => box.value);
 }
 
 // --- wiring ---------------------------------------------------------------------------
 
-$("t-pause").addEventListener("click", () => act("pause", { paused: !data.paused }));
+// Taking something away from a child who may be using it (their player, a level, the class
+// code, Cub mode mid-program) waits for a pause, like today's levels. Marked in the markup
+// with data-needs-pause; drawn parts are refreshed, so this runs after every render.
+function needsPause() {
+  const playing = !data?.paused;
+  for (const control of document.querySelectorAll("[data-needs-pause]")) {
+    control.disabled = playing;
+    control.title = playing ? t("Pause everyone first") : "";
+  }
+  for (const note of document.querySelectorAll(".t-needs-pause-note")) note.hidden = !playing;
+}
+
+// Today's levels change only while the class is paused: a child could be in the middle of a
+// level that the new list takes away. Searching and opening modules still work while playing.
+function levelsEditable() {
+  const open = Boolean(data?.paused);
+  const card = $("t-levels-title").closest("section");
+  for (const control of card.querySelectorAll(".t-modules input, .t-modules button, #t-locked, #t-save-levels, #t-clear-levels, #t-discard-levels")) {
+    control.disabled = !open;
+  }
+  $("t-levels-playing").hidden = open;
+}
+
+// Children may only be let in on a saved list: while today's levels have unsaved changes,
+// "Start the lesson" / "Let everyone play again" waits for Save or Discard. Pausing always works.
+function pauseButtonState() {
+  const blocked = Boolean(data?.paused) && levelsUnsaved();
+  $("t-pause").disabled = blocked;
+  $("t-unsaved-note").hidden = !blocked;
+}
+$("t-pause").addEventListener("click", async () => {
+  if (data.paused && levelsUnsaved()) return;
+  await act("pause", { paused: !data.paused });
+});
+$("t-discard-levels").addEventListener("click", () => {
+  levelsDrawn = false; // draw the saved list again
+  render();
+  $("t-levels-msg").textContent = t("Changes discarded.");
+});
 $("t-newcode").addEventListener("click", () => act("code", {}));
+$("t-copy-link").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("t-link").href);
+    $("t-copy-msg").textContent = t("Copied.");
+  } catch {
+    // no clipboard here: select the link so Ctrl+C copies it
+    getSelection().selectAllChildren($("t-link"));
+    $("t-copy-msg").textContent = t("Press Ctrl+C to copy.");
+  }
+  setTimeout(() => ($("t-copy-msg").textContent = ""), 3000);
+});
 $("t-end").addEventListener("click", endClass);
 $("t-add").addEventListener("submit", async (event) => {
   event.preventDefault();
   const result = await act("player", { name: $("t-add-name").value, picture: $("t-add-picture").value });
   if (result) $("t-add-name").value = "";
 });
-$("t-save-levels").addEventListener("click", async () => {
+async function saveLevels() {
   const result = await act("settings", { assigned: savedLevels(), locked: $("t-locked").checked });
   if (result) {
     $("t-levels-msg").textContent = t("Saved. Players see the new list in a few seconds.");
     levelsDrawn = false;
     await refresh();
   }
-});
+  return Boolean(result);
+}
+$("t-save-levels").addEventListener("click", saveLevels);
 $("t-clear-levels").addEventListener("click", () => {
-  for (const box of document.querySelectorAll("#t-modules input")) box.checked = false;
+  for (const box of document.querySelectorAll(".t-modules input")) box.checked = false;
+  levelsTicked();
+});
+$("t-modules").addEventListener("change", levelsTicked);
+$("t-modules-own").addEventListener("change", levelsTicked);
+$("t-locked").addEventListener("change", levelsTicked);
+$("t-level-filter").addEventListener("input", filterLevels);
+$("t-only-picked").addEventListener("change", filterLevels);
+$("t-expand").addEventListener("click", () => {
+  for (const details of document.querySelectorAll(".t-modules details:not([hidden])")) details.open = true;
+});
+$("t-collapse").addEventListener("click", () => {
+  for (const details of document.querySelectorAll(".t-modules details")) details.open = false;
 });
 $("t-save-settings").addEventListener("click", async () => {
   const result = await act("settings", {
@@ -452,6 +657,8 @@ $("t-save-settings").addEventListener("click", async () => {
     names: $("t-names").checked,
     deleteAtEnd: $("t-delete").checked,
     cub: $("t-cub").checked,
+    lang: $("t-class-lang").value,
+    views: ["2d", "3d"].filter((view) => $(`t-view-${view}`).checked),
     pilot: $("t-pilot").checked,
   });
   if (result) {
@@ -490,9 +697,20 @@ $("t-report-close").addEventListener("click", () => $("t-report-dialog").close()
 $("lang").addEventListener("change", (event) => {
   setLang(event.target.value);
   translatePage();
+  fillClassLang();
   levelsDrawn = false;
   refresh();
 });
+
+// the class's language menu, in the teacher's language; keeps what is picked
+function fillClassLang() {
+  const keep = $("t-class-lang").value;
+  $("t-class-lang").replaceChildren(
+    el("option", { value: "" }, `🌐 ${t("Each device's own language")}`),
+    ...Object.keys(LANGS).map((code) => el("option", { value: code }, langLabel(code))),
+  );
+  $("t-class-lang").value = keep;
+}
 
 function hasKey() {
   try {
@@ -503,9 +721,10 @@ function hasKey() {
 }
 
 function start() {
-  setLang(initialLang());
+  setLang(initialLang(), { save: false });
   translatePage();
-  $("lang").replaceChildren(...Object.entries(LANGS).map(([code, name]) => el("option", { value: code }, name)));
+  $("lang").replaceChildren(...Object.keys(LANGS).map((code) => el("option", { value: code }, langLabel(code))));
+  fillClassLang();
   $("lang").value = lang();
   const key = new URLSearchParams(location.hash.slice(1)).get("key");
   if (key) {

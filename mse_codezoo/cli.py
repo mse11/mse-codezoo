@@ -1301,13 +1301,19 @@ def class_(ctx: click.Context, data_dir: Path | None) -> None:
     type=click.Choice(["workshop", "class"]),
     default="workshop",
     show_default=True,
-    help="workshop: one session, children pick any free picture, data deleted at the end. "
+    help="workshop: one session, children pick any picture, data deleted at the end. "
     "class: meets regularly, the teacher sets up the players, data kept.",
 )
 @click.option("--names/--no-names", default=None, help="Let children type a first name.")
 @click.option("--roster/--no-roster", default=None, help="Only the teacher adds players.")
 @click.option(
     "--delete-at-end/--keep", "delete_at_end", default=None, help="Delete the data when it ends."
+)
+@click.option(
+    "--class-lang",
+    "class_lang",
+    type=click.Choice(["en", "sk"]),
+    help="The language children's devices open in (default: each device's own).",
 )
 @_profile_errors
 def class_new(
@@ -1316,6 +1322,7 @@ def class_new(
     names: bool | None,
     roster: bool | None,
     delete_at_end: bool | None,
+    class_lang: str | None,
 ) -> None:
     """Create a class or a workshop."""
     settings = {
@@ -1323,11 +1330,11 @@ def class_new(
         for key, value in {"names": names, "roster": roster, "deleteAtEnd": delete_at_end}.items()
         if value is not None
     }
-    info = _classes().create(name, class_type, **settings)
+    info = _classes().create(name, class_type, lang=class_lang, **settings)
     s = info.settings
     click.echo(
         f"Created {info.type} {info.name!r}: "
-        f"{'the teacher adds players' if s['roster'] else 'children pick a free picture'}, "
+        f"{'the teacher adds players' if s['roster'] else 'children pick a picture'}, "
         f"{'names allowed' if s['names'] else 'pictures only'}, "
         f"{'deleted' if s['deleteAtEnd'] else 'kept'} at the end."
     )
@@ -1432,7 +1439,7 @@ def class_serve(class_name: str, host: str, port: int, open_browser: bool, verbo
     def stop_soon() -> None:  # after the answer to "end the workshop" has gone out
         threading.Timer(1.0, holder["server"].shutdown).start()
 
-    hub = Hub(store, class_name, on_end=stop_soon)
+    hub = Hub(store, class_name, on_end=stop_soon, start_paused=True)
     try:
         server = CodeZooServer(host, port, verbose=verbose, hub=hub)
     except OSError as exc:
@@ -1447,6 +1454,9 @@ def class_serve(class_name: str, host: str, port: int, open_browser: bool, verbo
     click.echo(f"  Children open:  {hub.base_url}   class code: {hub.code}")
     click.echo(f"  Teacher screen: {teacher}")
     click.echo("  Keep the teacher address to yourself: it opens the teacher's screen.")
+    click.echo(
+        '  Children who join wait until you press "Start the lesson" on the teacher\'s screen.'
+    )
     click.echo("Press Ctrl+C to stop.")
     if open_browser:
         webbrowser.open(teacher)

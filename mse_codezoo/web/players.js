@@ -22,8 +22,12 @@ const PICTURE_NAMES = {
   sloth: "Sloth",
 };
 
+// a child without a typed name is called after the picture: "cat" -> "Cat", "cat 2" -> "Cat 2"
 export function displayName(profile) {
-  if (profile.name === profile.picture && PICTURE_NAMES[profile.picture]) return t(PICTURE_NAMES[profile.picture]);
+  const animal = PICTURE_NAMES[profile.picture];
+  if (animal && profile.name === profile.picture) return t(animal);
+  const number = animal && profile.name.startsWith(`${profile.picture} `) ? profile.name.slice(profile.picture.length + 1) : "";
+  if (/^\d+$/.test(number)) return `${t(animal)} ${number}`;
   return profile.name;
 }
 

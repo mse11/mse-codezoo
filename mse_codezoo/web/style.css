@@ -659,3 +659,5 @@ html[data-motion="reduce"] .cz-wiggle .blocklyPath { filter: drop-shadow(0 0 4px
 .cub-ready { font-weight: 600; }
 /* the star rules ("no line limit") are for readers; cubs see the stars and the message */
 html[data-cub="true"] .result > ul { display: none; }
+.cub-level.today { box-shadow: 0 0 0 3px var(--star); } /* the teacher picked it for today */
+.view-toggle[hidden] { display: none; } /* the teacher allowed only one stage view */

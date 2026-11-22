@@ -45,5 +45,5 @@ The hub uses plain HTTP inside the local network, with no encryption. Run it onl
 ## Before using it with a class
 
 - Tell parents what is stored (this page can help), following the school's own rules for learning tools.
-- Prefer pictures only (the workshop default) when names aren't needed.
+- Turn "Children may type a first name" off when names aren't needed: children are then called after their picture ("Cat", "Cat 2"). Names are on by default since Nov 22, 2026, because several children may pick the same picture.
 - Delete the data when a course ends.

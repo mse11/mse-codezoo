@@ -31,9 +31,15 @@
           <p data-i18n>Scan with the tablet's camera app, or open this address and type the code:</p>
           <p class="t-url" id="t-url"></p>
           <p class="t-code" id="t-code"></p>
+          <p class="t-link"><span data-i18n>Or send this link, the code is already in it:</span>
+            <a id="t-link" target="_blank" rel="noopener"></a>
+            <button id="t-copy-link" type="button" class="small" data-i18n>Copy link</button>
+            <span id="t-copy-msg" class="hint" role="status"></span></p>
+          <p id="t-waiting" class="t-waiting" hidden data-i18n>Children who join wait until you start the lesson. Pick today's levels and settings below first.</p>
+          <p id="t-unsaved-note" class="t-unsaved-note" hidden data-i18n>Save or discard your changes to today's levels first.</p>
           <div class="row">
             <button id="t-pause" type="button" class="primary" data-i18n>⏸ Pause everyone</button>
-            <button id="t-newcode" type="button" data-i18n>New code</button>
+            <button id="t-newcode" type="button" data-needs-pause data-i18n>New code</button>
             <button id="t-end" type="button"></button>
           </div>
         </div>
@@ -43,6 +49,7 @@
     <section class="t-card" aria-labelledby="t-players-title">
       <h2 id="t-players-title" data-i18n>Players</h2>
       <div class="t-scroll"><table class="t-table" id="t-players"></table></div>
+      <p class="t-needs-pause-note hint" hidden data-i18n>Children are playing: pause everyone to remove a player or change Cub mode.</p>
       <form id="t-add" class="t-add">
         <h3 data-i18n>Add a player</h3>
         <label><span data-i18n>Name</span> <input id="t-add-name" maxlength="24" autocomplete="off" required></label>
@@ -54,10 +61,38 @@
     <section class="t-card" aria-labelledby="t-levels-title">
       <h2 id="t-levels-title" data-i18n>Today's levels</h2>
       <p class="hint" data-i18n>Tick the levels for today. With “Only these levels”, players can open nothing else.</p>
+      <p id="t-levels-playing" class="t-levels-playing" hidden data-i18n>Children are playing: pause everyone to change today's levels.</p>
       <label class="check"><input type="checkbox" id="t-locked"> <span data-i18n>Only these levels</span></label>
+      <p id="t-picked" class="t-picked" role="status"></p>
+      <div class="t-level-tools">
+        <input id="t-level-filter" type="search" data-i18n-placeholder="Find a level (name or id)" placeholder="Find a level (name or id)" aria-label="Find a level" data-i18n-label="Find a level">
+        <label class="check"><input type="checkbox" id="t-only-picked"> <span data-i18n>Only ticked</span></label>
+        <button id="t-expand" type="button" class="small" data-i18n>Expand all</button>
+        <button id="t-collapse" type="button" class="small" data-i18n>Collapse all</button>
+      </div>
+      <h3 class="t-sub" data-i18n>Built-in levels</h3>
       <div id="t-modules" class="t-modules"></div>
-      <div class="row">
+
+      <h3 id="t-own-title" class="t-sub" data-i18n>Our own levels</h3>
+      <div id="t-modules-own" class="t-modules"></div>
+      <details class="t-own-manage">
+        <summary data-i18n>Add or remove our own levels</summary>
+        <ul id="t-own" class="t-list"></ul>
+        <p class="t-needs-pause-note hint" hidden data-i18n>Children are playing: pause everyone to remove a level.</p>
+        <div class="row">
+          <label class="file-button"><span data-i18n>Add a level file (with its solution file)</span>
+            <input id="t-level-files" type="file" multiple accept=".json,.py,application/json,text/x-python"></label>
+        </div>
+        <details>
+          <summary data-i18n>From “My levels” in this browser</summary>
+          <ul id="t-library" class="t-list"></ul>
+        </details>
+        <p id="t-own-msg" class="note" role="status"></p>
+      </details>
+
+      <div class="row t-levels-save">
         <button id="t-save-levels" type="button" class="primary" data-i18n>Save today's levels</button>
+        <button id="t-discard-levels" type="button" hidden data-i18n>Discard changes</button>
         <button id="t-clear-levels" type="button" data-i18n>Untick all</button>
         <span id="t-levels-msg" class="note" role="status"></span>
       </div>
@@ -67,20 +102,6 @@
       <h2 id="t-shares-title" data-i18n>Shared by the class</h2>
       <p class="hint" data-i18n>Children see a share only after you say yes. “On the projector” shows it big for everyone.</p>
       <div id="t-shares" class="t-shares"></div>
-    </section>
-
-    <section class="t-card" aria-labelledby="t-own-title">
-      <h2 id="t-own-title" data-i18n>Our own levels</h2>
-      <ul id="t-own" class="t-list"></ul>
-      <div class="row">
-        <label class="file-button"><span data-i18n>Add a level file (with its solution file)</span>
-          <input id="t-level-files" type="file" multiple accept=".json,.py,application/json,text/x-python"></label>
-      </div>
-      <details>
-        <summary data-i18n>From “My levels” in this browser</summary>
-        <ul id="t-library" class="t-list"></ul>
-      </details>
-      <p id="t-own-msg" class="note" role="status"></p>
     </section>
 
     <section class="t-card" aria-labelledby="t-report-title">
@@ -96,6 +117,11 @@
       <label class="check"><input type="checkbox" id="t-roster"> <span data-i18n>Only I add players (children pick themselves from the list)</span></label>
       <label class="check"><input type="checkbox" id="t-names"> <span data-i18n>Children may type a first name</span></label>
       <label class="check"><input type="checkbox" id="t-delete"> <span data-i18n>Delete all data when the class ends</span></label>
+      <fieldset class="t-views"><legend data-i18n>Stage on the children's devices (both ticked: each child can switch)</legend>
+        <label class="check"><input type="checkbox" id="t-view-2d"> 2D</label>
+        <label class="check"><input type="checkbox" id="t-view-3d"> 3D</label></fieldset>
+      <label class="t-class-lang"><span data-i18n>Language on the children's devices (they can still switch)</span>
+        <select id="t-class-lang"></select></label>
       <label class="check"><input type="checkbox" id="t-cub"> <span data-i18n>New players start in Cub mode (ages 6–8: picture blocks, read aloud)</span></label>
       <label class="check"><input type="checkbox" id="t-pilot"> <span data-i18n>Take part in a pilot: record learning data on this computer (no names, nothing is sent)</span></label>
       <div class="row">

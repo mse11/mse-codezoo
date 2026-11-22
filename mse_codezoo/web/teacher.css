@@ -31,13 +31,15 @@ body.teacher { display: block; overflow-x: hidden; height: auto; min-height: 100
 .t-join-row { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
 .t-qr svg { width: min(260px, 70vw); height: auto; display: block; border-radius: 0.5rem; }
 .t-url { font-family: var(--code-font); font-size: 1.1rem; overflow-wrap: anywhere; margin: 0.3rem 0; }
+.t-link { margin: 0.2rem 0 0.8rem; overflow-wrap: anywhere; }
+.t-link a { font-family: var(--code-font); margin-inline: 0.3rem; }
 .t-code { font-size: clamp(2rem, 6vw, 3.6rem); font-weight: 800; letter-spacing: 0.08em; margin: 0.2rem 0 0.8rem; }
 .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.6rem; }
 .hint { color: var(--muted); margin: 0.3rem 0; }
 .t-banner { padding: 0 16px; }
 .t-nokey { padding: 2rem 16px; font-size: 1.2rem; max-width: 46em; }
 button.small { min-height: 2rem; padding: 0.2rem 0.7rem; font-size: 0.9rem; }
-button.paused { background: var(--err); border-color: var(--err); color: #fff; }
+button.stop { background: #c62828; border-color: #c62828; color: #fff; } /* "Pause everyone": the same strong red in light and dark */
 
 .t-scroll { overflow-x: auto; max-width: 100%; }
 .t-table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
@@ -67,3 +69,37 @@ button.paused { background: var(--err); border-color: var(--err); color: #fff; }
   font-family: var(--code-font); font-size: clamp(1.1rem, 2.4vw, 2rem); line-height: 1.4;
   background: var(--bg); padding: 1rem; border-radius: 0.6rem; overflow: auto; max-height: 65vh;
 }
+
+/* today's levels: what is ticked, a search box, only ticked, expand and collapse */
+.t-picked { margin: 0.4rem 0; font-weight: 600; }
+.t-picked.unsaved { color: var(--accent); }
+.t-level-tools { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; align-items: center; margin: 0.4rem 0; }
+.t-level-tools input[type="search"] { flex: 1 1 14rem; min-width: 0; }
+.t-modules summary { cursor: pointer; }
+.t-count { font-size: 0.85em; font-weight: 600; }
+.t-count.on { background: var(--accent); color: var(--accent-text); border-radius: 999px; padding: 0 0.5rem; }
+.t-class-lang { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; align-items: center; margin: 0.3rem 0; }
+#t-save-levels.attention { box-shadow: 0 0 0 3px var(--star, #e0a800); animation: t-attention 1.6s ease-in-out infinite; }
+@keyframes t-attention { 50% { box-shadow: 0 0 0 6px transparent; } }
+html[data-motion="reduce"] #t-save-levels.attention { animation: none; }
+.t-waiting { font-weight: 600; color: var(--accent); margin: 0.2rem 0 0.6rem; }
+.t-unsaved-note { font-weight: 600; color: var(--err, #b3261e); margin: 0.2rem 0 0.4rem; }
+.t-levels-playing { font-weight: 600; color: var(--accent); margin: 0.2rem 0 0.4rem; }
+.share-goal { display: block; margin: 0.1rem 0; }
+.share-code summary { cursor: pointer; font-size: 0.9em; }
+.share-code pre { margin: 0.3rem 0 0; padding: 0.4rem 0.6rem; background: var(--bg); border-radius: 6px; font-family: var(--code-font); font-size: 0.85em; overflow-x: auto; }
+/* share cards: the description gets the room, the buttons go underneath */
+.t-card .share-card { flex-wrap: wrap; align-items: flex-start; }
+.t-card .share-text { flex: 1 1 16rem; }
+.t-card .share-actions { flex: 1 1 100%; justify-content: flex-start; }
+.t-views { border: 0; padding: 0; margin: 0.4rem 0; display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; align-items: center; }
+.t-views legend { padding: 0; margin-bottom: 0.2rem; }
+/* a child's own stage and language; highlighted when it differs from the class */
+.t-own-settings { display: flex; flex-direction: column; gap: 0.25rem; min-width: 10rem; }
+.t-own-settings select { font-size: 0.85rem; }
+.t-own-settings select.t-own-set { border-color: var(--accent); font-weight: 600; }
+/* today's levels: built-in modules, then the class's own levels, then save */
+.t-sub { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0.9rem 0 0.2rem; }
+.t-own-manage { margin: 0.4rem 0; }
+.t-own-manage > summary { cursor: pointer; }
+.t-levels-save { margin-top: 0.8rem; }

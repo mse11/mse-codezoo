@@ -30,8 +30,10 @@ function download(name, text) {
 }
 
 export class Classroom {
-  constructor({ players, onLevelsChanged, onPause, onPlayProgram, onPlayLevel }) {
+  constructor({ players, onLevelsChanged, onPause, onPlayProgram, onPlayLevel, onViews, onLang }) {
     this.players = players;
+    this.onLang = onLang; // the language the teacher set for the class or this child changed
+    this.onViews = onViews; // the stage views the teacher allows: ["2d", "3d"], or just one
     this.onLevelsChanged = onLevelsChanged;
     this.onPause = onPause;
     this.onPlayProgram = onPlayProgram;
@@ -150,8 +152,11 @@ export class Classroom {
     $("join-roster-note").hidden = open;
     $("join-name-row").hidden = !data.class.names;
     $("join-name").value = "";
-    this.picture = data.free[0] || null;
-    const buttons = data.free.map((picture) => {
+    // every picture can be picked, even one a classmate has (the name tells them apart);
+    // the first one nobody has yet is picked to start with
+    const used = new Set(data.players.map((p) => p.picture));
+    this.picture = data.pictures.find((picture) => !used.has(picture)) || data.pictures[0];
+    const buttons = data.pictures.map((picture) => {
       const button = el(
         "button",
         { type: "button", class: "picture-tile", role: "radio", "aria-label": displayName({ name: picture, picture }),
@@ -175,7 +180,7 @@ export class Classroom {
 
   async createPlayer() {
     if (!this.picture) {
-      $("join-error").textContent = t("Every picture is taken. Ask the teacher for help.");
+      $("join-error").textContent = t("Pick a picture first.");
       return;
     }
     try {
@@ -183,7 +188,7 @@ export class Classroom {
       this.pick(profile);
     } catch (error) {
       $("join-error").textContent = error.message;
-      if (error.status === 400) this.choose(); // someone took the picture first: show what's free
+      // e.g. a classmate already typed that name: the message says so, the form stays
     }
   }
 
@@ -201,7 +206,7 @@ export class Classroom {
   async poll() {
     let state;
     try {
-      state = await api.classState();
+      state = await api.classState(this.players.current?.id);
     } catch (error) {
       if (error.status === 410) this.showEnded();
       else if (error.status === 403 && !$("join-dialog").open) this.showJoin(t("The class has a new code. Look at the teacher's screen."));
@@ -212,9 +217,26 @@ export class Classroom {
     if (state.paused !== Boolean(before?.paused)) {
       if (state.paused) {
         this.onPause();
+        // before the first start the teacher is still setting up the lesson
+        const ready = state.started === false;
+        $("pause-dialog").querySelector(".goodbye-animal").textContent = ready ? "⏳" : "👀";
+        $("pause-title").textContent = ready ? t("Getting ready…") : t("Eyes on the teacher!");
+        $("pause-text").textContent = ready
+          ? t("The teacher is getting the lesson ready. It starts in a moment.")
+          : t("The teacher paused the class for a moment. Your program is safe.");
         if (!$("pause-dialog").open) $("pause-dialog").showModal();
       } else if ($("pause-dialog").open) {
         $("pause-dialog").close();
+      }
+    }
+    if (state.views && state.views.join() !== before?.views?.join()) this.onViews?.(state.views);
+    // when the player is picked, or the teacher changes it; a child who switched language
+    // in between keeps their choice
+    if ("lang" in state) {
+      const key = `${this.players.current?.id}:${state.lang}`;
+      if (key !== this.langKey) {
+        this.langKey = key;
+        this.onLang?.(state.lang);
       }
     }
     const levelsChanged =

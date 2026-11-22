@@ -28,6 +28,8 @@ Routes on top of ``server.dispatch``:
     GET  /api/teacher/overview              -> everything the teacher's screen shows
     POST /api/teacher/settings {roster?, names?, deleteAtEnd?, locked?, assigned?, cub?}
     POST /api/teacher/player/cub {profile, on}   Cub mode for one child (phase 7)
+    POST /api/teacher/player/settings {profile, views?: class|2d|3d|both,
+                                      lang?: class|device|en|sk}  one child's own settings
     POST /api/teacher/pause {paused}
     POST /api/teacher/player {name, picture}          (also /rename, /remove, /report, /export)
     POST /api/teacher/level {level, solution}         (also /remove {id})
@@ -43,6 +45,7 @@ in a class: the teacher's screen does that. Standard library only.
 from __future__ import annotations
 
 import hmac
+import re
 import secrets
 import socket
 import threading
@@ -91,6 +94,7 @@ class Hub:
         *,
         base_url: str = "/",
         on_end: Callable[[], None] | None = None,
+        start_paused: bool = False,
     ) -> None:
         self.classes = classes
         self.class_id = classes.find(class_ref).id
@@ -98,7 +102,10 @@ class Hub:
         self.on_end = on_end
         self.code = new_code()
         self.teacher_token = secrets.token_urlsafe(18)
-        self.paused = False
+        # `class serve` starts paused: children who join wait on a "getting ready" screen
+        # until the teacher has set up the lesson and lets everyone play
+        self.paused = start_paused
+        self.started = not start_paused
         self.ended = False
         self.lock = threading.RLock()  # one request at a time: files stay consistent
         self.failures: dict[str, list[float]] = {}
@@ -107,7 +114,10 @@ class Hub:
 
     @property
     def join_url(self) -> str:
-        return f"{self.base_url}?class={self.code}"
+        """What the QR code and the shared link open: the class code, and the class's
+        language when the teacher picked one."""
+        lang = self.info().public()["lang"]
+        return f"{self.base_url}?class={self.code}" + (f"&lang={lang}" if lang else "")
 
     @property
     def teacher_url(self) -> str:
@@ -125,12 +135,10 @@ class Hub:
         info = self.info()
         store = self.players()
         profiles = store.profiles()
-        used = {p.picture for p in profiles}
         return {
             "class": info.public(),
             "players": [{"id": p.id, "name": p.name, "picture": p.picture} for p in profiles],
             "pictures": list(CLASS_PICTURES),
-            "free": [p for p in CLASS_PICTURES if p not in used],
             "paused": self.paused,
         }
 
@@ -140,6 +148,8 @@ class Hub:
             "name": info.name,
             "type": info.type,
             "paused": self.paused,
+            "started": self.started,
+            "views": info.public()["views"],
             "locked": bool(info.settings["locked"]),
             "assigned": list(info.settings["assigned"]),
             "shares": len(self.classes.shares(self.class_id, "approved")),
@@ -161,7 +171,11 @@ class Hub:
                 data = dispatch(method, path, query, body, self.players())
                 if not self.ended:
                     info = self.info()
-                    data["hub"] = {"name": info.name, "type": info.type}
+                    data["hub"] = {
+                        "name": info.name,
+                        "type": info.type,
+                        "lang": info.public()["lang"],
+                    }
                 return data
             if path.startswith("/api/teacher/"):
                 self._check_teacher(headers)
@@ -175,7 +189,7 @@ class Hub:
             if not self._is_teacher(headers):  # the teacher may open levels and the editor
                 self._check_code(headers)
             if path.startswith("/api/class/"):
-                return self._class(method, path.removeprefix("/api/class/"), body)
+                return self._class(method, path.removeprefix("/api/class/"), body, query)
             return self._game(method, path, query, body)
 
     def _is_teacher(self, headers: Mapping[str, str]) -> bool:
@@ -226,6 +240,8 @@ class Hub:
         assigned = list(info.settings["assigned"])
         locked = bool(info.settings["locked"]) and bool(assigned)
         if method == "POST" and path == "/api/run":
+            if self.paused and not self.started:
+                raise ApiError(LOCKED, t("The teacher is getting the lesson ready."))
             if self.paused:
                 raise ApiError(LOCKED, t("The teacher paused the class. Eyes on the teacher!"))
             if locked and ("levelData" in body or body.get("level") not in assigned):
@@ -245,11 +261,19 @@ class Hub:
 
     # --- children ----------------------------------------------------------------------
 
-    def _class(self, method: str, route: str, body: dict[str, Any]) -> Any:
+    def _class(
+        self, method: str, route: str, body: dict[str, Any], query: dict[str, str] | None = None
+    ) -> Any:
         info = self.info()
         store = self.players()
         if method == "GET" and route == "state":
-            return self._state()
+            # with ?profile=: the stage views and language of that child (the teacher may
+            # have set them for this child only)
+            state = self._state()
+            player = (query or {}).get("profile")
+            if player and any(p.id == player for p in store.profiles()):
+                state |= self.classes.effective(self.class_id, player)
+            return state
         if method == "GET" and route == "shares":
             return {"shares": self.classes.shares(self.class_id, "approved")}
         if method != "POST":
@@ -263,10 +287,10 @@ class Hub:
             picture = body.get("picture")
             if picture not in CLASS_PICTURES:
                 raise ClassError(t("Pick a picture first."))
-            if any(p.picture == picture for p in store.profiles()):
-                raise ClassError(t("Someone already has that picture. Pick another one."))
+            # several children may pick the same picture; a first name (or a number after
+            # the picture's name: "cat 2") tells them apart on the list
             name = body.get("name") if info.settings["names"] else None
-            name = " ".join(str(name or "").split()) or picture
+            name = " ".join(str(name or "").split()) or _numbered(picture, store)
             profile = store.add(name, picture, cub=bool(info.settings.get("cub")))
             return {"id": profile.id, "name": profile.name, "picture": profile.picture}
         if route == "import":
@@ -278,13 +302,11 @@ class Hub:
             data = body.get("data")
             if not isinstance(data, dict):
                 raise ClassError(t("This is not a CodeZoo profile file."))
-            used = {p.picture for p in store.profiles()}
-            free = [p for p in CLASS_PICTURES if p not in used]
             info_part = dict(data.get("profile") or {})
-            if info_part.get("picture") in used or info_part.get("picture") not in CLASS_PICTURES:
-                if not free:
-                    raise ClassError(t("Every picture is taken. Ask the teacher for help."))
-                info_part["picture"] = free[0]
+            picture = info_part.get("picture")
+            named_by_picture = re.fullmatch(rf"{picture} ?\d*", str(info_part.get("name", "")))
+            if picture in CLASS_PICTURES and named_by_picture:
+                info_part["name"] = _numbered(picture, store)  # "panda" -> "panda 2" if taken
             profile = store.import_({**data, "profile": info_part})
             return {"id": profile.id, "name": profile.name, "picture": profile.picture}
         if route == "export":
@@ -317,7 +339,16 @@ class Hub:
         if route == "settings":
             changes = {
                 key: body.get(key)
-                for key in ("roster", "names", "deleteAtEnd", "locked", "assigned", "cub")
+                for key in (
+                    "roster",
+                    "names",
+                    "deleteAtEnd",
+                    "locked",
+                    "assigned",
+                    "cub",
+                    "lang",
+                    "views",
+                )  # fmt: skip
             }
             self.classes.update(self.class_id, **changes)
             if body.get("pilot") is not None:  # pilot recording for this class (phase 6)
@@ -325,6 +356,7 @@ class Hub:
             return self.overview()
         if route == "pause":
             self.paused = bool(body.get("paused"))
+            self.started = self.started or not self.paused
             return self._state()
         if route == "player":
             cub = body.get("cub") if isinstance(body.get("cub"), bool) else None
@@ -338,8 +370,17 @@ class Hub:
         if route == "player/rename":
             profile = store.rename(_text(body, "profile"), _text(body, "name"))
             return {"id": profile.id, "name": profile.name, "picture": profile.picture}
+        if route == "player/settings":  # stage views and language for one child
+            views, lang = body.get("views"), body.get("lang")
+            return self.classes.set_player_settings(
+                self.class_id,
+                _text(body, "profile"),
+                views if isinstance(views, str) else None,
+                lang if isinstance(lang, str) else None,
+            )
         if route == "player/remove":
             removed = store.remove(_text(body, "profile"))
+            self.classes.forget_player(self.class_id, removed.id)
             return {"removed": removed.id}
         if route == "player/report":
             return store.report(_text(body, "profile"), self._levels())
@@ -398,6 +439,7 @@ class Hub:
         extra = self.classes.levels(self.class_id)
         levels = self._levels()
         titles = {lv["id"]: lv for lv in list_levels(None, None, extra)}
+        own_settings = self.classes.player_settings(self.class_id)
         modules: dict[str, list[str]] = {}
         for level in levels:
             modules.setdefault("mine" if level.id in extra else level.module, []).append(level.id)
@@ -445,6 +487,7 @@ class Hub:
                     "stuck": stuck,
                     "minutesToday": store.today_status(profile.id)["minutesToday"],
                     "cub": profile.cub,
+                    "own": own_settings.get(profile.id, {}),  # this child's own settings
                     "ageBand": data.get("pilot", {}).get("ageBand"),
                 }
             )
@@ -454,6 +497,7 @@ class Hub:
             "joinUrl": self.join_url,
             "qr": qr.svg(self.join_url, module=6, label=t("Class code")),
             "paused": self.paused,
+            "started": self.started,
             "pilot": pilot.enabled(store),
             "ageBands": list(pilot.AGE_BANDS),
             "players": players,
@@ -486,6 +530,15 @@ class Hub:
             ],
             "shares": self.classes.shares(self.class_id),
         }
+
+
+def _numbered(picture: str, store: ProfileStore) -> str:
+    """A name from the picture for a child who typed none: "cat", then "cat 2", "cat 3"..."""
+    taken = {p.name.casefold() for p in store.profiles()}
+    name, number = picture, 2
+    while name.casefold() in taken:
+        name, number = f"{picture} {number}", number + 1
+    return name
 
 
 def _text(body: dict[str, Any], key: str) -> str:

@@ -126,5 +126,5 @@ $("c-use2d").addEventListener("click", () => {
   }
 });
 
-setLang(initialLang());
+setLang(initialLang(), { save: false });
 translatePage();

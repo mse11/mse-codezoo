@@ -4,6 +4,10 @@
 
 const LANG_KEY = "codezoo.lang";
 export const LANGS = { en: "English", sk: "Slovenčina" };
+// a flag before each language's own name, so the menu is easy to spot in any language
+// (Windows shows the flag as its two letters, GB or SK)
+const FLAGS = { en: "🇬🇧", sk: "🇸🇰" };
+export const langLabel = (code) => `${FLAGS[code] || "🌐"} ${LANGS[code] || code}`;
 
 const SK = {
   // header and panes
@@ -316,11 +320,10 @@ const SK = {
   "Class code from the teacher's screen": "Kód triedy z obrazovky učiteľa",
   "Join": "Pripojiť sa",
   "Already playing? Tap your picture.": "Už hráš? Ťukni na svoj obrázok.",
-  "New here? Pick a free picture": "Si tu nový? Vyber si voľný obrázok",
+  "New here? Pick a picture": "Si tu nový? Vyber si obrázok",
   "Your first name (you can leave it empty)": "Tvoje krstné meno (môžeš nechať prázdne)",
   "Bring my progress from home": "Priniesť môj pokrok z domu",
   "Is your picture missing? Ask the teacher.": "Chýba tvoj obrázok? Spýtaj sa učiteľa.",
-  "Every picture is taken. Ask the teacher for help.": "Všetky obrázky sú obsadené. Požiadaj učiteľa o pomoc.",
   "This is not a CodeZoo profile file.": "Toto nie je súbor s hráčom CodeZoo.",
   "Eyes on the teacher!": "Oči na učiteľa!",
   "The teacher paused the class for a moment. Your program is safe.": "Učiteľ na chvíľu zastavil hru. Tvoj program je v bezpečí.",
@@ -554,6 +557,56 @@ const SK = {
   "it stopped here": "tu cesta skončila",
   "🔇 Quiet": "🔇 Ticho",
   "🔈 Talking": "🔈 Hovorí",
+  // teacher: join link
+  "Copy link": "Kopírovať odkaz",
+  "Or send this link, the code is already in it:": "Alebo pošlite tento odkaz, kód už v ňom je:",
+  "Press Ctrl+C to copy.": "Stlačte Ctrl+C a skopírujte ho.",
+  // class: shared pictures
+  "Pick a picture first.": "Najprv si vyber obrázok.",
+  // teacher: today's levels tools
+  "Collapse all": "Zbaliť všetky",
+  "Expand all": "Rozbaliť všetky",
+  "Find a level": "Nájsť level",
+  "Find a level (name or id)": "Nájsť level (názov alebo id)",
+  "Not saved yet.": "Zatiaľ neuložené.",
+  "Nothing ticked: children can play every level.": "Nič nie je zaškrtnuté: deti môžu hrať všetky levely.",
+  "Only ticked": "Iba zaškrtnuté",
+  "Ticked: {n} ({list})": "Zaškrtnuté: {n} ({list})",
+  // teacher: class language
+  "Each device's own language": "Jazyk každého zariadenia",
+  "Language on the children's devices (they can still switch)": "Jazyk na zariadeniach detí (môžu si ho zmeniť)",
+  // class: today's levels for the child
+  "All levels": "Všetky levely",
+  "⭐ Today": "⭐ Dnes",
+  // class: start paused
+  "Children who join wait until you start the lesson. Pick today's levels and settings below first.": "Deti, ktoré sa pripoja, čakajú, kým hodinu spustíte. Najprv nižšie vyberte dnešné levely a nastavenia.",
+  "Getting ready…": "Pripravujeme sa…",
+  "The teacher is getting the lesson ready. It starts in a moment.": "Učiteľ pripravuje hodinu. O chvíľu sa začne.",
+  "▶ Start the lesson": "▶ Spustiť hodinu",
+  // teacher: save or discard before play
+  "Discard changes": "Zahodiť zmeny",
+  "Changes discarded.": "Zmeny sú zahodené.",
+  "Save or discard your changes to today's levels first.": "Najprv uložte alebo zahoďte zmeny v dnešných leveloch.",
+  // teacher: levels only while paused
+  "Children are playing: pause everyone to change today's levels.": "Deti hrajú: ak chcete zmeniť dnešné levely, najprv zastavte všetkých.",
+  // teacher: share details
+  "Show the program": "Ukázať program",
+  // teacher: actions that need a pause
+  "Children are playing: pause everyone to remove a level.": "Deti hrajú: ak chcete odstrániť level, najprv zastavte všetkých.",
+  "Children are playing: pause everyone to remove a player or change Cub mode.": "Deti hrajú: ak chcete odstrániť hráča alebo zmeniť režim mláďat, najprv zastavte všetkých.",
+  "Pause everyone first": "Najprv zastavte všetkých",
+  // teacher: stage views
+  "Stage on the children's devices (both ticked: each child can switch)": "Scéna na zariadeniach detí (obe zaškrtnuté: každé dieťa si môže prepnúť)",
+  // teacher: per-child settings
+  "2D and 3D": "2D aj 3D",
+  "Language as the class": "Jazyk ako trieda",
+  "Language for {name}": "Jazyk pre: {name}",
+  "Stage and language": "Scéna a jazyk",
+  "Stage as the class": "Scéna ako trieda",
+  "Stage for {name}": "Scéna pre: {name}",
+  // teacher: built-in and own levels
+  "Add or remove our own levels": "Pridať alebo odstrániť vlastné levely",
+  "Built-in levels": "Zabudované levely",
 };
 
 const CONCEPTS = {
@@ -597,16 +650,34 @@ function readSaved() {
   }
 }
 
-export function initialLang() {
+// the address wins (a class link carries the class's language: ?lang=sk), then the
+// language this browser's user picked, then the browser's own
+export function urlLang() {
+  const wanted = new URLSearchParams(location.search).get("lang");
+  return wanted in LANGS ? wanted : null;
+}
+
+// this device's own language: what its user picked before, else the browser's
+export function deviceLang() {
   const saved = readSaved();
   if (saved && saved in LANGS) return saved;
   const browser = (navigator.language || "en").slice(0, 2).toLowerCase();
   return browser in LANGS ? browser : "en";
 }
 
-export function setLang(lang) {
+export function initialLang() {
+  if (urlLang()) return urlLang();
+  const saved = readSaved();
+  if (saved && saved in LANGS) return saved;
+  const browser = (navigator.language || "en").slice(0, 2).toLowerCase();
+  return browser in LANGS ? browser : "en";
+}
+
+// `save`: the person picked it from the menu, so it is remembered in this browser
+export function setLang(lang, { save = true } = {}) {
   current = lang in LANGS ? lang : "en";
   document.documentElement.lang = current;
+  if (!save) return;
   try {
     localStorage.setItem(LANG_KEY, current);
   } catch {
@@ -627,7 +698,8 @@ export function concept(id) {
   return CONCEPTS[current]?.[id] || CONCEPTS.en[id] || id;
 }
 
-// Translate static markup: data-i18n (text), data-i18n-label (aria-label), data-i18n-title.
+// Translate static markup: data-i18n (text), data-i18n-label (aria-label), data-i18n-title,
+// data-i18n-placeholder.
 export function translatePage(root = document) {
   for (const node of root.querySelectorAll("[data-i18n]")) {
     node.dataset.i18nKey ??= node.textContent.trim();
@@ -638,5 +710,8 @@ export function translatePage(root = document) {
   }
   for (const node of root.querySelectorAll("[data-i18n-title]")) {
     node.setAttribute("title", t(node.dataset.i18nTitle));
+  }
+  for (const node of root.querySelectorAll("[data-i18n-placeholder]")) {
+    node.setAttribute("placeholder", t(node.dataset.i18nPlaceholder));
   }
 }

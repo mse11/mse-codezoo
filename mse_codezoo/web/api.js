@@ -116,7 +116,8 @@ export const api = {
 
   // the classroom hub (phase 5)
   joinClass: (code) => call("POST", "/api/class/join", { code }),
-  classState: () => call("GET", "/api/class/state"),
+  // with the player: their own stage views and language, if the teacher set any
+  classState: (profile) => call("GET", `/api/class/state${profile ? `?profile=${encodeURIComponent(profile)}` : ""}`),
   classMe: (picture, name) => call("POST", "/api/class/me", { picture, name }),
   classImport: (data) => call("POST", "/api/class/import", { data }),
   classExport: (profile) => call("POST", "/api/class/export", { profile }),

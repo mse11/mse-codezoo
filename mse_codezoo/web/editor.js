@@ -10,7 +10,7 @@ import { EMOJI } from "./stage.js";
 import { encodeShare } from "./share.js";
 
 const $ = (id) => document.getElementById(id);
-setLang(initialLang());
+setLang(initialLang(), { save: false });
 
 const TERRAIN = [
   ["~", "💧", "water"],
