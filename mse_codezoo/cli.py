@@ -54,7 +54,48 @@ def python_option(fn: Any) -> Any:
     )(fn)
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+HELP_SECTIONS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Play and learn", ("play", "serve", "run", "check", "replay")),
+    ("Print and share", ("story", "cards", "graduate")),
+    ("At home (grown-ups)", ("profile", "parent")),
+    ("In the classroom", ("teacher", "class", "pilot")),
+    ("Make content", ("levels", "world", "blocks")),
+    ("For developers", ("schema", "build-web")),
+)
+
+
+class SectionedGroup(click.Group):
+    """A group whose ``--help`` lists commands under headings (HELP_SECTIONS), not A to Z."""
+
+    def list_commands(self, ctx: click.Context) -> list[str]:
+        order = [name for _, names in HELP_SECTIONS for name in names]
+        rank = {name: i for i, name in enumerate(order)}
+        return sorted(super().list_commands(ctx), key=lambda n: (rank.get(n, len(order)), n))
+
+    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        commands = {}
+        for name in self.list_commands(ctx):
+            cmd = self.get_command(ctx, name)
+            if cmd is not None and not cmd.hidden:
+                commands[name] = cmd
+        if not commands:
+            return
+        limit = formatter.width - 6 - max(len(name) for name in commands)
+        placed: set[str] = set()
+        sections = []
+        for title, names in HELP_SECTIONS:
+            present = [n for n in names if n in commands]
+            placed.update(present)
+            sections.append((title, present))
+        sections.append(("Other commands", [n for n in commands if n not in placed]))
+        for title, names in sections:
+            if names:
+                rows = [(n, commands[n].get_short_help_str(limit)) for n in names]
+                with formatter.section(title):
+                    formatter.write_dl(rows)
+
+
+@click.group(cls=SectionedGroup, context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(__version__, prog_name="codezoo")
 @click.option(
     "--lang",
