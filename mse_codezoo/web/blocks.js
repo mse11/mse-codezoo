@@ -700,6 +700,10 @@ export function createWorkspace(container, onChange) {
   });
   window.addEventListener("resize", () => Blockly.svgResize(workspace));
   darkQuery.addEventListener("change", () => workspace.setTheme(currentTheme()));
+  // "Colours" in Look and feel, the ☀️/🌙 button, or the teacher's choice for the class
+  window.addEventListener("codezoo-look", () => {
+    if (workspace.getTheme() !== currentTheme()) workspace.setTheme(currentTheme());
+  });
   bigTargets(workspace);
   const api = {
     workspace,

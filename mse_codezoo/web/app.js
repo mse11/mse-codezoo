@@ -12,12 +12,13 @@ import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
 import { LANGS, deviceLang, initialLang, lang, langLabel, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
-import { openLook } from "./look.js";
+import { lockLook, openLook, setupThemeButton } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
 import { canSpeak, isMuted, onVoices, readAloudOn, setCub, setMuted, speak } from "./speech.js";
 import { describeGoal } from "./goals.js";
+import { Fun, setupSoundButton } from "./fun.js";
 import { EMOJI, Stage } from "./stage.js";
 
 const $ = (id) => document.getElementById(id);
@@ -71,6 +72,10 @@ const classroom = new Classroom({
   onLevelsChanged: refreshLevels,
   onPause: stopPlayback,
   onViews: applyViews,
+  // sounds the teacher allows: both lets the child switch, one is set for everyone
+  onSounds: (sounds) => lockLook({ sounds: sounds.length === 1 ? sounds[0] === "on" : null }),
+  // colours the teacher allows: both lets the child switch, one is set for everyone
+  onThemes: (themes) => lockLook({ theme: themes.length === 1 ? themes[0] : null }),
   // the teacher picked a language for the class or for this child (null: the device's own)
   onLang: (code) => {
     const next = code || deviceLang();
@@ -80,6 +85,14 @@ const classroom = new Classroom({
   onPlayLevel: playSharedLevel,
 });
 let inClass = false;
+// sounds, confetti, combos and a pokeable animal (the fun pass); only reacts to runs
+const fun = new Fun({ getStage: () => stage, stageBox: $("stage") });
+setupSoundButton($("sounds"));
+setupThemeButton($("theme"));
+$("stage").addEventListener("click", (event) => {
+  if (state.playing || !stage.hitAnimal?.(event)) return;
+  fun.poke();
+});
 // pilot readiness (phase 6): checks, smiley and error counts, only when the pilot is on
 const pilotUI = new Pilot({ getPlayer: () => state.player });
 
@@ -931,6 +944,7 @@ async function playStep(step) {
       state.stack.pop();
       renderStack();
     } else {
+      if (stage.duration > 0) fun.event(event);
       await stage.play(event);
     }
   }
@@ -952,6 +966,7 @@ async function play({ single = false } = {}) {
     return;
   }
   const token = ++state.token;
+  if (state.stepIndex === 0) fun.runStarted();
   state.playing = !single;
   updateButtons();
   while (state.stepIndex < run.steps.length) {
@@ -984,6 +999,7 @@ function finish(run) {
   }
   showResult(run);
   stage.showFeeling(run.feeling);
+  fun.finished(run, $("result"));
   if (state.over) setTimeout(() => players.showGoodbye(state.level?.pack), 1500); // let them see the result first
 }
 

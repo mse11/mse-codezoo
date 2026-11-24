@@ -40,6 +40,10 @@ DEFAULTS: dict[str, dict[str, Any]] = {
     "class": {"roster": True, "names": True, "deleteAtEnd": False, "cub": False},
 }
 VIEWS = ("2d", "3d")  # the stage: the 2D drawing (any device) and the 3D scene (needs WebGL)
+# sounds on the children's devices: both (each child switches), or only "on" or "off"
+SOUNDS = ("on", "off")
+# colours on the children's devices: both (each child switches), or only "light" or "dark"
+THEMES = ("light", "dark")
 CLASS_ID = re.compile(r"^c[0-9a-f]{8}$")
 LEVEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
 MAX_CLASS_NAME = 40
@@ -86,6 +90,12 @@ class ClassInfo:
             "lang": self.settings.get("lang") if self.settings.get("lang") in LANGS else None,
             # the stage views children may use: both (each child picks), or only "2d" or "3d"
             "views": [v for v in VIEWS if v in self.settings.get("views", VIEWS)] or list(VIEWS),
+            # sounds: both (each child switches them), or only "on" or "off"
+            "sounds": [v for v in SOUNDS if v in self.settings.get("sounds", SOUNDS)]
+            or list(SOUNDS),
+            # colours: both (each child switches them), or only "light" or "dark"
+            "themes": [v for v in THEMES if v in self.settings.get("themes", THEMES)]
+            or list(THEMES),
         }
 
 
@@ -196,7 +206,8 @@ class ClassStore:
 
     def update(self, ref: str, **changes: Any) -> ClassInfo:
         """Change settings: roster, names, deleteAtEnd, locked, cub (bools), assigned (ids)
-        and lang ("en", "sk", or "" for each device's own language)."""
+        lang ("en", "sk", or "" for each device's own language), views (["2d", "3d"])
+        sounds (["on", "off"]) and themes (["light", "dark"]): both lets each child switch."""
         info = self.find(ref)
         data = self._read(info.id)
         if changes.get("views") is not None:
@@ -204,6 +215,16 @@ class ClassStore:
             if not isinstance(views, list) or not views or not set(views) <= set(VIEWS):
                 raise ClassError(t("Tick 2D, 3D or both."))
             data["settings"]["views"] = [v for v in VIEWS if v in views]
+        if changes.get("sounds") is not None:
+            sounds = changes["sounds"]
+            if not isinstance(sounds, list) or not sounds or not set(sounds) <= set(SOUNDS):
+                raise ClassError(t("Tick On, Off or both."))
+            data["settings"]["sounds"] = [v for v in SOUNDS if v in sounds]
+        if changes.get("themes") is not None:
+            themes = changes["themes"]
+            if not isinstance(themes, list) or not themes or not set(themes) <= set(THEMES):
+                raise ClassError(t("Tick Light, Dark or both."))
+            data["settings"]["themes"] = [v for v in THEMES if v in themes]
         if changes.get("lang") is not None:
             lang = changes["lang"] or None
             if lang is not None and lang not in LANGS:

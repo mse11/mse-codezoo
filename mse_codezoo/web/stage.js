@@ -178,6 +178,31 @@ export class Stage {
     this.bubble.setAttribute("visibility", "hidden");
   }
 
+  // where the animal is on the screen (for "+1" texts and confetti, fun.js)
+  animalPoint() {
+    const box = this.face?.getBoundingClientRect();
+    if (!box || !box.width) return null;
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  }
+
+  hitAnimal(event) {
+    return Boolean(event.target.closest?.(".animal"));
+  }
+
+  // poked while nothing runs: a hop and a word; every tenth poke is a dance
+  poke(text, { dance = false } = {}) {
+    clearTimeout(this.pokeTimer);
+    this.say(text);
+    const move = dance ? "dance" : "poked";
+    this.body.classList.remove("poked", "dance");
+    void this.body.getBoundingClientRect(); // restart the animation
+    this.body.classList.add(move);
+    this.pokeTimer = setTimeout(() => {
+      this.body.classList.remove(move);
+      this.hideBubble();
+    }, dance ? 2600 : 1600);
+  }
+
   showFeeling(feeling) {
     if (!feeling) return;
     this.say(feeling.face);

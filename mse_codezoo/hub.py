@@ -26,7 +26,8 @@ Routes on top of ``server.dispatch``:
     POST /api/class/report {share}          -> hides a share until the teacher looks at it
 
     GET  /api/teacher/overview              -> everything the teacher's screen shows
-    POST /api/teacher/settings {roster?, names?, deleteAtEnd?, locked?, assigned?, cub?}
+    POST /api/teacher/settings {roster?, names?, deleteAtEnd?, locked?, assigned?, cub?,
+                              lang?, views?, sounds?, themes?}
     POST /api/teacher/player/cub {profile, on}   Cub mode for one child (phase 7)
     POST /api/teacher/player/settings {profile, views?: class|2d|3d|both,
                                       lang?: class|device|en|sk}  one child's own settings
@@ -150,6 +151,8 @@ class Hub:
             "paused": self.paused,
             "started": self.started,
             "views": info.public()["views"],
+            "sounds": info.public()["sounds"],
+            "themes": info.public()["themes"],
             "locked": bool(info.settings["locked"]),
             "assigned": list(info.settings["assigned"]),
             "shares": len(self.classes.shares(self.class_id, "approved")),
@@ -348,6 +351,8 @@ class Hub:
                     "cub",
                     "lang",
                     "views",
+                    "sounds",
+                    "themes",
                 )  # fmt: skip
             }
             self.classes.update(self.class_id, **changes)

@@ -477,6 +477,38 @@ def test_the_teacher_picks_the_stage_views(tmp_path):
             hub.handle("POST", "/api/teacher/settings", {}, {"views": wrong}, head, "t")
 
 
+def test_the_teacher_picks_the_sounds(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("4.D", "workshop").id)
+    code, head = {"X-Class-Code": hub.code}, {"X-Teacher-Token": hub.teacher_token}
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["sounds"] == ["on", "off"]
+    overview = hub.handle("POST", "/api/teacher/settings", {}, {"sounds": ["off"]}, head, "t")
+    assert overview["class"]["sounds"] == ["off"]
+    assert overview["class"]["views"] == ["2d", "3d"]  # the stage is left alone
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["sounds"] == ["off"]
+    for wrong in ([], ["loud"], "off"):
+        with pytest.raises(ClassError):
+            hub.handle("POST", "/api/teacher/settings", {}, {"sounds": wrong}, head, "t")
+
+
+def test_the_teacher_picks_the_colours(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("4.E", "workshop").id)
+    code, head = {"X-Class-Code": hub.code}, {"X-Teacher-Token": hub.teacher_token}
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["themes"] == ["light", "dark"]
+    overview = hub.handle("POST", "/api/teacher/settings", {}, {"themes": ["dark"]}, head, "t")
+    assert overview["class"]["themes"] == ["dark"]
+    assert overview["class"]["sounds"] == ["on", "off"]  # the sounds are left alone
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["themes"] == ["dark"]
+    for wrong in ([], ["purple"], "dark"):
+        with pytest.raises(ClassError):
+            hub.handle("POST", "/api/teacher/settings", {}, {"themes": wrong}, head, "t")
+
+
 def test_a_child_can_have_their_own_stage_and_language(tmp_path):
     from mse_codezoo.hub import Hub
 

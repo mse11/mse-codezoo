@@ -654,6 +654,52 @@ export class Stage3D {
     this.bubble.hidden = true;
   }
 
+  // where the animal is on the screen (for "+1" texts and confetti, fun.js)
+  animalPoint() {
+    if (!this.monkey) return null;
+    const point = this.monkey.position.clone();
+    point.y += 0.45;
+    point.project(this.camera);
+    const box = this.container.getBoundingClientRect();
+    return { x: box.left + ((point.x + 1) / 2) * box.width, y: box.top + ((1 - point.y) / 2) * box.height };
+  }
+
+  hitAnimal(event) {
+    const point = this.animalPoint();
+    if (!point) return false;
+    const reach = Math.max(36, this.container.clientWidth / Math.max(this.width || 6, 4) / 1.6);
+    return Math.hypot(event.clientX - point.x, event.clientY - point.y) < reach;
+  }
+
+  // poked while nothing runs: a hop and a word; every tenth poke is a spinning dance
+  poke(text, { dance = false } = {}) {
+    if (!this.monkey) return;
+    clearTimeout(this.pokeTimer);
+    this.say(text);
+    const monkey = this.monkey;
+    const base = ANGLE[this.facing];
+    const y = monkey.position.y;
+    if (dance) {
+      this.tween(2200, (_, p) => {
+        monkey.position.y = y + Math.abs(Math.sin(p * Math.PI * 4)) * 0.4;
+        monkey.rotation.y = base + p * Math.PI * 4;
+        monkey.rotation.z = Math.sin(p * Math.PI * 8) * 0.25;
+      }).then(() => {
+        monkey.rotation.set(0, base, 0);
+        monkey.position.y = y;
+      });
+    } else {
+      this.tween(450, (_, p) => {
+        monkey.position.y = y + Math.sin(p * Math.PI) * 0.35;
+        monkey.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.12);
+      }).then(() => {
+        monkey.position.y = y;
+        monkey.scale.setScalar(1);
+      });
+    }
+    this.pokeTimer = setTimeout(() => this.hideBubble(), dance ? 2600 : 1600);
+  }
+
   showFeeling(feeling) {
     if (!feeling || !this.monkey) return;
     this.mood.textContent = feeling.face;

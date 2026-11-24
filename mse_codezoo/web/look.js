@@ -8,7 +8,8 @@ import { canSpeak, speak } from "./speech.js";
 
 const KEY = "codezoo.look";
 const DEFAULTS = {
-  text: "normal", easy: false, contrast: false, motion: "system", targets: false, read: false,
+  text: "normal", easy: false, contrast: false, motion: "system", targets: false, read: false, sounds: true,
+  theme: "system", // colours: "system" (as the device), "light" or "dark"
 };
 
 function read() {
@@ -20,9 +21,23 @@ function read() {
 }
 
 let settings = read();
+// settings a classroom's teacher decides for this device (`sounds`, `theme`): they win
+// over the child's own choice, and Look and feel shows them as set by the teacher
+let locked = {};
 
 export function look() {
-  return settings;
+  return { ...settings, ...locked };
+}
+
+// a value locks that setting; null unlocks it (the child's own choice again)
+export function lockLook(next) {
+  const merged = { ...locked, ...next };
+  locked = Object.fromEntries(Object.entries(merged).filter(([, value]) => value !== null && value !== undefined));
+  applyLook();
+}
+
+export function isLocked(key) {
+  return key in locked;
 }
 
 // less motion: the setting here, or the system's "reduce motion"
@@ -39,7 +54,15 @@ export function applyLook() {
   root.dataset.motion = reducedMotion() ? "reduce" : "full";
   root.dataset.targets = String(settings.targets);
   root.dataset.read = String(settings.read); // read aloud (speech.js, phase 7)
+  // colours: style.css and the blocks follow data-theme; without it, the device's own
+  const theme = look().theme;
+  if (theme === "light" || theme === "dark") root.dataset.theme = theme;
+  else delete root.dataset.theme;
   window.dispatchEvent(new CustomEvent("codezoo-look", { detail: settings }));
+}
+
+export function setLook(next) {
+  save(next);
 }
 
 function save(next) {
@@ -64,16 +87,19 @@ function el(tag, attrs = {}, ...children) {
 }
 
 function checkbox(key, label) {
-  const input = el("input", { type: "checkbox", ...(settings[key] ? { checked: "" } : {}) });
+  const on = look()[key];
+  const input = el("input", { type: "checkbox", ...(on ? { checked: "" } : {}), ...(isLocked(key) ? { disabled: "" } : {}) });
   input.addEventListener("change", () => save({ [key]: input.checked }));
-  return el("label", { class: "check" }, input, " ", el("span", {}, label));
+  const note = isLocked(key) ? el("span", { class: "note" }, ` (${t("set by the teacher")})`) : null;
+  return el("label", { class: "check" }, input, " ", el("span", {}, label), note);
 }
 
 function select(key, label, options) {
-  const box = el("select", {}, ...options.map(([value, text]) => el("option", { value }, text)));
-  box.value = settings[key];
+  const box = el("select", isLocked(key) ? { disabled: "" } : {}, ...options.map(([value, text]) => el("option", { value }, text)));
+  box.value = look()[key];
   box.addEventListener("change", () => save({ [key]: box.value }));
-  return el("label", {}, el("span", {}, label), box);
+  const note = isLocked(key) ? el("span", { class: "note" }, ` (${t("set by the teacher")})`) : null;
+  return el("label", {}, el("span", {}, label), box, note);
 }
 
 // Read aloud uses the device's own voices; say so when there is none for this language
@@ -102,6 +128,11 @@ export function openLook() {
       ["large", t("large")],
       ["larger", t("larger")],
     ]),
+    select("theme", t("Colours"), [
+      ["system", t("as this device is set")],
+      ["light", t("☀️ light")],
+      ["dark", t("🌙 dark")],
+    ]),
     checkbox("easy", t("Easy-to-read text (simple letters, more space)")),
     checkbox("contrast", t("High contrast")),
     select("motion", t("Motion"), [
@@ -111,6 +142,7 @@ export function openLook() {
     ]),
     checkbox("targets", t("Big targets: bigger blocks and buttons; tap a block to add it")),
     checkbox("read", t("Read aloud: goals, hints, results and tapped blocks")),
+    checkbox("sounds", t("Sounds: steps, pops and a little tune when you solve a level")),
     voiceNote(),
     el("p", { class: "hint" }, t("These settings are kept in this browser only.")),
     el(
@@ -121,6 +153,32 @@ export function openLook() {
   );
   document.body.append(dialog);
   dialog.showModal();
+}
+
+// the ☀️/🌙 button in a page's header: switch between light and dark (the same setting as
+// "Colours" above); hidden when a classroom's teacher picked the colours for everyone
+const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+export function isDark() {
+  const theme = look().theme;
+  return theme === "dark" || (theme !== "light" && systemDark.matches);
+}
+
+export function setupThemeButton(button) {
+  if (!button) return;
+  const show = () => {
+    const dark = isDark();
+    button.textContent = dark ? "🌙" : "☀️";
+    button.hidden = isLocked("theme");
+    const label = dark ? t("Dark colours: switch to light") : t("Light colours: switch to dark");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+  };
+  button.addEventListener("click", () => {
+    if (!isLocked("theme")) save({ theme: isDark() ? "light" : "dark" });
+  });
+  window.addEventListener("codezoo-look", show);
+  systemDark.addEventListener("change", show);
+  show();
 }
 
 systemReduce.addEventListener("change", applyLook);

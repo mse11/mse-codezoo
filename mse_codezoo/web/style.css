@@ -661,3 +661,71 @@ html[data-motion="reduce"] .cz-wiggle .blocklyPath { filter: drop-shadow(0 0 4px
 html[data-cub="true"] .result > ul { display: none; }
 .cub-level.today { box-shadow: 0 0 0 3px var(--star); } /* the teacher picked it for today */
 .view-toggle[hidden] { display: none; } /* the teacher allowed only one stage view */
+
+/* --- the fun pass (fun.js): confetti, "+1" texts, banners, popping stars, poking ---------- */
+.fun-layer { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
+.fun-confetti { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fun-float {
+  position: absolute; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 800;
+  color: var(--star); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 0 8px rgba(255, 255, 255, 0.6);
+  animation: fun-rise 1.2s ease-out forwards; white-space: nowrap;
+}
+.fun-float.combo { font-size: 1.9rem; color: #ff6b6b; animation-name: fun-rise-pop; }
+.fun-float.bonk, .fun-float.heart { font-size: 2rem; }
+.fun-banner {
+  position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%);
+  padding: 0.6rem 1.4rem; border-radius: 999px; font-size: 1.6rem; font-weight: 800; white-space: nowrap;
+  background: linear-gradient(135deg, #ffcf33, #ff922b); color: #3b2300; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  animation: fun-banner 2.5s ease-in-out forwards;
+}
+@keyframes fun-rise {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  15% { opacity: 1; transform: translate(-50%, -80%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -260%) scale(1); }
+}
+@keyframes fun-rise-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-15deg); }
+  25% { opacity: 1; transform: translate(-50%, -90%) scale(1.4) rotate(8deg); }
+  100% { opacity: 0; transform: translate(-50%, -220%) scale(1) rotate(0); }
+}
+@keyframes fun-banner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(2deg); }
+  20% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+  85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
+}
+.result .stars .star { display: inline-block; }
+.result .stars .star.earned { animation: fun-star 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.result .stars .star.empty { animation: fun-star-empty 0.3s ease-out both; }
+@keyframes fun-star {
+  0% { opacity: 0; transform: scale(0) rotate(-120deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes fun-star-empty { from { opacity: 0; } to { opacity: 1; } }
+.sound-button[aria-pressed="false"] { opacity: 0.7; }
+.stage-svg .animal { cursor: pointer; }
+.stage-svg .body.poked { animation: fun-poke 0.45s ease-out 1; }
+.stage-svg .body.dance { animation: fun-dance 2.2s ease-in-out 1; }
+@keyframes fun-poke {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-14px) scale(1.15, 0.9); }
+  60% { transform: translateY(0) scale(0.92, 1.08); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes fun-dance {
+  0%, 100% { transform: rotate(0) translateY(0); }
+  12% { transform: rotate(-20deg) translateY(-10px); }
+  25% { transform: rotate(20deg) translateY(0); }
+  37% { transform: rotate(-20deg) translateY(-10px); }
+  50% { transform: rotate(360deg) translateY(-16px) scale(1.2); }
+  62% { transform: rotate(340deg) translateY(0); }
+  75% { transform: rotate(380deg) translateY(-10px); }
+  87% { transform: rotate(350deg) translateY(0); }
+}
+.stage-3d { cursor: default; }
+html[data-motion="reduce"] .result .stars .star { animation: none !important; }
+html[data-motion="reduce"] .fun-float { animation: fun-fade 1.2s linear forwards; }
+html[data-motion="reduce"] .fun-banner { animation: fun-fade 2.5s linear forwards; }
+@keyframes fun-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+html[data-motion="reduce"] .stage-svg .body.poked, html[data-motion="reduce"] .stage-svg .body.dance { animation: none; }

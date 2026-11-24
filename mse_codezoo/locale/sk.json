@@ -458,5 +458,7 @@
   "Python island: {version}": "Ostrov Pythonu: {version}",
   "Pick one of these languages: {names}.": "Vyberte jeden z týchto jazykov: {names}.",
   "The teacher is getting the lesson ready.": "Učiteľ pripravuje hodinu.",
-  "Tick 2D, 3D or both.": "Zaškrtnite 2D, 3D alebo obe."
+  "Tick 2D, 3D or both.": "Zaškrtnite 2D, 3D alebo obe.",
+  "Tick On, Off or both.": "Zaškrtnite Zapnuté, Vypnuté alebo obe.",
+  "Tick Light, Dark or both.": "Zaškrtnite Svetlé, Tmavé alebo obe."
 }

@@ -6,7 +6,7 @@
 import { api, setTeacherKey } from "./api.js";
 import { describeGoal } from "./goals.js";
 import { LANGS, concept, initialLang, lang, langLabel, setLang, t, translatePage } from "./i18n.js";
-import { openLook } from "./look.js";
+import { openLook, setupThemeButton } from "./look.js";
 import { displayName, FACES } from "./players.js";
 
 const $ = (id) => document.getElementById(id);
@@ -447,6 +447,10 @@ function renderSettings() {
   $("t-class-lang").value = data.class.lang || "";
   $("t-view-2d").checked = data.class.views.includes("2d");
   $("t-view-3d").checked = data.class.views.includes("3d");
+  $("t-sound-on").checked = data.class.sounds.includes("on");
+  $("t-sound-off").checked = data.class.sounds.includes("off");
+  $("t-theme-light").checked = data.class.themes.includes("light");
+  $("t-theme-dark").checked = data.class.themes.includes("dark");
   $("t-pilot").checked = data.pilot;
   $("t-pilot-box").hidden = !data.pilot;
 }
@@ -659,6 +663,8 @@ $("t-save-settings").addEventListener("click", async () => {
     cub: $("t-cub").checked,
     lang: $("t-class-lang").value,
     views: ["2d", "3d"].filter((view) => $(`t-view-${view}`).checked),
+    sounds: ["on", "off"].filter((sound) => $(`t-sound-${sound}`).checked),
+    themes: ["light", "dark"].filter((theme) => $(`t-theme-${theme}`).checked),
     pilot: $("t-pilot").checked,
   });
   if (result) {
@@ -692,6 +698,7 @@ $("t-level-files").addEventListener("change", (event) => {
   event.target.value = "";
 });
 $("look").addEventListener("click", openLook);
+setupThemeButton($("theme"));
 $("t-projector-close").addEventListener("click", () => $("t-projector").close());
 $("t-report-close").addEventListener("click", () => $("t-report-dialog").close());
 $("lang").addEventListener("change", (event) => {

@@ -10,6 +10,23 @@ const FLAGS = { en: "🇬🇧", sk: "🇸🇰" };
 export const langLabel = (code) => `${FLAGS[code] || "🌐"} ${LANGS[code] || code}`;
 
 const SK = {
+  // the fun pass (fun.js)
+  "Sounds on": "Zvuky zapnuté",
+  "Sounds off": "Zvuky vypnuté",
+  "Sounds: steps, pops and a little tune when you solve a level": "Zvuky: kroky, pukanie a pesnička, keď vyriešiš level",
+  "🔥 {n} levels solved! You're on fire!": "🔥 {n} vyriešené levely! Si v ohni!",
+  "⭐ ⭐ ⭐ Perfect!": "⭐ ⭐ ⭐ Dokonalé!",
+  "🎉 You found my secret dance!": "🎉 Našiel si môj tajný tanec!",
+  "Hee hee, that tickles!": "Hi hi, to štekí!",
+  "Boop!": "Pip!",
+  "Let's write some code!": "Poďme programovať!",
+  "Wheee!": "Juchú!",
+  "Again! Again!": "Ešte! Ešte!",
+  "Hello, programmer!": "Ahoj, programátor!",
+  "Psst… blocks can go inside a loop!": "Pst… bloky môžu ísť aj do cyklu!",
+  "I'm ready when you are!": "Som pripravený, keď si ty!",
+  "Do I have something on my nose?": "Mám niečo na nose?",
+  "Ready, steady… Run!": "Pozor, pripraviť… Spusti!",
   // header and panes
   "▶ Run": "▶ Spusti",
   "⏸ Pause": "⏸ Pauza",
@@ -597,6 +614,18 @@ const SK = {
   "Pause everyone first": "Najprv zastavte všetkých",
   // teacher: stage views
   "Stage on the children's devices (both ticked: each child can switch)": "Scéna na zariadeniach detí (obe zaškrtnuté: každé dieťa si môže prepnúť)",
+  "Sounds on the children's devices (both ticked: each child can switch)": "Zvuky na zariadeniach detí (obe zaškrtnuté: každé dieťa si môže prepnúť)",
+  "On": "Zapnuté",
+  "Off": "Vypnuté",
+  "set by the teacher": "nastavil učiteľ",
+  "Colours on the children's devices (both ticked: each child can switch)": "Farby na zariadeniach detí (obe zaškrtnuté: každé dieťa si môže prepnúť)",
+  "Light": "Svetlé",
+  "Dark": "Tmavé",
+  "Colours": "Farby",
+  "☀️ light": "☀️ svetlé",
+  "🌙 dark": "🌙 tmavé",
+  "Dark colours: switch to light": "Tmavé farby: prepnúť na svetlé",
+  "Light colours: switch to dark": "Svetlé farby: prepnúť na tmavé",
   // teacher: per-child settings
   "2D and 3D": "2D aj 3D",
   "Language as the class": "Jazyk ako trieda",
