@@ -684,7 +684,8 @@ export function createWorkspace(container, onChange) {
     trashcan: true,
     sounds: false,
     move: { scrollbars: true, drag: true, wheel: true },
-    zoom: { controls: true, startScale: 0.8, maxScale: 2, minScale: 0.4 },
+    // zoom buttons sit in the pane's title bar, with Ctrl + wheel (zoom.js)
+    zoom: { controls: false, startScale: 0.8, maxScale: 4, minScale: 0.3 },
   });
   let loading = false;
   let unlocked = [];

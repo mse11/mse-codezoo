@@ -10,7 +10,7 @@ import { api, setPython } from "./api.js";
 import { createWorkspace, describeBlock } from "./blocks.js";
 import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
-import { LANGS, deviceLang, initialLang, lang, langLabel, setLang, t, translatePage, urlLang } from "./i18n.js";
+import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
 import { lockLook, openLook, setupThemeButton } from "./look.js";
 import { Pilot } from "./pilot.js";
@@ -20,6 +20,7 @@ import { canSpeak, isMuted, onVoices, readAloudOn, setCub, setMuted, speak } fro
 import { describeGoal } from "./goals.js";
 import { Fun, setupSoundButton } from "./fun.js";
 import { EMOJI, Stage } from "./stage.js";
+import { keepPageZoom, resetAllZoom, setupBlocksZoom, setupZoom } from "./zoom.js";
 
 const $ = (id) => document.getElementById(id);
 const HEARTBEAT_SECONDS = 30;
@@ -65,6 +66,42 @@ const code = new CodeView({
 });
 const blocks = createWorkspace($("blockly"), () => debounce("print", 150, blocksChanged));
 blocks.onTap((block) => speak(describeBlock(block)));
+// −, + and reset for each part of the page, and Ctrl + wheel over it (zoom.js)
+setupBlocksZoom({ pane: document.querySelector(".blocks-pane"), workspace: blocks.workspace });
+for (const [selector, name] of [[".code-pane", "code"], [".console-pane", "console"]]) {
+  const pane = document.querySelector(selector);
+  setupZoom({
+    area: pane,
+    place: pane.querySelector(".pane-title"),
+    name,
+    onChange: () => {
+      code.positionMark();
+      code.positionTints();
+    },
+  });
+}
+// the whole stage pane, so the stage can't shrink out from under the mouse; the goal
+// inside it has its own zoom
+setupZoom({
+  area: document.querySelector(".stage-pane"),
+  target: document.querySelector(".stage-pane"),
+  place: document.querySelector(".stage-tools"),
+  name: "stage",
+  variable: "--stage-zoom",
+  label: "Zoom the stage",
+});
+setupZoom({
+  area: document.querySelector(".stage-head"),
+  place: document.querySelector(".stage-head"),
+  name: "head",
+  variable: "--head-zoom",
+  label: "Zoom the goal and result",
+});
+// the pane titles: Ctrl + wheel over any of them zooms all of them, so they always match
+setupZoom({ area: document.querySelectorAll(".pane-title"), target: $("panes"), name: "titles", variable: "--title-zoom" });
+// the top bar: Ctrl + wheel only
+setupZoom({ area: document.querySelector("header.bar"), name: "bar", variable: "--bar-zoom" });
+keepPageZoom();
 const players = new Players({ onChoose: playerChosen, onSettingsChanged: checkToday });
 // on a classroom hub (`codezoo class serve`); stays unused at home
 const classroom = new Classroom({
@@ -407,8 +444,34 @@ onVoices(() => state.level && renderGoal());
 
 // --- players and the daily limit ----------------------------------------------------
 
+// Play as another animal: the menu, or a player's own animal when they start. Each player
+// keeps the animal they last picked; a new player starts as their picture, when their
+// picture is one of the zoo's animals.
+function switchAnimal(animal) {
+  state.animal = animal;
+  saveSetting(ANIMAL_KEY, animal);
+  if (state.player) saveSetting(`${ANIMAL_KEY}.${state.player.id}`, animal);
+  if (!state.animals) return; // still starting: the levels load with this animal
+  api.levels(animal).then((levels) => {
+    state.levels = levels; // titles name this animal's items
+    renderLevelOptions();
+  });
+  if (state.shared) loadShared(location.hash.slice(6));
+  else if (state.level) loadLevel(state.level.id);
+}
+
+function playerAnimal(profile) {
+  if (!profile) return null;
+  const kept = readSetting(`${ANIMAL_KEY}.${profile.id}`);
+  const zoo = (state.animals || []).map((a) => a.id);
+  if (kept && (!zoo.length || zoo.includes(kept))) return kept;
+  return zoo.includes(profile.picture) ? profile.picture : null;
+}
+
 async function playerChosen(profile) {
   state.player = profile;
+  const animal = playerAnimal(profile);
+  if (animal && animal !== state.animal) switchAnimal(animal);
   state.progress = {};
   state.over = false;
   state.outfit = "";
@@ -754,10 +817,7 @@ async function useView(want3d, { save = true } = {}) {
 // --- language ------------------------------------------------------------------------
 
 function renderLanguages() {
-  $("lang").replaceChildren(
-    ...Object.keys(LANGS).map((code) => el("option", { value: code }, langLabel(code))),
-  );
-  $("lang").value = lang();
+  fillLangSelect($("lang")); // a drawn flag and "SK"; the full name on hover
 }
 
 async function changeLanguage(code, { save = true } = {}) {
@@ -793,6 +853,48 @@ async function changeLanguage(code, { save = true } = {}) {
   renderTints();
 }
 
+// --- the console: what print() writes, as the run reaches each print() ----------------
+
+const MAX_CONSOLE = 20000; // characters kept; older text scrolls away
+
+function printToConsole(text, glow) {
+  const box = $("console");
+  const piece = el("span", glow ? { class: "fresh" } : {}, text);
+  box.append(piece);
+  while (box.textContent.length > MAX_CONSOLE && box.firstChild !== piece) box.firstChild.remove();
+  box.scrollTop = box.scrollHeight;
+  if (glow) setTimeout(() => piece.classList.remove("fresh"), 50);
+}
+
+// An error that stopped the run, like Python prints it: where it happened (from the outside
+// in), then the line and what went wrong. A program Python can't read shows its first
+// problem. In red, after what was printed before it.
+function problemsToConsole(run) {
+  const lines = [];
+  const error = run.error;
+  if (error) {
+    const trace = error.traceback || [];
+    if (trace.length > 1) {
+      lines.push(t("Where it happened, from the outside in:"));
+      for (const frame of trace.slice(-8)) {
+        lines.push(`  ${frame.function === "<program>" ? t("line {line}, in the program", frame) : t("line {line}, in {function}()", frame)}`);
+      }
+    }
+    lines.push((error.line ? t("Line {line}: ", { line: error.line }) : "") + error.message);
+  } else {
+    const problem = (run.diagnostics || []).find((d) => d.severity === "error");
+    if (problem) lines.push(t("line {line}: {message}", problem));
+  }
+  if (!lines.length) return;
+  const box = $("console");
+  box.append(el("span", { class: "console-error" }, `${lines.join("\n")}\n`));
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearConsole() {
+  $("console").replaceChildren();
+}
+
 // --- running -----------------------------------------------------------------------
 
 function invalidateRun() {
@@ -802,6 +904,7 @@ function invalidateRun() {
   renderLanes(null);
   $("result").replaceChildren();
   $("feeling").replaceChildren();
+  clearConsole();
   state.stack = [];
   renderStack();
   code.highlight(0);
@@ -906,6 +1009,7 @@ async function seek(index) {
   stopPlayback();
   const token = state.token;
   stage.reset();
+  clearConsole();
   state.stack = [];
   renderStack();
   const saved = stage.duration;
@@ -943,6 +1047,8 @@ async function playStep(step) {
     } else if (event.type === "return") {
       state.stack.pop();
       renderStack();
+    } else if (event.type === "print") {
+      printToConsole(event.text, stage.duration > 0);
     } else {
       if (stage.duration > 0) fun.event(event);
       await stage.play(event);
@@ -963,6 +1069,7 @@ async function play({ single = false } = {}) {
   }
   if (!run.steps) {
     showResult(run);
+    problemsToConsole(run);
     return;
   }
   const token = ++state.token;
@@ -993,6 +1100,9 @@ async function play({ single = false } = {}) {
 }
 
 function finish(run) {
+  // a run without print events (made by an older engine): show its output at the end
+  if (run.output?.length && !$("console").textContent) printToConsole(`${run.output.join("\n")}\n`, false);
+  problemsToConsole(run);
   if (!run.error) {
     code.highlight(0);
     blocks.highlight(null);
@@ -1044,7 +1154,6 @@ function showResult(run) {
         ),
       );
     }
-    if (run.output?.length) parts.push(el("pre", { class: "printed" }, run.output.join("\n")));
     const files = Object.entries(run.files || {});
     if (files.length) {
       parts.push(
@@ -1303,18 +1412,10 @@ window.addEventListener("hashchange", () => {
   if (id !== state.level?.id && visibleLevels().some((l) => l.id === id)) loadLevel(id);
 });
 $("grownups").addEventListener("click", () => players.openGrownups());
-$("animal-select").addEventListener("change", (event) => {
-  state.animal = event.target.value;
-  saveSetting(ANIMAL_KEY, state.animal);
-  api.levels(state.animal).then((levels) => {
-    state.levels = levels; // titles name this animal's items
-    renderLevelOptions();
-  });
-  if (state.shared) loadShared(location.hash.slice(6));
-  else if (state.level) loadLevel(state.level.id);
-});
+$("animal-select").addEventListener("change", (event) => switchAnimal(event.target.value));
 $("zoo").addEventListener("click", () => openZoo());
 $("look").addEventListener("click", openLook);
+$("reset-view").addEventListener("click", resetAllZoom);
 $("card-form").addEventListener("submit", (event) => {
   event.preventDefault();
   unlockCard($("card-code").value);
@@ -1334,6 +1435,8 @@ setupSplitters({
   panes: $("panes"),
   stageSplit: $("split-stage"),
   paneSplit: $("split-panes"),
+  headSplit: $("split-head"),
+  consoleSplit: $("split-console"),
   onResize: () => blocks.resize(),
 });
 

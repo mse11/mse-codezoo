@@ -263,6 +263,17 @@ class ProfileStore:
         self._save_profiles([profile if p.id == profile.id else p for p in profiles])
         return profile
 
+    def set_picture(self, ref: str, picture: str) -> Profile:
+        """A player's new picture, from the same choice as for a new player."""
+        profile = self.find(ref)
+        if picture not in self.pictures:
+            raise ProfileError(
+                t("Pick one of these pictures: {names}.", names=", ".join(self.pictures))
+            )
+        profile.picture = picture
+        self._save_profiles([profile if p.id == profile.id else p for p in self.profiles()])
+        return profile
+
     def set_cub(self, ref: str, on: bool) -> Profile:
         """Cub mode on or off for one player; a grown-up decides (no age rule)."""
         profile = self.find(ref)

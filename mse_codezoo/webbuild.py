@@ -26,7 +26,7 @@ PYODIDE_CDN = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/"
 SKIP = ("__pycache__", ".pyc")
 # the teacher's screen needs a classroom hub (codezoo class serve); its CSS is shared
 WEB_SKIP = (*SKIP, "teacher.html", "teacher.js")
-PAGES = ("index.html", "editor.html", "check.html")
+PAGES = ("index.html", "editor.html", "check.html", "game.html")
 PYODIDE_FILES = (  # what the page needs from a Pyodide distribution (the npm package has them)
     "pyodide.js", "pyodide.mjs", "pyodide.asm.js", "pyodide.asm.wasm", "python_stdlib.zip",
     "pyodide-lock.json",

@@ -27,7 +27,7 @@ const FRONT_FACING = new Set(["penguin", "octopus"]);
 // the octopus's arms, clockwise from north (as in world.py)
 const ARMS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 // events that only matter to the lanes and the result, not the stage
-const QUIET = new Set(["task", "thread", "lock", "file", "input", "import", "call", "return"]);
+const QUIET = new Set(["task", "thread", "lock", "file", "input", "import", "call", "return", "print"]);
 // terrain: ~ water or a gap, t tree, - thin ice, o a guard's watch, = a log bridge
 const TERRAIN = { "~": ["water", ""], t: ["tree", "🌴"], "-": ["thin-ice", ""], o: ["watched", "👁️"], "=": ["bridge", ""] };
 

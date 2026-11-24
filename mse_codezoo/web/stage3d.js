@@ -19,7 +19,7 @@ const GROUND = {
   bee: [0xaed581, 0xc5e1a5, 0x689f38],
 };
 const ARMS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
-const QUIET = new Set(["task", "thread", "lock", "file", "input", "import", "call", "return"]);
+const QUIET = new Set(["task", "thread", "lock", "file", "input", "import", "call", "return", "print"]);
 // less motion: the system setting or "Look and feel" (look.js sets data-motion on <html>)
 const reducedMotion = { get matches() { return document.documentElement.dataset.motion === "reduce"; } };
 
@@ -384,6 +384,88 @@ function makeFlag() {
 }
 
 // Squares the animal must reach, for a goal flag.
+// Game mode critters (game.js): an animal of the zoo when the kind is one, else a little
+// creature of simple shapes. Kinds are the program's own words (`Guard(..., kind="ghost")`).
+const ANIMALS = new Set(["monkey", "penguin", "beaver", "fox", "octopus", "bee"]);
+const CRITTER_COLOURS = [0xe53935, 0x8e24aa, 0x1e88e5, 0xfb8c00, 0x00897b, 0x6d4c41, 0xc0ca33];
+
+function makeCritter(kind) {
+  if (ANIMALS.has(kind)) {
+    const animal = makeAnimal(kind);
+    animal.scale.setScalar(0.85);
+    return animal;
+  }
+  if (kind === "guard") return makeGuard();
+  if (kind === "ghost") return makeGhost();
+  let hash = 0;
+  for (const char of kind || "") hash = (hash * 31 + char.charCodeAt(0)) % 1000;
+  return makeBeetle(CRITTER_COLOURS[hash % CRITTER_COLOURS.length]);
+}
+
+// a small green crocodile: long body, snout, eyes on top, four feet
+function makeGuard() {
+  const guard = new THREE.Group();
+  const skin = 0x2e7d32;
+  const body = mesh(new THREE.BoxGeometry(0.34, 0.2, 0.62), skin);
+  body.position.y = 0.16;
+  const tail = mesh(new THREE.ConeGeometry(0.1, 0.4, 5), skin);
+  tail.rotation.x = -Math.PI / 2;
+  tail.position.set(0, 0.14, -0.48);
+  const feet = [[-0.17, 0.2], [0.17, 0.2], [-0.17, -0.2], [0.17, -0.2]].map(([x, z]) => {
+    const foot = mesh(new THREE.BoxGeometry(0.1, 0.08, 0.12), 0x1b5e20);
+    foot.position.set(x, 0.04, z);
+    return foot;
+  });
+  const head = new THREE.Group();
+  head.position.set(0, 0.2, 0.3);
+  const snout = mesh(new THREE.BoxGeometry(0.26, 0.12, 0.3), 0x388e3c);
+  snout.position.set(0, -0.02, 0.14);
+  const teeth = mesh(new THREE.BoxGeometry(0.22, 0.03, 0.24), 0xfafafa);
+  teeth.position.set(0, -0.08, 0.15);
+  head.add(snout, teeth, ...eyesAt(0.08, 0.02, 0.08));
+  return finish(guard, [body, tail, ...feet], head);
+}
+
+function makeGhost() {
+  const ghost = new THREE.Group();
+  const body = mesh(new THREE.CylinderGeometry(0.18, 0.26, 0.5, 10), 0xf5f5f5, { transparent: true, opacity: 0.85 });
+  body.position.y = 0.3;
+  const head = new THREE.Group();
+  head.position.y = 0.55;
+  const top = mesh(new THREE.SphereGeometry(0.18, 10, 8), 0xf5f5f5, { transparent: true, opacity: 0.85 });
+  head.add(top, ...eyesAt(0.04, 0.15, 0.06));
+  return finish(ghost, [body], head);
+}
+
+function makeBeetle(colour) {
+  const beetle = new THREE.Group();
+  const shell = mesh(new THREE.IcosahedronGeometry(0.24, 1), colour);
+  shell.scale.set(1, 0.6, 1.2);
+  shell.position.y = 0.17;
+  const spots = [[-0.09, 0.05], [0.09, -0.06]].map(([x, z]) => {
+    const spot = mesh(new THREE.SphereGeometry(0.05, 8, 6), 0x212121);
+    spot.position.set(x, 0.3, z);
+    return spot;
+  });
+  const legs = [-0.12, 0, 0.12].flatMap((z) =>
+    [-0.24, 0.24].map((x) => {
+      const leg = mesh(new THREE.BoxGeometry(0.1, 0.03, 0.03), 0x212121);
+      leg.position.set(x, 0.05, z);
+      return leg;
+    }),
+  );
+  const head = new THREE.Group();
+  head.position.set(0, 0.16, 0.28);
+  head.add(mesh(new THREE.IcosahedronGeometry(0.11, 0), 0x212121), ...eyesAt(0.04, 0.08, 0.05));
+  return finish(beetle, [shell, ...spots, ...legs], head);
+}
+
+// the shortest way round from one angle to another
+function nearestAngle(from, to) {
+  const turn = ((((to - from + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
+  return from + turn;
+}
+
 export function reachTargets(goal) {
   if (!goal) return [];
   if (goal.type === "reach") return [goal.at];
@@ -783,6 +865,106 @@ export class Stage3D {
     }
     this.hideBubble();
     if (ring) this.board.remove(ring);
+  }
+
+  // --- game mode (game.js) -----------------------------------------------------------
+  // The page hands over the whole game after every tick; the animal and the critters
+  // glide to their new squares in less than a tick, so nothing ever lags behind.
+
+  loadGame(game) {
+    this.load({ pack: game.pack, world: game.world, goal: null });
+    this.critters = new Map();
+  }
+
+  showGame(state, tickMs = 150) {
+    const time = Math.max(40, tickMs * 0.85);
+    this.glide(this.monkey, state.animal.at, state.animal.facing, time);
+    this.position = [...state.animal.at];
+    this.facing = state.animal.facing;
+    const present = new Set(state.items.map(([x, y]) => `${x},${y}`));
+    for (const [key, item] of this.items) {
+      if (!present.has(key)) {
+        item.parent?.remove(item);
+        this.items.delete(key);
+      }
+    }
+    for (const [x, y, tile] of state.items) {
+      if (this.items.has(`${x},${y}`)) continue;
+      const item = makeItem(this.level.pack.items[tile]);
+      item.position.set(x, 0, y);
+      item.userData.baseY = 0;
+      this.board.add(item);
+      this.items.set(`${x},${y}`, item);
+    }
+    const seen = new Set();
+    for (const critter of state.critters) {
+      seen.add(critter.id);
+      let model = this.critters.get(critter.id);
+      if (!model) {
+        model = makeCritter(critter.kind);
+        model.position.set(critter.at[0], 0, critter.at[1]);
+        model.rotation.y = ANGLE[critter.facing];
+        this.board.add(model);
+        this.critters.set(critter.id, model);
+      }
+      this.glide(model, critter.at, critter.facing, time);
+    }
+    for (const [id, model] of this.critters) {
+      if (seen.has(id)) continue;
+      this.critters.delete(id);
+      this.retween(model, time, (e) => model.scale.setScalar(Math.max(0.01, 1 - e)), () => model.parent?.remove(model));
+    }
+    if (state.said) this.say(state.said);
+    else this.hideBubble();
+  }
+
+  // a bump in a game: a quick squash, no move (target: "animal" or a critter's id)
+  bumpGame(target) {
+    const model = target === "animal" ? this.monkey : this.critters?.get(target);
+    if (!model || reducedMotion.matches || model.userData.squash) return;
+    const base = model.scale.x;
+    model.userData.squash = true;
+    this.tweens.add({
+      start: performance.now(),
+      duration: 160,
+      step: (e, p) => model.scale.set(base * (1 + Math.sin(p * Math.PI) * 0.15), base * (1 - Math.sin(p * Math.PI) * 0.2), base),
+      done: () => {
+        model.scale.setScalar(base);
+        model.userData.squash = false;
+      },
+    });
+  }
+
+  glide(model, [tx, tz], facing, time) {
+    const [fx, fz] = [model.position.x, model.position.z];
+    const from = model.rotation.y;
+    const to = nearestAngle(from, ANGLE[facing]);
+    if (fx === tx && fz === tz && Math.abs(to - from) < 1e-3) return;
+    const moving = fx !== tx || fz !== tz;
+    this.retween(model, time, (e, p) => {
+      model.position.x = fx + (tx - fx) * e;
+      model.position.z = fz + (tz - fz) * e;
+      model.position.y = moving && !reducedMotion.matches ? Math.sin(p * Math.PI) * 0.12 : 0;
+      model.rotation.y = from + (to - from) * Math.min(1, e * 1.6);
+    });
+  }
+
+  // one movement per model at a time: a new tick takes over from where the last one is
+  retween(model, duration, step, done = () => {}) {
+    const old = model.userData.tween;
+    if (old && this.tweens.delete(old)) old.done();
+    const time = reducedMotion.matches ? Math.min(duration, 40) : duration;
+    const tween = {
+      start: performance.now(),
+      duration: time,
+      step,
+      done: () => {
+        if (model.userData.tween === tween) model.userData.tween = null;
+        done();
+      },
+    };
+    model.userData.tween = tween;
+    this.tweens.add(tween);
   }
 
   async play(event) {

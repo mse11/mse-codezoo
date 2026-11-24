@@ -8,8 +8,114 @@ export const LANGS = { en: "English", sk: "Slovenčina" };
 // (Windows shows the flag as its two letters, GB or SK)
 const FLAGS = { en: "🇬🇧", sk: "🇸🇰" };
 export const langLabel = (code) => `${FLAGS[code] || "🌐"} ${LANGS[code] || code}`;
+// Flags drawn as small pictures: Windows shows a flag emoji as two letters ("SK"), so a menu
+// with emoji would read "SK SK". Built in, nothing is downloaded.
+const FLAG_SVG = {
+  en:
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'><clipPath id='t'>" +
+    "<path d='M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z'/></clipPath>" +
+    "<path d='M0,0 v30 h60 v-30 z' fill='#012169'/>" +
+    "<path d='M0,0 L60,30 M60,0 L0,30' stroke='#fff' stroke-width='6'/>" +
+    "<path d='M0,0 L60,30 M60,0 L0,30' clip-path='url(#t)' stroke='#C8102E' stroke-width='4'/>" +
+    "<path d='M30,0 v30 M0,15 h60' stroke='#fff' stroke-width='10'/>" +
+    "<path d='M30,0 v30 M0,15 h60' stroke='#C8102E' stroke-width='6'/></svg>",
+  sk:
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'>" +
+    "<rect width='9' height='6' fill='#ee1c25'/><rect width='9' height='4' fill='#0b4ea2'/>" +
+    "<rect width='9' height='2' fill='#fff'/>" +
+    "<path d='M2.1 1.25h2.3v1.95c0 .9-.6 1.5-1.15 1.8-.55-.3-1.15-.9-1.15-1.8z' fill='#ee1c25' stroke='#fff' stroke-width='.18'/>" +
+    "<path d='M3.25 1.6v2.75M2.8 2.2h.9M2.6 2.8h1.3' stroke='#fff' stroke-width='.24'/>" +
+    "<path d='M2.35 4.1c.3-.35.6-.35.9 0 .3-.35.6-.35.9 0' fill='#0b4ea2' stroke='#0b4ea2' stroke-width='.3'/></svg>",
+};
+export const flagImage = (code) =>
+  FLAG_SVG[code] ? `url("data:image/svg+xml,${encodeURIComponent(FLAG_SVG[code])}")` : "none";
+
+// A language menu: the flag drawn on the menu and the language's code ("SK"); each
+// option's full name shows on hover and for screen readers. `onPick(code)` runs on a change.
+export function fillLangSelect(select, onPick) {
+  select.classList.add("flag-select");
+  select.replaceChildren(
+    ...Object.keys(LANGS).map((code) => {
+      const option = document.createElement("option");
+      option.value = code;
+      option.textContent = code.toUpperCase();
+      option.title = LANGS[code];
+      option.setAttribute("aria-label", LANGS[code]);
+      return option;
+    }),
+  );
+  const show = () => select.style.setProperty("--flag", flagImage(select.value));
+  select.value = current;
+  show();
+  if (!select.dataset.flagWired) {
+    select.dataset.flagWired = "1";
+    select.addEventListener("change", () => {
+      show();
+      onPick?.(select.value);
+    });
+  }
+}
 
 const SK = {
+  // the top bar's groups (index.html) and the modes on every page
+  "Run": "Spustenie",
+  "You": "Ty",
+  "Modes": "Režimy",
+  "Learn": "Uč sa",
+  "Levels": "Levely",
+  "Game": "Hra",
+  // layout of the stage pane (look.js)
+  "Goal and result": "Úloha a výsledok",
+  "automatic: beside the stage on a wide screen": "automaticky: vedľa scény na širokej obrazovke",
+  "above the stage": "nad scénou",
+  "beside the stage": "vedľa scény",
+  "Resize the stage and the goal": "Zmeniť šírku scény a úlohy",
+  "Resize code and console": "Zmeniť šírku kódu a konzoly",
+  // zoom in the pane title bars (zoom.js)
+  "Zoom": "Priblíženie",
+  "Zoom in": "Priblížiť",
+  "Zoom out": "Oddialiť",
+  "Normal size": "Normálna veľkosť",
+  "Fit the blocks in view": "Zobraziť všetky bloky",
+  "Zoom the stage": "Priblíženie scény",
+  "Everything back to normal size": "Všetko späť na normálnu veľkosť",
+  "(Ctrl + mouse wheel zooms the part under the mouse)": "(Ctrl + koliesko myši priblíži časť pod myšou; ⤢ hore všetko vráti)",
+  "Zoom the goal and result": "Priblíženie úlohy a výsledku",
+  // a player's picture (players.js)
+  "Change {name}'s picture": "Zmeniť obrázok: {name}",
+  "A new picture for {name}": "Nový obrázok pre: {name}",
+  "Save the picture": "Uložiť obrázok",
+  "Cancel": "Zrušiť",
+  // the console pane (app.js)
+  "Console": "Konzola",
+  "What print() writes shows up here while the program runs.": "Čo vypíše print(), sa tu objaví počas behu programu.",
+  // game mode (game.js, phase 8)
+  "Make a game": "Urob si hru",
+  "Choose a game": "Vyber hru",
+  "Stage view": "Pohľad na scénu",
+  "▶ Play": "▶ Hraj",
+  "Stop": "Zastav",
+  "Stopped.": "Zastavené.",
+  "Start code again": "Pôvodný kód",
+  "Score": "Body",
+  "Tick": "Ťah",
+  "Up": "Hore",
+  "Down": "Dole",
+  "Left": "Vľavo",
+  "Right": "Vpravo",
+  "Space": "Medzerník",
+  "Game buttons": "Tlačidlá hry",
+  "The game. Use the arrow keys to play.": "Hra. Hraj šípkami.",
+  "The game's code": "Kód hry",
+  "Line {line}: {message}": "Riadok {line}: {message}",
+  "Playing! Use the arrow keys or the buttons.": "Hráme! Hraj šípkami alebo tlačidlami.",
+  "There are no games yet.": "Zatiaľ tu nie sú žiadne hry.",
+  "What a game program can use": "Čo môže program hry používať",
+  "a key was pressed: \"up\", \"down\", \"left\", \"right\" or \"space\"": "stlačila sa klávesa: \"up\", \"down\", \"left\", \"right\" alebo \"space\"",
+  "runs on every tick of the clock": "beží pri každom ťahu hodín",
+  "the animal arrived on an item": "zvieratko prišlo na vec",
+  "a critter and the animal met": "potvorka a zvieratko sa stretli",
+  "your own critter; give it an on_tick(self)": "tvoja vlastná potvorka; daj jej on_tick(self)",
   // the fun pass (fun.js)
   "Sounds on": "Zvuky zapnuté",
   "Sounds off": "Zvuky vypnuté",

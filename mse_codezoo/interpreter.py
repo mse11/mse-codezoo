@@ -3217,12 +3217,15 @@ class Runner:
         sep = " " if sep is None else sep
         end = "\n" if end is None else end
         try:
-            text = self._partial + sep.join(str(arg) for arg in args) + end
+            printed = sep.join(str(arg) for arg in args) + end
         except RecursionError:
             raise LearnerError(
                 t("Your program went too deep for the zoo to follow."), kind="too_deep"
             ) from None
+        text = self._partial + printed
         self._checked(text)
+        # the step that printed carries the text, so a console can show it as the run plays
+        self.events.append({"type": "print", "text": printed})
         *lines, self._partial = text.split("\n")
         self.output.extend(lines)
         if sum(len(line) for line in self.output) > MAX_TEXT * 10:

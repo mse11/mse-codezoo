@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from mse_codezoo import i18n, scheduler, stdlib, world  # noqa: F401 - their ZooObject kinds
+from mse_codezoo import gamemode, i18n, scheduler, stdlib, world  # noqa: F401 - their ZooObject kinds
 from mse_codezoo.game import level_to_json, run_level
 from mse_codezoo.i18n import catalog, from_accept_language, normalize, plural, t, use_lang
 from mse_codezoo.interpreter import ZooObject

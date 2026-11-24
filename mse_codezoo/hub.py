@@ -242,11 +242,12 @@ class Hub:
         info = self.info()
         assigned = list(info.settings["assigned"])
         locked = bool(info.settings["locked"]) and bool(assigned)
-        if method == "POST" and path == "/api/run":
+        if method == "POST" and path in ("/api/run", "/api/game/start", "/api/game/tick"):
             if self.paused and not self.started:
                 raise ApiError(LOCKED, t("The teacher is getting the lesson ready."))
             if self.paused:
                 raise ApiError(LOCKED, t("The teacher paused the class. Eyes on the teacher!"))
+        if method == "POST" and path == "/api/run":
             if locked and ("levelData" in body or body.get("level") not in assigned):
                 raise ApiError(
                     HTTPStatus.FORBIDDEN,

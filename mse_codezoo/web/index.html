@@ -12,39 +12,58 @@
 <body>
   <header class="bar">
     <h1 class="logo">CodeZoo</h1>
+    <!-- the three modes, the same on every page: learn with levels, make levels, make games -->
+    <nav class="modes" aria-label="Modes" data-i18n-label="Modes">
+      <a class="mode" href="index.html" aria-current="page"><span aria-hidden="true">📚</span> <span data-i18n>Learn</span></a>
+      <a class="mode" href="editor.html"><span aria-hidden="true">🛠️</span> <span data-i18n>Levels</span></a>
+      <a class="mode" href="game.html"><span aria-hidden="true">🎮</span> <span data-i18n>Game</span></a>
+    </nav>
     <span id="class-name" class="class-name" hidden></span>
     <select id="level-select" data-i18n-label="Choose a level"></select>
-    <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
-    <select id="python-select" class="python-select" data-i18n-label="Python release"></select>
-    <div class="controls">
+    <!-- the top bar in groups: running the program, the player and their choices, making
+         things, and the grown-ups' area at the end -->
+    <div class="controls bar-group run-group" role="group" aria-label="Run" data-i18n-label="Run">
       <button id="run" class="primary" type="button">▶ Run</button>
-      <button id="step" type="button" data-i18n>Step</button>
-      <button id="reset" type="button" data-i18n>Reset</button>
+      <button id="step" type="button"><span class="icon" aria-hidden="true">⏭</span> <span data-i18n>Step</span></button>
+      <button id="reset" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Reset</span></button>
       <label class="speed"><span data-i18n>Speed</span> <input id="speed" type="range" min="1" max="5" value="3"></label>
     </div>
-    <div class="who">
+    <div class="who bar-group user-group" role="group" aria-label="You" data-i18n-label="You">
+      <span class="player-pick">
+        <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
+        <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
+      </span>
+      <select id="python-select" class="python-select" data-i18n-label="Python release"></select>
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
       <button id="theme" type="button" class="look-button theme-button">🌙</button>
       <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
       <button id="look" type="button" class="look-button" data-i18n-title="Look and feel" aria-label="Look and feel" data-i18n-label="Look and feel">Aa</button>
-      <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
+      <button id="reset-view" type="button" class="look-button" data-i18n-title="Everything back to normal size" aria-label="Everything back to normal size" data-i18n-label="Everything back to normal size"><span aria-hidden="true">⤢</span> 100%</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
       <button id="class-button" type="button" class="zoo" hidden>🏫 <span data-i18n>Our class</span> <span id="class-badge" class="badge" hidden></span></button>
-      <a class="editor-link" href="editor.html" data-i18n>Level editor</a>
-      <button id="grownups" type="button" class="grownups" data-i18n>Grown-ups</button>
     </div>
+    <button id="grownups" type="button" class="grownups" data-i18n>Grown-ups</button>
   </header>
 
   <nav class="tabs" aria-label="Panes">
     <button type="button" data-tab="stage" class="active" data-i18n>Stage</button>
     <button type="button" data-tab="blocks" data-i18n>Blocks</button>
     <button type="button" data-tab="code" data-i18n>Code</button>
+    <button type="button" data-tab="console" data-i18n>Console</button>
   </nav>
 
   <main class="panes" id="panes">
     <section class="pane stage-pane active" data-pane="stage" aria-label="Stage" data-i18n-label="Stage">
       <nav id="cub-levels" class="cub-levels" aria-label="Levels" data-i18n-label="Levels"></nav>
-      <div id="goal" class="goal"></div>
+      <div class="stage-head">
+        <div id="goal" class="goal"></div>
+        <div class="outcome">
+          <div id="feeling" class="feeling" aria-live="polite"></div>
+          <div id="result" class="result" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="splitter vertical" id="split-head" role="separator" aria-orientation="vertical"
+           aria-label="Resize the stage and the goal" data-i18n-label="Resize the stage and the goal" tabindex="0"></div>
       <div class="stage-tools">
         <div id="worlds" class="worlds" role="group"></div>
         <label class="view-toggle" data-i18n-title="Show the stage in 3D"><input type="checkbox" id="view-3d"> 3D</label>
@@ -55,15 +74,13 @@
       <div id="lanes" class="lanes" hidden data-i18n-label="Tasks and threads"></div>
       <label id="timeline" class="timeline" hidden><span data-i18n>Timeline</span>
         <input id="timeline-range" type="range" min="0" max="0" value="0"></label>
-      <div id="feeling" class="feeling" aria-live="polite"></div>
-      <div id="result" class="result" aria-live="polite"></div>
     </section>
 
     <div class="splitter horizontal" id="split-stage" role="separator" aria-orientation="horizontal"
          aria-label="Resize the stage" data-i18n-label="Resize the stage" tabindex="0"></div>
 
     <section class="pane blocks-pane" data-pane="blocks" aria-label="Blocks" data-i18n-label="Blocks">
-      <div class="pane-title" data-i18n>Blocks</div>
+      <div class="pane-title"><span data-i18n>Blocks</span></div>
       <div id="blockly" class="blockly"></div>
     </section>
 
@@ -72,7 +89,7 @@
 
     <section class="pane code-pane" data-pane="code" aria-label="Code" data-i18n-label="Code">
       <div class="pane-title">
-        Python
+        <span>Python</span>
         <label class="edit-toggle"><input type="checkbox" id="edit-code"> <span data-i18n>let me type</span></label>
       </div>
       <div class="code">
@@ -86,11 +103,30 @@
       <ul id="diagnostics" class="diagnostics" aria-live="polite"></ul>
       <div id="files" class="files"></div>
     </section>
+
+    <div class="splitter vertical" id="split-console" role="separator" aria-orientation="vertical"
+         aria-label="Resize code and console" data-i18n-label="Resize code and console" tabindex="0"></div>
+
+    <section class="pane console-pane" data-pane="console" aria-label="Console" data-i18n-label="Console">
+      <div class="pane-title"><span data-i18n>Console</span></div>
+      <pre id="console" class="console" aria-live="polite"></pre>
+      <p id="console-empty" class="console-empty" data-i18n>What print() writes shows up here while the program runs.</p>
+    </section>
   </main>
 
   <dialog id="player-dialog" class="dialog" aria-labelledby="player-title">
     <h2 id="player-title" data-i18n>Who's playing?</h2>
     <div id="player-list" class="picture-grid"></div>
+    <!-- a player's own picture, changed without making a new player (the ✏️ on a player) -->
+    <section id="change-picture" class="new-player" hidden>
+      <h3 id="change-title"></h3>
+      <div id="change-grid" class="picture-grid small" role="radiogroup" aria-label="Picture" data-i18n-label="Picture"></div>
+      <p id="change-error" class="error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button id="change-save" type="button" class="primary" data-i18n>Save the picture</button>
+        <button id="change-cancel" type="button" data-i18n>Cancel</button>
+      </div>
+    </section>
     <form id="new-player" class="new-player" method="dialog">
       <h3 data-i18n>New player</h3>
       <label><span data-i18n>Name</span> <input id="new-name" maxlength="24" autocomplete="off" required></label>

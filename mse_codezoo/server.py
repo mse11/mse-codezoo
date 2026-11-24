@@ -16,6 +16,7 @@ Every request may pick a language with ``?lang=sk`` (or ``"lang"`` in a POST bod
 otherwise the browser's ``Accept-Language`` decides. Titles, hints and messages follow it.
     GET  /api/profiles                 players, pictures, public grown-up settings
     POST /api/profiles {name, picture} -> new player
+    POST /api/profiles/<id>/picture {picture} -> the player with a new picture
     GET  /api/profiles/<id>/progress   stars per level, today's minutes and limit
     POST /api/profiles/<id>/time {seconds} -> today's minutes and limit
     POST /api/parent/<action> {pin?, ...}  check | settings | report | export | remove |
@@ -46,6 +47,14 @@ Phase 4:
 Phase 5: ``codezoo class serve`` gives the server a classroom hub (``hub.Hub``), which
 checks the class code or the teacher's key and adds ``/api/class/*`` and ``/api/teacher/*``
 before passing the usual routes on to ``dispatch()``.
+
+Game mode (phase 8, see ``gamemode.py``): a running game stays in memory between ticks
+(``gamemode.SESSIONS``), on the server or in the offline build's web worker.
+    GET  /api/games                    games to play, ready to list
+    GET  /api/games/<id>               one game, ready to draw (starter program, help)
+    POST /api/game/start {game | gameData, source, animal?, seed?} -> {session, state, ...}
+    POST /api/game/tick  {session, keys: ["left", ...]}            -> {state, events, lines}
+    POST /api/game/stop  {session}
 """
 
 from __future__ import annotations
@@ -60,7 +69,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from mse_codezoo import __version__, ir, pilot, versions
+from mse_codezoo import __version__, gamemode, ir, pilot, versions
 from mse_codezoo.cards import card_for_code, card_public, cards_html
 from mse_codezoo.game import (
     attempt_from_run,
@@ -96,7 +105,9 @@ PARENT_PATH = re.compile(r"^/api/parent/(?P<action>[a-z-]+)$")
 UNLOCK_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/unlock$")
 HABITAT_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/habitat$")
 PILOT_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/pilot$")
+PICTURE_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/picture$")
 CHECK_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/check$")
+GAME_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 QUESTIONS_PATH = re.compile(r"^/api/checks/(?P<module>[a-z0-9-]{1,40})$")
 MAX_MODULES = 5
 
@@ -445,6 +456,59 @@ def api_pilot_event(
     return pilot.record_event(store, profile_id, event, body.get("value"))
 
 
+def api_games() -> list[dict[str, Any]]:
+    return [
+        {"id": spec.id, "title": spec.title_text(), "template": spec.template}
+        for spec in gamemode.all_games()
+    ]
+
+
+def api_game(game_id: str, animal: str | None) -> dict[str, Any]:
+    if not GAME_ID.match(game_id):
+        raise ApiError(HTTPStatus.NOT_FOUND, f"no game called {game_id!r}")
+    try:
+        return gamemode.game_to_json(gamemode.find_game(game_id), animal)
+    except gamemode.GameError as exc:
+        raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
+
+
+def api_game_start(body: dict[str, Any]) -> dict[str, Any]:
+    try:
+        if "gameData" in body:
+            spec = gamemode.GameSpec.from_dict(body["gameData"])
+        else:
+            game_id = body.get("game")
+            if not isinstance(game_id, str) or not GAME_ID.match(game_id):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "game must be a game id")
+            spec = gamemode.find_game(game_id)
+    except (gamemode.GameError, ValueError) as exc:
+        raise ApiError(HTTPStatus.BAD_REQUEST, str(exc)) from None
+    source = body.get("source", "")
+    if not isinstance(source, str):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "source must be text")
+    seed = body.get("seed", 0)
+    animal = body.get("animal")
+    game = gamemode.Game(
+        spec,
+        source,
+        animal=animal if isinstance(animal, str) else None,
+        seed=seed if isinstance(seed, int) and not isinstance(seed, bool) else 0,
+        version=_python(body.get("python")),
+    )
+    result = game.start()
+    return {"session": gamemode.SESSIONS.add(game), **game.to_json(result)}
+
+
+def api_game_tick(body: dict[str, Any]) -> dict[str, Any]:
+    game = gamemode.SESSIONS.get(body.get("session"))
+    if game is None:
+        raise ApiError(HTTPStatus.NOT_FOUND, "that game has ended; start it again")
+    keys = body.get("keys", [])
+    if not isinstance(keys, list):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "keys must be a list")
+    return game.to_json(game.tick([key for key in keys if isinstance(key, str)]))
+
+
 def _text(body: dict[str, Any], key: str) -> str:
     value = body.get(key)
     if not isinstance(value, str):
@@ -479,6 +543,10 @@ def dispatch(
             return store.habitat(match["id"])
         if path == "/api/animals":
             return api_animals()
+        if path == "/api/games":
+            return api_games()
+        if path.startswith("/api/games/"):
+            return api_game(unquote(path.removeprefix("/api/games/")), query.get("animal"))
         if match := QUESTIONS_PATH.match(path):
             return {"module": match["module"], "questions": pilot.questions(match["module"])}
         if path.startswith("/api/levels/"):
@@ -505,6 +573,8 @@ def dispatch(
         return api_unlock(match["id"], body, store)
     if match := HABITAT_PATH.match(path):
         return api_set_habitat(match["id"], body, store)
+    if match := PICTURE_PATH.match(path):
+        return asdict(store.set_picture(match["id"], _text(body, "picture")))
     if match := PILOT_PATH.match(path):
         return api_pilot_event(match["id"], body, store, extra_levels)
     if match := CHECK_PATH.match(path):
@@ -513,6 +583,13 @@ def dispatch(
         )
     if path == "/api/story":
         return api_story(body)
+    if path == "/api/game/start":
+        return api_game_start(body)
+    if path == "/api/game/tick":
+        return api_game_tick(body)
+    if path == "/api/game/stop":
+        gamemode.SESSIONS.stop(body.get("session"))
+        return {"ok": True}
     if path == "/api/levels/check":
         return api_check_level(body)
     if path == "/api/levels/preview":

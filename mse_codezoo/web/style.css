@@ -65,12 +65,19 @@
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
+/* The base text size grows with the window: 16px up to about 1400px wide, then larger on
+   big screens (about 18.5px at 2000px, at most 22px). "Text size" in Look and feel
+   multiplies it (--text-scale); every size below is in rem or em, so all of it follows. */
+html {
+  --text-scale: 1;
+  font-size: calc(clamp(16px, 0.45vw + 9.6px, 22px) * var(--text-scale));
+}
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   display: flex;
   flex-direction: column;
 }
@@ -102,6 +109,8 @@ select {
 }
 
 .bar {
+  /* Ctrl + wheel over the top bar (zoom.js); CSS zoom scales the bar with all it holds */
+  zoom: var(--bar-zoom, 1);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -112,6 +121,7 @@ select {
 }
 
 .logo { margin: 0; font-size: 1.3rem; }
+.logo a { color: inherit; text-decoration: none; } /* the same logo on every page */
 .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .speed { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.9rem; }
 
@@ -121,19 +131,52 @@ select {
   flex: 1 0 auto; /* grow to fill the window, but let the page scroll when it is short */
   display: grid;
   /* --left and --stage-h are set by dragging the splitters (layout.js) */
-  grid-template-columns: minmax(220px, var(--left, 1fr)) 12px minmax(220px, 1fr);
+  /* --console-w is set by dragging the bar between the code and the console (layout.js) */
+  grid-template-columns: minmax(220px, var(--left, 1fr)) 12px minmax(220px, 1fr) 12px var(--console-w, minmax(170px, 0.45fr));
   grid-template-rows: var(--stage-h, auto) 12px minmax(300px, 1fr);
-  grid-template-areas: "stage stage stage" "hsplit hsplit hsplit" "blocks vsplit code";
+  grid-template-areas: "stage stage stage stage stage" "hsplit hsplit hsplit hsplit hsplit" "blocks vsplit code csplit console";
   padding: 12px 16px 16px;
 }
 
-.splitter { border-radius: 6px; touch-action: none; }
-.splitter.horizontal { grid-area: hsplit; cursor: row-resize; }
-.splitter.vertical { grid-area: vsplit; cursor: col-resize; }
-.splitter::after { content: ""; display: block; background: var(--border); border-radius: 3px; }
-.splitter.horizontal::after { width: 48px; height: 4px; margin: 4px auto; }
-.splitter.vertical::after { width: 4px; height: 48px; margin: calc(50% - 24px) auto 0; position: relative; top: 40%; }
-.splitter:hover::after, .splitter:focus-visible::after, .splitter.dragging::after { background: var(--accent); }
+/* The movable bars between the parts: a line along their whole length with a grip (three
+   dots) in the middle; green while the mouse is over one, while dragging and with focus. */
+.splitter {
+  position: relative;
+  border-radius: 6px;
+  touch-action: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: linear-gradient(var(--muted), var(--muted));
+  transition: background-color 0.15s;
+}
+.splitter.horizontal { grid-area: hsplit; cursor: row-resize; background-size: 100% 2px; }
+.splitter.vertical { grid-area: vsplit; cursor: col-resize; background-size: 2px 100%; }
+#split-console { grid-area: csplit; }
+.splitter::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle, var(--bg) 1.6px, transparent 2px) center / 8px 8px repeat,
+    var(--muted);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.splitter.horizontal::after { width: 64px; height: 10px; background-size: 10px 8px, auto; }
+.splitter.vertical::after { width: 10px; height: 64px; background-size: 8px 10px, auto; }
+.splitter:hover, .splitter.dragging, .splitter:focus-visible {
+  background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  background-image: linear-gradient(var(--accent), var(--accent));
+}
+.splitter:hover::after, .splitter:focus-visible::after, .splitter.dragging::after {
+  background:
+    radial-gradient(circle, var(--bg) 1.6px, transparent 2px) center / 8px 8px repeat,
+    var(--accent);
+}
+.splitter.horizontal:hover::after, .splitter.horizontal:focus-visible::after, .splitter.horizontal.dragging::after { background-size: 10px 8px, auto; }
+.splitter.vertical:hover::after, .splitter.vertical:focus-visible::after, .splitter.vertical.dragging::after { background-size: 8px 10px, auto; }
 .splitter:focus-visible { outline: 2px solid var(--accent); }
 
 .pane {
@@ -150,30 +193,126 @@ select {
 .stage-pane { grid-area: stage; padding: 12px; gap: 10px; overflow: auto; }
 .blocks-pane { grid-area: blocks; }
 .code-pane { grid-area: code; }
+/* what print() writes, line by line as the run plays (app.js) */
+.console-pane { grid-area: console; }
+.console {
+  flex: 1;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  font-family: var(--code-font);
+  font-size: calc(0.95rem * var(--zoom, 1));
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.console:empty { display: none; }
+.console:not(:empty) + .console-empty { display: none; }
+.console .console-error { color: var(--err); }
+.console-empty { margin: 0; padding: 8px 10px; color: var(--muted); font-size: calc(0.9rem * var(--zoom, 1)); }
+.console .fresh { background: var(--mark-run); border-radius: 3px; transition: background 1.2s ease; }
+html[data-motion="reduce"] .console .fresh { transition: none; }
+/* Cub mode doesn't print: two panes, as before */
+html[data-cub="true"] .console-pane, html[data-cub="true"] #split-console { display: none; }
+html[data-cub="true"] .panes {
+  grid-template-columns: minmax(220px, var(--left, 1fr)) 12px minmax(220px, 1fr);
+  grid-template-areas: "stage stage stage" "hsplit hsplit hsplit" "blocks vsplit code";
+}
 
 .pane-title {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap; /* a narrow pane: the buttons go to a second line, nothing gets squashed */
+  justify-content: flex-start;
+  gap: 0.6rem;
   align-items: center;
   padding: 0.5rem 0.8rem;
   border-bottom: 1px solid var(--border);
   font-weight: 600;
+  /* every pane's title the same size, whatever each pane's own zoom; Ctrl + wheel over any
+     title zooms all of them together (--title-zoom on the panes, zoom.js) */
+  font-size: calc(1rem * var(--title-zoom, 1));
 }
 
-.edit-toggle { font-weight: 400; font-size: 0.9rem; color: var(--muted); display: flex; gap: 0.35rem; align-items: center; }
+.pane-title > :first-child { margin-right: auto; }
+/* −, + and fit for each pane (zoom.js) */
+.zoom-tools { display: inline-flex; gap: 2px; }
+.zoom-tools .zoom-button {
+  min-height: 1.8em;
+  min-width: 1.8em;
+  padding: 0 0.35em;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1;
+}
+/* "let me type": as big as the title bar it sits in, so it grows with the pane's zoom */
+.edit-toggle { font-weight: 500; font-size: 1em; color: var(--text); display: flex; gap: 0.4em; align-items: center; cursor: pointer; white-space: nowrap; }
+.edit-toggle input { width: 1.15em; height: 1.15em; margin: 0; accent-color: var(--accent); cursor: pointer; }
 
-.goal h2 { margin: 0 0 0.2rem; font-size: 1.1rem; }
+/* the goal on the left, how the last run went on the right: the stage keeps its height */
+.stage-head {
+  display: grid;
+  font-size: calc(1rem * var(--head-zoom, 1));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
+  gap: 0.5rem 1.5rem;
+  align-items: start;
+}
+.outcome { min-width: 0; }
+.outcome:has(.feeling:not(:empty), .result:not(:empty)) {
+  padding-left: 1rem;
+  border-left: 2px solid var(--border);
+}
+@media (max-width: 800px) {
+  .stage-head { grid-template-columns: minmax(0, 1fr); }
+  .outcome:has(.feeling:not(:empty), .result:not(:empty)) { padding-left: 0; border-left: 0; }
+}
+
+/* "Beside the stage" (Look and feel > Layout; "automatic" picks it on wide windows, look.js):
+   the stage on the left, the goal and then the result in a column on the right. Phones
+   always stack. */
+/* the bar between the stage and the goal column: only in that layout */
+#split-head { display: none; }
+@media (min-width: 801px) {
+  html[data-layout="side"] .stage-pane {
+    display: grid;
+    /* --head-w is set by dragging the bar (layout.js) */
+    grid-template-columns: minmax(0, 1fr) 12px var(--head-w, minmax(16rem, 0.6fr));
+    grid-template-rows: auto auto auto auto auto 1fr;
+    align-content: start;
+    column-gap: 0.5rem;
+  }
+  html[data-layout="side"] .stage-pane > * { grid-column: 1; }
+  html[data-layout="side"] .stage-pane > .cub-levels { grid-column: 1 / -1; }
+  html[data-layout="side"] .stage-pane > #split-head {
+    display: block;
+    grid-area: 2 / 2 / span 5 / 3;
+  }
+  html[data-layout="side"] .stage-pane > .stage-head {
+    grid-column: 3;
+    grid-row: 2 / span 5;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding-left: 0.5rem;
+  }
+  html[data-layout="side"] .stage-head > .zoom-tools { order: -1; justify-self: end; }
+  html[data-layout="side"] .outcome:has(.feeling:not(:empty), .result:not(:empty)) {
+    padding: 0.8rem 0 0;
+    border-left: 0;
+    border-top: 2px solid var(--border);
+  }
+}
+.goal h2 { margin: 0 0 0.2em; font-size: 1.1em; }
 .goal p { margin: 0.15rem 0; color: var(--muted); }
 .goal .hint-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.3rem; }
 .goal .hint { color: var(--text); font-style: italic; }
-.goal button.small { min-height: 2rem; padding: 0.2rem 0.7rem; font-size: 0.9rem; }
+.goal button.small { min-height: 2em; padding: 0.2em 0.7em; font-size: 0.9em; }
 
 .stage { display: flex; justify-content: center; }
 
 .stage-svg {
   width: 100%;
-  max-width: 560px;
-  max-height: 46vh;
+  max-width: calc(35rem * var(--stage-zoom, 1));
+  max-height: calc(46vh * var(--stage-zoom, 1));
   overflow: visible;
 }
 
@@ -209,7 +348,7 @@ select {
   position: relative;
   display: block;
   width: 100%;
-  height: clamp(220px, 46vh, 520px);
+  height: calc(clamp(220px, 46vh, 520px) * var(--stage-zoom, 1));
   border-radius: 0.6rem;
   overflow: hidden;
   background: linear-gradient(#bfe3f5, #e8f5e9);
@@ -237,15 +376,24 @@ select {
 }
 .mood3d { font-size: 2rem; animation: hop 0.5s ease-in-out 2; }
 
-.stage-tools { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; justify-content: space-between; }
+.stage-tools { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; justify-content: flex-start; }
+.stage-tools .view-toggle { margin-left: auto; }
 .worlds { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
 .worlds button { min-height: 2rem; padding: 0.15rem 0.7rem; font-size: 0.9rem; }
 .worlds button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .worlds .note { color: var(--muted); font-size: 0.85rem; }
 .view-toggle { display: flex; gap: 0.35rem; align-items: center; color: var(--muted); font-size: 0.9rem; }
 .feeling { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
-.feeling .face { font-size: 1.8rem; }
+.feeling .face { font-size: 1.8em; }
 .lang-select { min-height: 2.2rem; }
+/* a language menu with its flag drawn on the left (i18n.js fillLangSelect) */
+.flag-select {
+  background-image: var(--flag, none);
+  background-repeat: no-repeat;
+  background-position: 0.6em center;
+  background-size: 1.5em 1em;
+  padding-left: 2.5em;
+}
 
 /* less motion: look.js sets data-motion from the system setting or "Look and feel" */
 html[data-motion="reduce"] .stage-svg .animal, html[data-motion="reduce"] .stage-svg .facing,
@@ -262,17 +410,26 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 .result .message { font-weight: 600; }
 .result .message.ok { color: var(--ok); }
 .result .message.err { color: var(--err); }
-.result .stars { color: var(--star); font-size: 1.4rem; letter-spacing: 0.15rem; }
+.result .stars { color: var(--star); font-size: 1.4em; letter-spacing: 0.15em; }
 .result ul { margin: 0.2rem 0; padding-left: 1.2rem; color: var(--muted); }
 .result .printed { font-family: var(--code-font); white-space: pre-wrap; margin: 0.3rem 0 0; }
 
 .blockly { flex: 1; min-height: 280px; }
+/* Editing a number or text on a block: the editor sits over the block's white field, so it
+   stays light in dark mode too (color-scheme: dark would paint it black, and the selected
+   text would hardly show). */
+.blocklyHtmlInput {
+  color-scheme: light;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+.blocklyHtmlInput::selection { background: #9cc7ff; color: #000000; }
 
 .code {
   flex: 1;
   min-height: 0;
   display: flex;
-  font: 15px/1.6 var(--code-font);
+  font: calc(0.94rem * var(--zoom, 1))/1.6 var(--code-font);
 }
 
 .gutter {
@@ -325,8 +482,67 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 
 /* --- players, grown-ups, goodbye ------------------------------------------------ */
 
-.who { display: flex; gap: 0.5rem; margin-left: auto; flex-wrap: wrap; }
+/* the top bar's groups: each a framed box, so what belongs together reads together */
+.bar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+}
+.who { margin-left: auto; }
+/* the modes after the logo (Learn, Levels, Game): a switch like 2D/3D, three equal parts,
+   the green knob under the mode this page is */
+.modes {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+}
+.modes::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: 999px;
+  background: var(--accent);
+  transition: transform 160ms ease;
+}
+.modes:has(.mode:nth-child(2)[aria-current="page"])::before { transform: translateX(100%); }
+.modes:has(.mode:nth-child(3)[aria-current="page"])::before { transform: translateX(200%); }
+html[data-motion="reduce"] .modes::before { transition: none; }
+.modes .mode {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.modes .mode:not([aria-current]):hover { color: var(--text); }
+.modes .mode[aria-current="page"] { color: var(--accent-text); }
+.modes .mode:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* Cub mode is learning only */
+html[data-cub="true"] .modes { display: none; }
 .player { font-weight: 600; }
+/* the player and the animal they play as: one control in two parts, the animal's emoji once */
+.player-pick { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; }
+.player-pick > .player, .player-pick > .animal-select { border: 0; border-radius: 0; margin: 0; }
+.player-pick > .animal-select { border-left: 1px solid var(--border); font-size: 1rem; }
+.player-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .grownups { color: var(--muted); }
 
 .dialog {
@@ -335,10 +551,11 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
   background: var(--panel);
   color: var(--text);
   padding: 1.2rem 1.4rem;
-  width: min(560px, calc(100vw - 32px));
+  /* in rem, so dialogs grow with the page on big screens like everything else */
+  width: min(40rem, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
 }
-.dialog.wide { width: min(760px, calc(100vw - 32px)); }
+.dialog.wide { width: min(54rem, calc(100vw - 32px)); }
 .dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .dialog h2 { margin: 0 0 0.8rem; }
 .dialog h3 { margin: 1rem 0 0.5rem; font-size: 1.05rem; }
@@ -352,8 +569,8 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 .error { color: var(--err); min-height: 1.2em; margin: 0.3rem 0; }
 .note { color: var(--ok); min-height: 1.2em; margin: 0.3rem 0; }
 
-.picture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 0.6rem; }
-.picture-grid.small { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
+.picture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: 0.6rem; }
+.picture-grid.small { grid-template-columns: repeat(auto-fill, minmax(3.6rem, 1fr)); }
 .picture-tile {
   display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
   padding: 0.6rem 0.4rem; min-height: 6.5rem; border-radius: 0.9rem;
@@ -365,6 +582,19 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 .picture-grid.small .picture-tile .face { font-size: 1.8rem; }
 .picture-tile[aria-checked="true"] { border: 3px solid var(--accent); }
 .new-player { border-top: 1px solid var(--border); margin-top: 1rem; }
+/* a player in "Who's playing?" with a ✏️ to change their picture */
+.player-card { position: relative; display: grid; }
+.player-card .edit-picture {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  min-height: 0;
+  min-width: 0;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  border-radius: 0.5rem;
+}
 
 .grownup-panel section { border-top: 1px solid var(--border); }
 .report { border: 1px solid var(--border); border-radius: 0.8rem; padding: 0.6rem 0.8rem; margin: 0.6rem 0; }
@@ -404,17 +634,17 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 .body.swing { transition-timing-function: cubic-bezier(.3, -.4, .6, 1.4); }
 .body.hidden-animal { opacity: .45; }
 
-.callstack { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; font: 13px/1.3 var(--mono, monospace); }
+.callstack { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; font: 0.82rem/1.3 var(--mono, monospace); }
 .callstack:empty { display: none; }
 .callstack .frame { border: 2px solid #b08a5b; background: #f7ecd9; color: #4a3520; border-radius: 12px 12px 4px 4px; padding: 3px 10px; }
 .callstack .frame.active { border-color: #e6732e; box-shadow: 0 0 0 2px #e6732e33; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callstack .frame { background: #3a2f23; color: #f3e6d3; } }
 
-.result .traceback { margin: 6px 0; padding: 0 0 0 18px; font: 13px/1.4 var(--mono, monospace); }
+.result .traceback { margin: 6px 0; padding: 0 0 0 18px; font: 0.82em/1.4 var(--code-font); }
 .result .suggestion, .result .sticker-new { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: #fff4d6; color: #4a3a10; }
 .result .result-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .files { margin: 8px 0 0; }
-.files pre { margin: 4px 0 0; padding: 8px; border-radius: 8px; background: var(--panel, #f4f2ea); overflow-x: auto; font-size: 13px; }
+.files pre { margin: 4px 0 0; padding: 8px; border-radius: 8px; background: var(--panel, #f4f2ea); overflow-x: auto; font-size: 0.82rem; }
 
 .habitat { position: relative; height: 260px; border-radius: 16px; overflow: hidden; touch-action: none;
   background: linear-gradient(#bfe6ff 0 55%, #9bd17a 55% 100%); }
@@ -556,10 +786,8 @@ html[data-motion="reduce"] .stage-svg .ghost-target, html[data-motion="reduce"] 
 }
 .look-button { font-weight: 700; min-width: 2.6rem; }
 
-html[data-text="large"] { font-size: 112.5%; }
-html[data-text="larger"] { font-size: 125%; }
-html[data-text="large"] body { font-size: 18px; }
-html[data-text="larger"] body { font-size: 20px; }
+html[data-text="large"] { --text-scale: 1.125; }
+html[data-text="larger"] { --text-scale: 1.25; }
 
 /* easy-to-read: plain wide letters (no font is downloaded: the page works offline) and more space */
 html[data-easy="true"] body, html[data-easy="true"] button, html[data-easy="true"] select,
@@ -615,7 +843,7 @@ html[data-cub="true"] .cub-levels {
 /* what a cub doesn't need: the level list to read, Python releases, typing, the editor */
 html[data-cub="true"] #level-select, html[data-cub="true"] #python-select,
 html[data-cub="true"] .edit-toggle, html[data-cub="true"] .editor-link { display: none; }
-html[data-cub="true"] .goal h2 { font-size: 1.5rem; }
+html[data-cub="true"] .goal h2 { font-size: 1.5em; }
 .cub-goal { font-size: 1.25rem; }
 html[data-cub="true"] button, html[data-cub="true"] select { min-height: 3rem; min-width: 3rem; }
 .speak-buttons { display: inline-flex; gap: 0.3rem; vertical-align: middle; }

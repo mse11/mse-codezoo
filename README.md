@@ -110,6 +110,24 @@ For children who can't read yet. A grown-up turns it on per player: "Cub mode" w
 - **Read aloud.** Goals, hints, results, feelings and tapped blocks, with the device's own speech voices (nothing is recorded or sent). Always on in Cub mode (with a mute button); for everyone else it's "Read aloud" in Look and feel. Without a voice for the language nothing is read, and Look and feel says so.
 - **Moving on.** When every cub level is solved, the Grown-ups area asks "Ready for the main course?". Nothing is said to the child, and there is no age rule.
 
+## Make a game (game mode, first step)
+
+The program writes the rules of a world, then you play it live with the arrow keys or the on-screen buttons. Start the local web UI:
+
+```bash
+uv run codezoo serve --open
+```
+
+Then click "Make a game" in the top bar, or open the game page directly:
+
+```text
+http://localhost:8765/game.html
+```
+
+Pick a game (`?game=collect-guard` in the address opens one), change its code, press ▶ Play, and play with the arrow keys; Stop ends the game, "Start code again" brings back the game's own code. On a classroom hub (`codezoo class serve`) children open "Make a game" the same way, and the teacher's "Pause everyone" pauses games too. In the offline build (`codezoo build-web site/`) it is `site/game.html`.
+
+The program runs once to set up; then the game calls its handlers on every tick: `on_key(key)`, `on_tick()`, `on_item(item)` and `on_touch(critter)`. Critters are your own classes built on `Critter` (`class Guard(Critter)` with an `on_tick(self)` that uses `self.step()`, `self.turn_around()`, `self.wall_ahead()`). Programs also get `score.add(1)`, `win()`, `lose()`, `go("left")`, `where()`, `ticks()` and `critters()`. Bumps don't crash a game, and a loop that runs forever ends it with a kind message instead of freezing it. Games are JSON files in `mse_codezoo/content/games/`; the first one is "Bananas and the guard". Your changes to a game's code stay in this browser. Play on the 3D stage (the zoo's animals, a crocodile guard, ghosts and beetles as critters) or the flat 2D board; the switch above the stage is remembered in this browser, and devices without WebGL use 2D. It works on a classroom hub and in the offline build too.
+
 ## Play in the terminal
 
 For adult beginners (and anyone who prefers a text editor): each level gets a `.py` file; edit it, save, and watch the monkey on a coloured character grid.
@@ -145,7 +163,7 @@ uv run codezoo run m01-l03 playground/m01-l03.py --trace
 ### Play and learn
 
 - `codezoo play`: Terminal game: edit a `.py` file, run it, watch the grid. `--level ID`, `--profile NAME`, `--dir PATH`, `--speed 1-5`, `--no-color`. Main course only; Cub mode is in the browser
-- `codezoo serve`: Local web UI with stage, blocks and code. `--port 8765`, `--open`, `--data-dir PATH`
+- `codezoo serve`: Local web UI with stage, blocks and code; game mode is at `/game.html` ("Make a game"). `--port 8765`, `--open`, `--data-dir PATH`
 - `codezoo run LEVEL PROGRAM`: Runs a program in a level. `--trace` shows every step and the grid, `--json`, `--animal NAME`, `--save RUN.json` keeps the run for `replay` and `story export`
 - `codezoo check LEVEL PROGRAM`: Goal, stars and a hint; exit code 0 only when solved. `--animal NAME`, `--profile NAME` saves the result
 - `codezoo replay RUN`: Replays a saved run on the terminal grid. `--speed 1-5`, `--no-color`

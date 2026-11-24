@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeZoo games</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="game.css">
+  <script type="module" src="game.js"></script>
+</head>
+<body class="game-page">
+  <header class="bar">
+    <h1 class="logo"><a href="index.html">CodeZoo</a></h1>
+    <nav class="modes" aria-label="Modes" data-i18n-label="Modes">
+      <a class="mode" href="index.html"><span aria-hidden="true">📚</span> <span data-i18n>Learn</span></a>
+      <a class="mode" href="editor.html"><span aria-hidden="true">🛠️</span> <span data-i18n>Levels</span></a>
+      <a class="mode" href="game.html" aria-current="page"><span aria-hidden="true">🎮</span> <span data-i18n>Game</span></a>
+    </nav>
+    <select id="game-select" data-i18n-label="Choose a game"></select>
+    <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
+    <div class="controls">
+      <button id="play" class="primary" type="button" data-i18n>▶ Play</button>
+      <button id="stop" type="button" disabled><span class="icon" aria-hidden="true">■</span> <span data-i18n>Stop</span></button>
+      <button id="restart" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Start code again</span></button>
+    </div>
+    <select id="lang" class="lang-select" data-i18n-label="Language"></select>
+  </header>
+  <main class="game-main">
+    <section class="game-stage-pane">
+      <div class="game-status" aria-live="polite">
+        <span><span data-i18n>Score</span>: <b id="score">0</b></span>
+        <span><span data-i18n>Tick</span>: <b id="tick">0</b></span>
+        <span id="status-text" class="game-message"></span>
+        <span class="game-views" role="group" data-i18n-label="Stage view">
+          <button id="view-2d" type="button" class="small" aria-pressed="true">2D</button>
+          <button id="view-3d" type="button" class="small" aria-pressed="false">3D</button>
+        </span>
+      </div>
+      <div id="stage" class="game-stage" tabindex="0" data-i18n-label="The game. Use the arrow keys to play."></div>
+      <div class="pad" role="group" data-i18n-label="Game buttons">
+        <button type="button" class="pad-up" data-key="up" data-i18n-label="Up">▲</button>
+        <button type="button" class="pad-left" data-key="left" data-i18n-label="Left">◀</button>
+        <button type="button" class="pad-space" data-key="space" data-i18n-label="Space">●</button>
+        <button type="button" class="pad-right" data-key="right" data-i18n-label="Right">▶</button>
+        <button type="button" class="pad-down" data-key="down" data-i18n-label="Down">▼</button>
+      </div>
+      <ul id="help" class="game-help"></ul>
+    </section>
+    <section class="game-code-pane">
+      <div class="game-code">
+        <div id="gutter" class="gutter" aria-hidden="true"></div>
+        <textarea id="source" spellcheck="false" data-i18n-label="The game's code"></textarea>
+      </div>
+      <div id="report" class="game-report" aria-live="polite"></div>
+      <details open>
+        <summary data-i18n>What a game program can use</summary>
+        <ul class="game-api">
+          <li><code>def on_key(key):</code> <span data-i18n>a key was pressed: "up", "down", "left", "right" or "space"</span></li>
+          <li><code>def on_tick():</code> <span data-i18n>runs on every tick of the clock</span></li>
+          <li><code>def on_item(item):</code> <span data-i18n>the animal arrived on an item</span></li>
+          <li><code>def on_touch(critter):</code> <span data-i18n>a critter and the animal met</span></li>
+          <li><code>class Guard(Critter):</code> <span data-i18n>your own critter; give it an on_tick(self)</span></li>
+          <li><code>self.step() self.turn_left() self.turn_around() self.face("up") self.wall_ahead() self.x self.y</code></li>
+          <li><code>go("left") where() ticks() critters() score.add(1) score.value win() lose()</code></li>
+        </ul>
+      </details>
+      <pre id="output" class="game-output" aria-live="polite"></pre>
+    </section>
+  </main>
+</body>
+</html>

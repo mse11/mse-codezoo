@@ -159,10 +159,14 @@ export class Players {
     this.onChoose(profile);
   }
 
+  // On the main page the button sits joined to the animal menu (".player-pick"), which shows
+  // the animal's emoji, so the button shows only the name; elsewhere the player's picture too.
   relabel() {
     const profile = this.current;
-    if (profile) $("player").textContent = `${FACES[profile.picture] || "🐾"} ${displayName(profile)}`;
-    else $("player").textContent = `🐾 ${t(this.guest ? "Guest" : "Who's playing?")}`;
+    const joined = Boolean($("player").closest(".player-pick"));
+    const face = joined ? "" : `${profile ? FACES[profile.picture] || "🐾" : "🐾"} `;
+    if (profile) $("player").textContent = `${face}${displayName(profile)}`;
+    else $("player").textContent = `${face}${t(this.guest ? "Guest" : "Who's playing?")}`;
   }
 
   async choose() {
@@ -170,11 +174,24 @@ export class Players {
     const data = await api.profiles();
     const tiles = data.profiles.map((p) =>
       el(
-        "button",
-        { type: "button", class: "picture-tile", onclick: () => { this.playerDialog.close(); this.select(p); } },
-        el("span", { class: "face", "aria-hidden": "true" }, FACES[p.picture] || "🐾"),
-        el("span", { class: "name" }, p.name),
-        el("span", { class: "stars" }, `★ ${p.stars}`),
+        "div",
+        { class: "player-card" },
+        el(
+          "button",
+          { type: "button", class: "picture-tile", onclick: () => { this.playerDialog.close(); this.select(p); } },
+          el("span", { class: "face", "aria-hidden": "true" }, FACES[p.picture] || "🐾"),
+          el("span", { class: "name" }, p.name),
+          el("span", { class: "stars" }, `★ ${p.stars}`),
+        ),
+        el(
+          "button",
+          {
+            type: "button", class: "edit-picture", title: t("Change {name}'s picture", { name: p.name }),
+            "aria-label": t("Change {name}'s picture", { name: p.name }),
+            onclick: () => this.changePicture(p, data.pictures),
+          },
+          "✏️",
+        ),
       ),
     );
     tiles.push(
@@ -187,6 +204,8 @@ export class Players {
       ),
     );
     $("player-list").replaceChildren(...tiles);
+    $("change-picture").hidden = true;
+    $("new-player").hidden = false;
     this.renderPictureChoice(data.pictures);
     $("new-error").textContent = "";
     $("new-name").value = "";
@@ -210,6 +229,46 @@ export class Players {
       return button;
     });
     $("new-picture").replaceChildren(...buttons);
+  }
+
+  // ✏️ on a player: pick another picture for them; their name and stars stay
+  changePicture(profile, pictures) {
+    let chosen = profile.picture;
+    const buttons = pictures.map((picture) => {
+      const button = el(
+        "button",
+        { type: "button", class: "picture-tile", role: "radio", "aria-label": picture,
+          "aria-checked": String(picture === chosen) },
+        el("span", { class: "face", "aria-hidden": "true" }, FACES[picture] || "🐾"),
+      );
+      button.addEventListener("click", () => {
+        chosen = picture;
+        for (const other of buttons) other.setAttribute("aria-checked", String(other === button));
+      });
+      return button;
+    });
+    $("change-title").textContent = t("A new picture for {name}", { name: profile.name });
+    $("change-grid").replaceChildren(...buttons);
+    $("change-error").textContent = "";
+    $("change-picture").hidden = false;
+    $("new-player").hidden = true; // one thing at a time: no "fill out this field" for the name
+    $("change-cancel").onclick = () => {
+      $("change-picture").hidden = true;
+      $("new-player").hidden = false;
+    };
+    $("change-save").onclick = async () => {
+      try {
+        await api.setPicture(profile.id, chosen);
+        if (this.current?.id === profile.id) {
+          this.current = { ...this.current, picture: chosen };
+          this.relabel();
+        }
+        await this.choose(); // the list again, with the new picture
+      } catch (error) {
+        $("change-error").textContent = error.message;
+      }
+    };
+    buttons.find((b) => b.getAttribute("aria-checked") === "true")?.focus();
   }
 
   async createPlayer() {

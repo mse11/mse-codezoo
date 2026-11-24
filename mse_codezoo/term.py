@@ -92,6 +92,10 @@ class StageState:
                 self.bumped = True
 
 
+# events with nothing to draw on the grid (print() shows in the terminal itself)
+UNSEEN = ("sense", "call", "return", "print")
+
+
 def paint(text: str, style: str, color: bool) -> str:
     return f"{STYLES[style]}{text}{RESET}" if color else text
 
@@ -165,7 +169,7 @@ def replay(
         echo(CLEAR + header + "\n" + render(state, color=color) + "\n" + code)
 
     for step in steps:
-        events = [e for e in step.get("events", []) if e["type"] not in ("sense", "call", "return")]
+        events = [e for e in step.get("events", []) if e["type"] not in UNSEEN]
         if not events and animate:
             frame(step.get("line"))
             time.sleep(delay / 2)

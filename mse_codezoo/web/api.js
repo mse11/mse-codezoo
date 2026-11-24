@@ -100,8 +100,17 @@ export const api = {
   previewLevel: (level, animal) => call("POST", "/api/levels/preview", { level, animal }),
   story: (run) => call("POST", "/api/story", { run }),
 
+  // game mode (phase 8): the running game stays in the engine between ticks
+  games: () => call("GET", "/api/games"),
+  game: (id, animal) =>
+    call("GET", `/api/games/${encodeURIComponent(id)}${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
+  gameStart: (game, source, animal) => call("POST", "/api/game/start", { game, source, animal }),
+  gameTick: (session, keys) => call("POST", "/api/game/tick", { session, keys }),
+  gameStop: (session) => call("POST", "/api/game/stop", { session }),
+
   profiles: () => call("GET", "/api/profiles"),
   addProfile: (name, picture, cub = false) => call("POST", "/api/profiles", { name, picture, cub }),
+  setPicture: (id, picture) => call("POST", `/api/profiles/${id}/picture`, { picture }),
   progress: (id) => call("GET", `/api/profiles/${id}/progress`),
   addTime: (id, seconds) => call("POST", `/api/profiles/${id}/time`, { seconds }),
   parent: (action, body = {}) => call("POST", `/api/parent/${action}`, body),

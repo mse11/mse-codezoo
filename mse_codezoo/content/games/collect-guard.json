@@ -1,0 +1,31 @@
+{
+  "id": "collect-guard",
+  "title": {"en": "Bananas and the guard", "sk": "Banány a strážca"},
+  "template": "collect",
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B.......B",
+      ".##.#.##.",
+      "....B....",
+      ".##.#.##.",
+      "B.......B"
+    ],
+    "start": [4, 4, "north"]
+  },
+  "rules": {"win": "collect_all", "caught": true},
+  "max_ticks": 1200,
+  "help": {
+    "en": [
+      "Use the arrow keys (or the buttons) to move.",
+      "Collect every banana, but don't let the guard catch you!",
+      "Change the code: make the guard faster, add a second guard, or give points."
+    ],
+    "sk": [
+      "Hýb sa šípkami (alebo tlačidlami).",
+      "Pozbieraj všetky banány, ale nedaj sa chytiť strážcovi!",
+      "Zmeň kód: zrýchli strážcu, pridaj druhého alebo rozdávaj body."
+    ]
+  },
+  "starter": "class Guard(Critter):\n    def on_tick(self):\n        if ticks() % 2 == 0:\n            if self.wall_ahead():\n                self.turn_around()\n            else:\n                self.step()\n\n\nguard = Guard(0, 2, \"east\")\n\n\ndef on_key(key):\n    go(key)\n\n\ndef on_item(item):\n    grab()\n    score.add(1)\n"
+}

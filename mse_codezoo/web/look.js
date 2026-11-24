@@ -5,11 +5,13 @@
 
 import { t } from "./i18n.js";
 import { canSpeak, speak } from "./speech.js";
+import { resetAllZoom } from "./zoom.js";
 
 const KEY = "codezoo.look";
 const DEFAULTS = {
   text: "normal", easy: false, contrast: false, motion: "system", targets: false, read: false, sounds: true,
   theme: "system", // colours: "system" (as the device), "light" or "dark"
+  layout: "auto", // goal and result: "above" the stage, "side" (beside it) or "auto" (by window width)
 };
 
 function read() {
@@ -40,6 +42,14 @@ export function isLocked(key) {
   return key in locked;
 }
 
+// "automatic" layout: the goal and result beside the stage once the window is this wide
+const wideWindow = window.matchMedia("(min-width: 1300px)");
+export function layout() {
+  const chosen = look().layout;
+  if (chosen === "above" || chosen === "side") return chosen;
+  return wideWindow.matches ? "side" : "above";
+}
+
 // less motion: the setting here, or the system's "reduce motion"
 const systemReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
 export function reducedMotion() {
@@ -54,6 +64,7 @@ export function applyLook() {
   root.dataset.motion = reducedMotion() ? "reduce" : "full";
   root.dataset.targets = String(settings.targets);
   root.dataset.read = String(settings.read); // read aloud (speech.js, phase 7)
+  root.dataset.layout = layout(); // style.css places the goal and result
   // colours: style.css and the blocks follow data-theme; without it, the device's own
   const theme = look().theme;
   if (theme === "light" || theme === "dark") root.dataset.theme = theme;
@@ -133,6 +144,11 @@ export function openLook() {
       ["light", t("☀️ light")],
       ["dark", t("🌙 dark")],
     ]),
+    select("layout", t("Goal and result"), [
+      ["auto", t("automatic: beside the stage on a wide screen")],
+      ["above", t("above the stage")],
+      ["side", t("beside the stage")],
+    ]),
     checkbox("easy", t("Easy-to-read text (simple letters, more space)")),
     checkbox("contrast", t("High contrast")),
     select("motion", t("Motion"), [
@@ -144,6 +160,13 @@ export function openLook() {
     checkbox("read", t("Read aloud: goals, hints, results and tapped blocks")),
     checkbox("sounds", t("Sounds: steps, pops and a little tune when you solve a level")),
     voiceNote(),
+    el(
+      "p",
+      { class: "hint" },
+      el("button", { type: "button", class: "small", onclick: resetAllZoom }, t("Everything back to normal size")),
+      " ",
+      t("(Ctrl + mouse wheel zooms the part under the mouse)"),
+    ),
     el("p", { class: "hint" }, t("These settings are kept in this browser only.")),
     el(
       "div",
@@ -182,4 +205,5 @@ export function setupThemeButton(button) {
 }
 
 systemReduce.addEventListener("change", applyLook);
+wideWindow.addEventListener("change", applyLook);
 applyLook();

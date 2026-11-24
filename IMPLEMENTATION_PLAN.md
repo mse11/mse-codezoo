@@ -421,7 +421,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | 5 Classes | Later (built Nov 21, 2026; gate open) | Classroom hub on the local network (no cloud), join with class code + picture, teacher class view, class-only sharing | One developer + coding agent | Privacy review passed; one real workshop or class run on the hub |
 | 6 Pilot readiness | Built Nov 21, 2026; gate open | Families play without installing anything, teachers get a one-file hub app, concept checks before and after each module, pilot metrics recorded on the device and exported with consent, a pilot kit, accessibility basics | One developer + coding agent | The first pilot (5–8 children) runs with the kit and returns its metrics |
 | 7 Cub mode and read aloud | Built Nov 21, 2026; gate open | Cub mode for ages 6–8 per player (picture blocks, colour-linked code, two cub modules in the predict–fix–make pattern), read aloud with the device's speech voices, a grown-up's "ready for the main course?" | One developer + coding agent | 3–5 children aged 6–8 play the cub modules with a grown-up nearby; read aloud works on the pilot devices in English and Slovak |
-| 8 Game mode | Proposed, not started | Children write the rules of a world (event handlers, critters, score) and play it live; playtest bot, templates, sharing, later classroom multiplayer. See [Future improvements, section 4](#4-game-mode-children-make-their-own-games) | One developer + coding agent | Steps G0–G3 have their own gates |
+| 8 Game mode | G0 built Nov 24, 2026 (gate open); G1–G3 not started | Children write the rules of a world (event handlers, critters, score) and play it live; playtest bot, templates, sharing, later classroom multiplayer. See [Future improvements, section 4](#4-game-mode-children-make-their-own-games) | One developer + coding agent | Steps G0–G3 have their own gates |
 
 **The interpreter grows module by module.** Each phase adds only the constructs its modules need, each with its own differential tests: phase 0 calls, `for` and assignment; phase 2 `if`, `while` and strings; phase 3 functions, imports, exceptions, collections, recursion and comprehensions; phase 4 classes, decorators and `async`.
 
@@ -705,6 +705,26 @@ Decisions (Nov 21, 2026): Cub mode is set **per player** (siblings on one device
 - [ ] Not checked: real Slovak voices (Windows, Android and iOS each have their own; many devices have none), speech on the cheapest tablet, children who can't read using it without help
 - [ ] Gate: 3–5 children aged 6–8 play the cub modules with a grown-up nearby (the pilot kit's facilitator guide needs a short cub section); read aloud is tried on the pilot devices in English and Slovak
 
+**Phase 8 steps: game mode** (see [Future improvements, section 4](#4-game-mode-children-make-their-own-games))
+
+*G0 spike (built Nov 24, 2026)*
+
+- [x] Engine: `gamemode.py`. The program runs once to set up, then `on_key(key)`, `on_tick()`, each critter's `on_tick(self)`, `on_item(item)` and `on_touch(critter)` run on every tick, in that order. Programs also get `Critter`, `score`, `win()`, `lose()`, `go(direction)`, `where()`, `ticks()` and `critters()`; without an `on_key` the arrows move the animal
+- [x] Integer-only game state: grid squares and whole ticks; floats only for drawing. Same program, seed and keys give the same game (`Game.inputs` is all a replay needs)
+- [x] A critter's place is kept by the game, not on the object: programs read `self.x` but move only with `step()`. A class that forgets `super().__init__(x, y)` gets a kind message
+- [x] Bumps never crash a game (the animal or critter stays put). Each tick has a budget of 1,000 interpreter steps for all handlers together; a runaway loop ends the game with "The game got tired: … Is a loop running forever?" and the line marked
+- [x] Game files in `content/games/*.json` (world, animal, rules: `collect_all`, `{"score": N}`, `{"survive": N}`, `caught`, `max_ticks`, starter, help per language); first game: `collect-guard` (bananas and a patrolling guard)
+- [x] API: `GET /api/games`, `GET /api/games/<id>`, `POST /api/game/start | tick | stop`; running games stay in memory (`Sessions`, newest 32) on the server or in the offline build's web worker. On a classroom hub, "pause" stops games too
+- [x] `game.html`: 2D board (emoji that slide between squares; still with "less motion"), arrow keys and an on-screen pad for touch, code with line numbers that light up per tick, error line marked, printed output, help, the program's API at a glance; draft code kept per game in this browser; English and Slovak; "Make a game" link on the main page; part of the offline build
+- [x] Tests: `tests/test_phase8_games.py` (bundled games, rules, handlers, critters, bumps, budget, errors, determinism, speed, API, sessions)
+- [x] **Measured (Nov 24, 2026), 5 patrolling critters:** CPython about 3,000 ticks a second (0.3 ms a tick, about 15 interpreter steps a tick). Offline build in the browser (Pyodide 0.29.5, desktop, including the round trip through the web worker and JSON): about 1,100 ticks a second (0.9 ms a tick). A game needs about 7 ticks a second (150 ms a tick), so even a tablet 20× slower has a big margin. **Decision: keep the Python interpreter** (see "G0: language and performance"); no closure compiler needed for now. The playtest bot (300 games × 200 ticks = 60,000 ticks) would take about a minute in the browser at this speed: run it on the hub or play 30 games in the browser (G1)
+- [x] 3D stage for games (Nov 24, 2026): the zoo's three.js stage gets `loadGame`, `showGame` and `bumpGame`; the animal and the critters glide to their new square within one tick, removed critters shrink away, items vanish when grabbed. Critter models per kind: the zoo's animals (`fox`, `bee`…), a crocodile for `guard`, a ghost, and a spotted beetle in a colour picked from any other kind's name. A 2D/3D switch on the game page (remembered in this browser); three.js loads only when 3D is picked, and without WebGL the flat board is used. Less motion: no hops, near-instant glides
+- [ ] *Not built in G0*: sounds, blocks for game handlers (code only), the classroom hub's 2D/3D class setting for games (each child picks)
+- [ ] Not checked: the cheapest target tablet; touch play on a real tablet; the hub over school Wi-Fi with a tick every 150 ms per child
+- [ ] Gate: the game runs smoothly on the cheapest target tablet (2D) and 3–5 children aged 9–12 change the starter game and play it
+
+*G1–G3*: not started; see the steps table in Future improvements, section 4.
+
 ## Not yet covered
 
 Eleven topics still need a decision; none blocks phase 0, but each should be settled by the phase shown.
@@ -803,25 +823,30 @@ Platforms like Roblox show how much children want to build worlds, script how th
 | Play together live | Classroom hub, but everyone plays alone | Real-time sync over the local network |
 | Public platform, chat, marketplace | Nothing, on purpose | **Not built**: strangers, chat moderation and payment pressure on children go against the privacy promise and are too much for one developer |
 
-**What a game program looks like.** The same Python subset, plus a few event hooks:
+**What a game program looks like.** The same Python subset, plus a few event hooks (as built in G0, see "Phase 8 steps"):
 
 ```python
 class Guard(Critter):
     def on_tick(self):
-        self.step()
         if self.wall_ahead():
             self.turn_around()
+        else:
+            self.step()
 
-def on_touch(animal, thing):
-    if thing.kind == "banana":
-        score.add(1)
+guard = Guard(0, 2, "east")
 
-def on_key(key):
-    if key == "space":
-        monkey.swing()
+def on_key(key):          # "up", "down", "left", "right", "space"
+    go(key)
+
+def on_item(item):        # the animal arrived on an item: "banana"
+    grab()
+    score.add(1)
+
+def on_touch(critter):    # a critter and the animal met
+    lose("Caught!")
 ```
 
-Events, callbacks and game loops give modules 7 (functions) and 12 (objects) a reason to exist: `class Guard(Critter)` is the best excuse to learn inheritance. The event hooks map onto the existing task and clock machinery; whether the interpreter can step handlers in real time (ticks at a fixed rate instead of as fast as possible) needs a spike first.
+Events, callbacks and game loops give modules 7 (functions) and 12 (objects) a reason to exist: `class Guard(Critter)` is the best excuse to learn inheritance. The program runs once to set up (functions, classes, critters); then the game calls its handlers on every tick, with a budget of interpreter steps per tick.
 
 **Ideas from vibe game development**, applied to children as game designers rather than to how CodeZoo is built (see [Lessons from vibe game development](#lessons-from-vibe-game-development) for that):
 
@@ -867,7 +892,7 @@ Switching language costs more than it saves:
 
 The interpreter's value is control (stepping, highlighting, deterministic concurrency, kind errors, limits), not speed. Decisions:
 
-1. **Keep Python.** G0 measures ticks per second with 5 critters on the cheapest target tablet in Pyodide, and how long 30 and 300 playtest-bot games take in the browser and on the hub.
+1. **Keep Python.** G0 measures ticks per second with 5 critters on the cheapest target tablet in Pyodide, and how long 30 and 300 playtest-bot games take in the browser and on the hub. *Measured on a desktop (Nov 24, 2026): about 1,100 ticks a second in Pyodide, 3,000 in CPython, against 7 needed; the tablet is still to measure. See "Phase 8 steps".*
 2. **Optimize before rewriting.** If ticks are too slow, compile the IR once into Python closures instead of walking the tree on every step (often several times faster, same behaviour and tests), and profile the hot paths.
 3. **Keep the fallback open without building it.** The IR and `codezoo schema` are already a contract; a JS or WebAssembly interpreter could run the same IR later, with the Python interpreter as the reference it is tested against. Only real G0 numbers can trigger that.
 4. **Design game mode for an interpreter:** grid positions and ticks, no physics simulation, and a step budget per tick, so a runaway `while True` in a handler ends with a kind message ("the guard got tired") instead of freezing the game.
