@@ -421,6 +421,7 @@ A usable MVP for children aged 8–12 ships in about 14 weeks; the full ladder u
 | 5 Classes | Later (built Nov 21, 2026; gate open) | Classroom hub on the local network (no cloud), join with class code + picture, teacher class view, class-only sharing | One developer + coding agent | Privacy review passed; one real workshop or class run on the hub |
 | 6 Pilot readiness | Built Nov 21, 2026; gate open | Families play without installing anything, teachers get a one-file hub app, concept checks before and after each module, pilot metrics recorded on the device and exported with consent, a pilot kit, accessibility basics | One developer + coding agent | The first pilot (5–8 children) runs with the kit and returns its metrics |
 | 7 Cub mode and read aloud | Built Nov 21, 2026; gate open | Cub mode for ages 6–8 per player (picture blocks, colour-linked code, two cub modules in the predict–fix–make pattern), read aloud with the device's speech voices, a grown-up's "ready for the main course?" | One developer + coding agent | 3–5 children aged 6–8 play the cub modules with a grown-up nearby; read aloud works on the pilot devices in English and Slovak |
+| 8 Game mode | Proposed, not started | Children write the rules of a world (event handlers, critters, score) and play it live; playtest bot, templates, sharing, later classroom multiplayer. See [Future improvements, section 4](#4-game-mode-children-make-their-own-games) | One developer + coding agent | Steps G0–G3 have their own gates |
 
 **The interpreter grows module by module.** Each phase adds only the constructs its modules need, each with its own differential tests: phase 0 calls, `for` and assignment; phase 2 `if`, `while` and strings; phase 3 functions, imports, exceptions, collections, recursion and comprehensions; phase 4 classes, decorators and `async`.
 
@@ -786,3 +787,92 @@ The phase 2 pilot is when real families start using CodeZoo, and the money model
 Paid work for schools that want a special programme (custom levels, a workshop, curriculum mapping) stays possible later as a service around the open code, not as locked features.
 
 **Promise to pilot families:** "CodeZoo is free and open source and will stay free. It needs no account, and your child's progress stays on your device."
+
+### 4. Game mode: children make their own games
+
+Platforms like Roblox show how much children want to build worlds, script how things behave and play each other's creations. CodeZoo already has most of the pieces: the level editor, share links, class sharing with the teacher's approval, outfits, the 3D stage, the classroom hub and a deterministic engine with a clock. What is missing is the paradigm: today a program *solves* a puzzle and runs to the end; in game mode a program *writes the rules* of a world that someone then plays live.
+
+**Pitch:** make games together, in your classroom, with no strangers and no cloud.
+
+| Platform piece | CodeZoo today | Gap |
+| --- | --- | --- |
+| Build a world | Level editor paints worlds, goals and files | Objects that do things: doors, switches, critters, power-ups |
+| Script behaviour | One-shot solution on a simulated clock | Event handlers that react while someone plays |
+| Others play it | Share links, "Share with the class", projector | Mostly there |
+| Avatars | Animals, outfits, stickers | Mostly there |
+| Play together live | Classroom hub, but everyone plays alone | Real-time sync over the local network |
+| Public platform, chat, marketplace | Nothing, on purpose | **Not built**: strangers, chat moderation and payment pressure on children go against the privacy promise and are too much for one developer |
+
+**What a game program looks like.** The same Python subset, plus a few event hooks:
+
+```python
+class Guard(Critter):
+    def on_tick(self):
+        self.step()
+        if self.wall_ahead():
+            self.turn_around()
+
+def on_touch(animal, thing):
+    if thing.kind == "banana":
+        score.add(1)
+
+def on_key(key):
+    if key == "space":
+        monkey.swing()
+```
+
+Events, callbacks and game loops give modules 7 (functions) and 12 (objects) a reason to exist: `class Guard(Critter)` is the best excuse to learn inheritance. The event hooks map onto the existing task and clock machinery; whether the interpreter can step handlers in real time (ticks at a fixed rate instead of as fast as possible) needs a spike first.
+
+**Ideas from vibe game development**, applied to children as game designers rather than to how CodeZoo is built (see [Lessons from vibe game development](#lessons-from-vibe-game-development) for that):
+
+| What the article showed | Game mode idea |
+| --- | --- |
+| "Make it a LOT more fun" worked because the agent ran 1,000+ simulated games and balanced them | **"Test my game" playtest bot.** Bot animals play the child's game a few hundred times on the simulated clock and report in kind words: "Nobody could win: the guard is too fast", "Every bot won in 3 steps: too easy?", "No one can reach the key". Builds on the editor's "Test the level"; teaches balance and iteration |
+| Grow a game in small rounds, one visible change per turn | **Lessons in rounds:** move with keys (`on_key`) → one thing to collect and a score → a guard that walks (`on_tick`) → the guard catches you (`on_touch`) → "make it more fun": pick one twist card (speed-up, secret door, power-up). Each round is one run with a visible result, like predict–fix–make in Cub mode |
+| Tight single-mechanic loops balance better than complex systems | **Four templates first:** collect, dodge, chase, maze, each with one core rule. No crafting, shops or quests at first. Templates also prevent the blank-page freeze |
+| Spec and critique before building | **Design card:** "My game in one sentence", "How do I win?", "How do I lose?". The teacher can approve it before building, like sharing |
+| Most fixing went into global-state bugs | **State bugs become lessons:** debugging levels where two handlers fight over `score` or move the same guard; the burrows and lanes view shows which handler fired on each tick and what it changed |
+| Floating-point results differ across platforms and break replays and multiplayer | **Integer-only game state:** positions on the grid, time in ticks; floats only for drawing in three.js. A CI test runs one game in CPython and Pyodide and compares the event logs |
+| 3D models built in code | **Building with code:** `for x in range(5): build.block(x, 0, "stone")`. Loops make walls, functions make houses, recursion makes trees: a creative mode that is also the curriculum |
+| Music synthesised in code that reacts to the game | **Game-state sound** with WebAudio, no asset files; children can script it (`music.tempo = 120` when a guard is near) |
+| A sync feature worked but gave a player a headache | **Comfort limits:** volume cap, no harsh high pitches, a flash limit, and the existing "less motion" setting applies to games |
+
+**Proposed steps**
+
+| Step | Deliverable | Gate |
+| --- | --- | --- |
+| G0 Spike | Real-time ticks and `on_tick` / `on_key` / `on_touch` in the interpreter; one hand-made game playable with keys and touch, 2D and 3D; ticks-per-second and playtest-bot timings measured (see below) | Runs smoothly on the cheapest target tablet (2D at least); the measurements decide the language question below |
+| G1 Make a game, alone | Event API, `Critter` base class, score and win/lose rules, the four templates, the lesson rounds, design card, "Test my game" bot | 5 children make and finish a game in one session and want to make another |
+| G2 Game editor and sharing | Level editor places objects with attached scripts; games travel in share links and through class sharing with the teacher's approval; building with code | A class plays each other's games on the projector |
+| G3 Play together in class | Several animals in one world over the hub, input lockstep on the deterministic engine, push updates (server-sent events or websockets); no chat, only emoji reactions | 4 children play one world without desyncs for 10 minutes |
+
+**G0: language and performance.** Is a game engine in Python naive? No, as long as the engine and the children's scripts stay separate, the way large platforms run a native engine with a scripting language on top. CodeZoo already splits it this way:
+
+| Layer | What it does | Language | Must be fast? |
+| --- | --- | --- | --- |
+| Drawing, animation, input, sound | 60 frames a second, smooth movement between ticks | JS + three.js | Yes, and it already is |
+| Game rules | The child's `on_tick`, `on_touch`, `on_key` | CodeZoo's interpreter (Python) | Only 5–10 ticks a second on a grid |
+| Children's language | What they write | Python | It is the product; it doesn't change |
+
+The interpreter (`interpreter.py`, `Runner.run_steps`) walks the IR tree and yields a `Step` per statement. In the browser it runs on Pyodide, so it is an interpreter on an interpreter, roughly 50–100× slower than native CPython (an estimate, to be measured). A tick with a few critters is a few hundred to a few thousand steps, which should fit at 5–10 ticks a second. The real risk is the playtest bot: 300 games × 200 ticks is 60,000 ticks and could take minutes on a cheap tablet. So it runs on the classroom hub in native CPython where there is one, runs fewer games in the browser (30 are enough to say "nobody could win"), and runs in the existing web worker so the page stays responsive.
+
+Switching language costs more than it saves:
+
+| Option | Gain | Loss |
+| --- | --- | --- |
+| Rewrite the interpreter in JS/TypeScript | Faster in the browser, no Pyodide | One engine for CLI, terminal game, tests and browser; differential tests against CPython in the same pytest run; months of rework of every phase 2–4 feature |
+| Rust compiled to WebAssembly | Very fast | Same, plus a toolchain one developer must maintain |
+| Skulpt, Brython or MicroPython | Ready-made | Stepping, the seeded scheduler, source maps and the simulated clock: what makes CodeZoo special |
+| Children's code straight in Pyodide's CPython | Fast | No stepping, line highlighting, limits or deterministic replays |
+
+The interpreter's value is control (stepping, highlighting, deterministic concurrency, kind errors, limits), not speed. Decisions:
+
+1. **Keep Python.** G0 measures ticks per second with 5 critters on the cheapest target tablet in Pyodide, and how long 30 and 300 playtest-bot games take in the browser and on the hub.
+2. **Optimize before rewriting.** If ticks are too slow, compile the IR once into Python closures instead of walking the tree on every step (often several times faster, same behaviour and tests), and profile the hot paths.
+3. **Keep the fallback open without building it.** The IR and `codezoo schema` are already a contract; a JS or WebAssembly interpreter could run the same IR later, with the Python interpreter as the reference it is tested against. Only real G0 numbers can trigger that.
+4. **Design game mode for an interpreter:** grid positions and ticks, no physics simulation, and a step budget per tick, so a runaway `while True` in a handler ends with a kind message ("the guard got tired") instead of freezing the game.
+
+**Risks.** Scope: G3 alone may take as long as several earlier phases. Focus: free-form games can drift away from learning Python, so game levels keep goals and stars ("make the guard patrol and catch the fox"). Speed: a real-time 3D loop on old tablets probably needs the 2D stage as the default for games. Name and look: keep the mechanics generic and the visual design CodeZoo's own; never copy another platform's names, art or worlds.
+
+**To discuss:** whether game mode comes before more curriculum content; which template is the first one; whether G3 is worth its cost or class sharing (G2) is enough.
+**Revisit:** after the first real pilot returns its metrics.
