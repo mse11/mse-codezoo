@@ -125,9 +125,13 @@ def test_zoom_reaches_far_and_titles_zoom_together():
 def test_the_top_bar_is_in_groups():
     page = (WEB / "index.html").read_text(encoding="utf-8")
     header = page[page.index("<header") : page.index("</header>")]
-    run = header[header.index("run-group") : header.index("user-group")]
+    # first row: the modes, then the player's group and the grown-ups;
+    # second row: the level together with the buttons that run it
+    run = header[header.index("run-group") :]
     assert 'id="run"' in run and 'id="step"' in run and 'id="speed"' in run
-    user = header[header.index("user-group") :]
+    assert 'id="level-select"' in run
+    assert header.index("user-group") < header.index("bar-break") < header.index("run-group")
+    user = header[header.index("user-group") : header.index("bar-break")]
     for part in (
         'id="player"',
         'id="animal-select"',
@@ -136,7 +140,7 @@ def test_the_top_bar_is_in_groups():
         'id="zoo"',
     ):
         assert part in user
-    modes = header[header.index('class="modes"') : header.index("run-group")]
+    modes = header[header.index('class="modes"') : header.index("user-group")]
     assert 'href="editor.html"' in modes and 'href="game.html"' in modes
     # the language as a drawn flag and its code: a flag emoji reads "SK SK" on Windows
     for page in ("app.js", "game.js"):
@@ -157,7 +161,7 @@ def test_the_player_and_their_animal_are_one_control():
 
 def test_one_button_puts_every_zoom_and_bar_back():
     page = (WEB / "index.html").read_text(encoding="utf-8")
-    user = page[page.index("user-group") : page.index("</header>")]
+    user = page[page.index("user-group") : page.index("bar-break")]
     assert 'id="reset-view"' in user
     assert '$("reset-view").addEventListener("click", resetAllZoom)' in (WEB / "app.js").read_text(
         encoding="utf-8"
@@ -195,3 +199,30 @@ def test_every_page_has_the_three_modes_after_the_logo():
         for href in ("index.html", "editor.html", "game.html"):
             assert f'href="{href}"' in nav
         assert f'href="{current}" aria-current="page"' in nav
+
+
+def test_the_code_panes_colour_python_in_the_colours_of_the_blocks():
+    """Each word in the code has its block's colour (syntax.js under the textarea), on the
+    main page and the game page; nothing is loaded from elsewhere."""
+    import re
+
+    syntax = (WEB / "syntax.js").read_text(encoding="utf-8")
+    assert "export function highlightPython(text)" in syntax
+    assert "export function colourTextarea(textarea)" in syntax
+    assert "export function setCommandNames(actions = {})" in syntax
+    assert "import " not in syntax and "http" not in syntax
+    blocks = (WEB / "blocks.js").read_text(encoding="utf-8")
+    colours = dict(re.findall(r"^  (\w+): \"(#[0-9A-Fa-f]{6})\",$", blocks, re.MULTILINE))
+    css = (WEB / "style.css").read_text(encoding="utf-8")
+    dark = css[css.index(':root[data-theme="dark"] {\n  --blk-motion') :]
+    for family in ("motion", "action", "say", "sensor", "loop", "logic", "variable", "math", "trick", "note"):
+        assert f".syn-{family} {{ color: var(--blk-{family});" in css, family
+        # the dark theme uses the very colours of the blocks
+        assert f"--blk-{family}: {colours[family]};" in dark, family
+    for word, family in (("step", "motion"), ("grab", "action"), ("for", "loop"), ("if", "logic"), ("print", "say")):
+        assert re.search(rf'{family}: \[[^\]]*"{word}"', syntax), word
+    code = (WEB / "code.js").read_text(encoding="utf-8")
+    assert "setCommandNames(actions)" in code  # the penguin's catch() is coloured like grab
+    assert "code.setCommands(level.pack.actions)" in (WEB / "app.js").read_text(encoding="utf-8")
+    assert 'colourTextarea($("source"))' in (WEB / "game.js").read_text(encoding="utf-8")
+    assert ".code-area textarea.coloured { color: transparent; caret-color: var(--text); }" in css

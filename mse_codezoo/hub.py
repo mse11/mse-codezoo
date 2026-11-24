@@ -25,6 +25,12 @@ Routes on top of ``server.dispatch``:
     POST /api/class/share {profile, kind, title, payload}
     POST /api/class/report {share}          -> hides a share until the teacher looks at it
 
+Game mode on the hub (phase 8): games and shared worlds (``/api/room/*``, see
+``gamerooms.py``) need the class code like everything else; the event stream
+(``GET /api/room/events``) takes it as ``?code=`` because a browser's EventSource can't
+send headers. Only the class's own players can open or join a world. "Pause" stops every
+game and every shared world; ending the class closes the worlds.
+
     GET  /api/teacher/overview              -> everything the teacher's screen shows
     POST /api/teacher/settings {roster?, names?, deleteAtEnd?, locked?, assigned?, cub?,
                               lang?, views?, sounds?, themes?}
@@ -56,7 +62,7 @@ from http import HTTPStatus
 from typing import Any
 from urllib.parse import unquote
 
-from mse_codezoo import pilot, qr
+from mse_codezoo import gamerooms, pilot, qr
 from mse_codezoo.classes import (
     CLASS_PICTURES,
     LEVEL_ID,
@@ -110,6 +116,8 @@ class Hub:
         self.ended = False
         self.lock = threading.RLock()  # one request at a time: files stay consistent
         self.failures: dict[str, list[float]] = {}
+        # shared game worlds stop ticking while the class is paused
+        gamerooms.ROOMS.paused = lambda: self.paused
 
     # --- addresses -------------------------------------------------------------------
 
@@ -190,7 +198,10 @@ class Hub:
             if path == "/api/class/join" and method == "POST":
                 return self._join(body, client)
             if not self._is_teacher(headers):  # the teacher may open levels and the editor
-                self._check_code(headers)
+                code = headers.get("X-Class-Code") or ""
+                if path == "/api/room/events" and method == "GET":
+                    code = code or query.get("code", "")
+                self._check_code({"X-Class-Code": code})
             if path.startswith("/api/class/"):
                 return self._class(method, path.removeprefix("/api/class/"), body, query)
             return self._game(method, path, query, body)
@@ -242,7 +253,14 @@ class Hub:
         info = self.info()
         assigned = list(info.settings["assigned"])
         locked = bool(info.settings["locked"]) and bool(assigned)
-        if method == "POST" and path in ("/api/run", "/api/game/start", "/api/game/tick"):
+        playing = ("/api/run", "/api/game/start", "/api/game/tick", "/api/game/test")
+        playing += ("/api/room/open", "/api/room/start", "/api/room/keys")
+        if method == "POST" and path in ("/api/room/open", "/api/room/join"):
+            if not any(p.id == body.get("profile") for p in self.players().profiles()):
+                raise ApiError(
+                    HTTPStatus.FORBIDDEN, t("Pick your picture first, then play together.")
+                )
+        if method == "POST" and path in playing:
             if self.paused and not self.started:
                 raise ApiError(LOCKED, t("The teacher is getting the lesson ready."))
             if self.paused:
@@ -425,6 +443,7 @@ class Hub:
         info = self.info()
         deleted = bool(info.settings["deleteAtEnd"])
         self.paused = False
+        gamerooms.ROOMS.close_all(t("This class has ended. Thank you for playing!"))
         if deleted:
             self.classes.delete(self.class_id)
             self.ended = True

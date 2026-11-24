@@ -1,0 +1,160 @@
+{
+  "id": "dodge-bees",
+  "title": {
+    "en": "Dodge the bees",
+    "sk": "Uhni včelám"
+  },
+  "template": "dodge",
+  "animal": "penguin",
+  "world": {
+    "tiles": [
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+      "........."
+    ],
+    "start": [
+      4,
+      5,
+      "north"
+    ],
+    "objects": [
+      {
+        "at": [
+          0,
+          1
+        ],
+        "class": "Bee",
+        "facing": "east",
+        "kind": "bee"
+      },
+      {
+        "at": [
+          8,
+          2
+        ],
+        "class": "Bee",
+        "facing": "west",
+        "kind": "bee"
+      },
+      {
+        "at": [
+          0,
+          3
+        ],
+        "class": "Bee",
+        "facing": "east",
+        "kind": "bee"
+      }
+    ]
+  },
+  "rules": {
+    "win": {
+      "survive": 100
+    },
+    "caught": true
+  },
+  "max_ticks": 600,
+  "help": {
+    "en": [
+      "Stay away from the bees for 100 ticks!",
+      "The bees on the board are objects of the world: each one is your `class Bee`.",
+      "Change the code: make the bees turn, fly faster, or follow you."
+    ],
+    "sk": [
+      "Vyhýbaj sa včelám 100 ťahov!",
+      "Včely na doske sú objekty sveta: každá je tvoja `class Bee`.",
+      "Zmeň kód: nech včely zatáčajú, letia rýchlejšie alebo ťa sledujú."
+    ]
+  },
+  "lesson": "# Round 1: make the animal move with the arrow keys.\n",
+  "rounds": [
+    {
+      "title": {
+        "en": "Move with the keys",
+        "sk": "Hýb sa klávesmi"
+      },
+      "goal": {
+        "en": "Write `def on_key(key):` and call `go(key)` inside it.",
+        "sk": "Napíš `def on_key(key):` a vnútri zavolaj `go(key)`."
+      },
+      "needs": [
+        "on_key",
+        "go"
+      ],
+      "hint": {
+        "en": "def on_key(key):\n    if key != \"space\":\n        go(key)\n",
+        "sk": "def on_key(key):\n    if key != \"space\":\n        go(key)\n"
+      }
+    },
+    {
+      "title": {
+        "en": "A bee that flies",
+        "sk": "Včela, ktorá letí"
+      },
+      "goal": {
+        "en": "Write `class Bee(Critter):` with an `on_tick(self)`: the world's bees use it.",
+        "sk": "Napíš `class Bee(Critter):` s `on_tick(self)`: včely sveta ju použijú."
+      },
+      "needs": [
+        "critter_tick",
+        "object"
+      ],
+      "hint": {
+        "en": "class Bee(Critter):\n    def on_tick(self):\n        if self.wall_ahead():\n            self.turn_around()\n        self.step()\n",
+        "sk": "class Bee(Critter):\n    def on_tick(self):\n        if self.wall_ahead():\n            self.turn_around()\n        self.step()\n"
+      }
+    },
+    {
+      "title": {
+        "en": "Ouch, a sting!",
+        "sk": "Au, žihadlo!"
+      },
+      "goal": {
+        "en": "Write `def on_touch(critter):` that calls `lose()`.",
+        "sk": "Napíš `def on_touch(critter):`, ktorá zavolá `lose()`."
+      },
+      "needs": [
+        "on_touch",
+        "lose"
+      ],
+      "hint": {
+        "en": "def on_touch(critter):\n    lose(\"Ouch!\")\n",
+        "sk": "def on_touch(critter):\n    lose(\"Au!\")\n"
+      }
+    },
+    {
+      "title": {
+        "en": "Bees from a loop",
+        "sk": "Včely z cyklu"
+      },
+      "goal": {
+        "en": "Make more bees with a `for` loop: `Bee(x, 0, \"south\")`.",
+        "sk": "Urob viac včiel cyklom `for`: `Bee(x, 0, \"south\")`."
+      },
+      "needs": [
+        "for",
+        "critters2"
+      ],
+      "hint": {
+        "en": "for x in range(1, 8, 3):\n    Bee(x, 0, \"south\")\n",
+        "sk": "for x in range(1, 8, 3):\n    Bee(x, 0, \"south\")\n"
+      }
+    },
+    {
+      "title": {
+        "en": "Make it more fun",
+        "sk": "Sprav ju zábavnejšou"
+      },
+      "goal": {
+        "en": "Pick a twist card and add it to your game. Then press \"Test my game\".",
+        "sk": "Vyber si kartu s nápadom a pridaj ho do hry. Potom stlač „Otestuj moju hru“."
+      },
+      "needs": [],
+      "twist": true
+    }
+  ],
+  "starter": "class Bee(Critter):\n    def on_tick(self):\n        if ticks() % 2 == 0:\n            if self.wall_ahead():\n                self.turn_around()\n            self.step()\n\n\ndef on_key(key):\n    if key != \"space\":\n        go(key)\n"
+}

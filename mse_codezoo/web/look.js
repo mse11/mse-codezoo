@@ -42,8 +42,10 @@ export function isLocked(key) {
   return key in locked;
 }
 
-// "automatic" layout: the goal and result beside the stage once the window is this wide
-const wideWindow = window.matchMedia("(min-width: 1300px)");
+// "automatic" layout: the goal and result beside the stage once the window is this wide,
+// or on a landscape window from 1000px (a laptop or a tablet held sideways: height is short, so the goal
+// goes to the side and the stage keeps its height)
+const wideWindow = window.matchMedia("(min-width: 1300px), (min-width: 1000px) and (min-aspect-ratio: 4/3)");
 export function layout() {
   const chosen = look().layout;
   if (chosen === "above" || chosen === "side") return chosen;

@@ -147,6 +147,36 @@ export const sfx = {
   secret() {
     [784, 988, 1175, 1568, 1175, 1568, 2093].forEach((freq, i) => tone({ freq, type: "square", dur: 0.1, vol: 0.04, delay: i * 0.08 }));
   },
+  // game mode: the world's own sounds, and the ones a game's code plays with sound("...").
+  // Comfort limits as everywhere here: soft volumes, nothing shrill, short notes.
+  ding() {
+    tone({ freq: 1047, type: "sine", dur: 0.3, vol: 0.08 });
+    tone({ freq: 1568, type: "sine", dur: 0.25, vol: 0.03, delay: 0.02 });
+  },
+  boing() {
+    tone({ freq: 180, to: 520, type: "sine", dur: 0.22, vol: 0.1 });
+  },
+  pop() {
+    tone({ freq: 600, to: 250, type: "sine", dur: 0.07, vol: 0.1 });
+  },
+  drum() {
+    tone({ freq: 150, to: 55, type: "sine", dur: 0.25, vol: 0.14 });
+    puff({ dur: 0.08, vol: 0.05, from: 1500, to: 600, q: 0.7 });
+  },
+  tada() {
+    [523, 659, 784].forEach((freq, i) => tone({ freq, type: "triangle", dur: 0.18, vol: 0.08, delay: i * 0.07 }));
+    tone({ freq: 1047, type: "triangle", dur: 0.4, vol: 0.09, delay: 0.24 });
+  },
+  click() {
+    tone({ freq: 900, to: 500, type: "square", dur: 0.04, vol: 0.04 });
+  },
+  door(open = true) {
+    puff({ dur: 0.3, vol: 0.07, from: open ? 300 : 1200, to: open ? 1200 : 300, q: 1.2 });
+    tone({ freq: open ? 220 : 330, to: open ? 330 : 220, type: "triangle", dur: 0.2, vol: 0.05 });
+  },
+  power() {
+    [659, 880, 1047, 1319].forEach((freq, i) => tone({ freq, type: "sine", dur: 0.12, vol: 0.06, delay: i * 0.05 }));
+  },
 };
 
 // --- the layer over the page: confetti, floating texts, banners --------------------------

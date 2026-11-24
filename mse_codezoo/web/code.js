@@ -1,6 +1,9 @@
-// The code pane: a plain textarea with line numbers and a line highlight.
+// The code pane: a textarea with line numbers, a line highlight and Python colours
+// (syntax.js draws the coloured text just under the textarea's transparent letters).
 // In Cub mode (phase 7) the lines are tinted in their block's colour, with a bar whose
 // pattern names the family too (colour is never the only signal); new lines glow.
+
+import { colourTextarea, setCommandNames } from "./syntax.js";
 
 export class CodeView {
   constructor({ textarea, gutter, mark, onInput, onLineTap }) {
@@ -13,6 +16,7 @@ export class CodeView {
     this.tintLayer.className = "code-tints";
     this.tintLayer.setAttribute("aria-hidden", "true");
     mark.parentElement.insertBefore(this.tintLayer, mark);
+    this.colours = colourTextarea(textarea);
     // a tap (or the cursor) on a line: which line, for its block to wiggle
     const tapped = () => {
       const line = textarea.value.slice(0, textarea.selectionStart).split("\n").length;
@@ -42,8 +46,17 @@ export class CodeView {
   }
 
   setText(text) {
-    if (this.textarea.value !== text) this.textarea.value = text;
+    if (this.textarea.value !== text) {
+      this.textarea.value = text;
+      this.colours.render(); // setting the value sends no input event
+    }
     this.renderGutter();
+  }
+
+  // the level's animal names its commands ({"grab": "catch"} for the penguin)
+  setCommands(actions) {
+    setCommandNames(actions);
+    this.colours.render();
   }
 
   setEditable(editable) {

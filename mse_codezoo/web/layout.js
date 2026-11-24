@@ -18,6 +18,48 @@ function save(sizes) {
   }
 }
 
+// The window-tall layout (style.css, wider than a phone): the stage's drawing takes the
+// room its pane has left after the goal, the tools and the call stack, so nothing needs
+// scrolling. Elsewhere the drawing keeps its own height.
+const FITTED = "(min-width: 801px) and (min-height: 520px)";
+const MIN_STAGE = 160;
+
+export function fitStage(panes) {
+  const pane = panes.querySelector(".stage-pane");
+  const stage = pane?.querySelector("#stage");
+  if (!pane || !stage) return;
+  if (!window.matchMedia(FITTED).matches) {
+    pane.style.removeProperty("--stage-fit");
+    return;
+  }
+  // Only the stage's own column counts: beside the stage, a long goal or result scrolls in
+  // its own column and must not make the drawing smaller.
+  const zoom = parseFloat(window.getComputedStyle(stage).getPropertyValue("--stage-zoom")) || 1;
+  const bottomLine = () => {
+    const box = pane.getBoundingClientRect();
+    return box.top + pane.clientTop + pane.clientHeight - parseFloat(window.getComputedStyle(pane).paddingBottom);
+  };
+  const columnBottom = () => {
+    let bottom = stage.getBoundingClientRect().bottom;
+    for (const part of pane.children) {
+      if (part === stage || part.matches(".stage-head, #split-head, .sr-only") || !part.offsetParent) continue;
+      const rect = part.getBoundingClientRect();
+      bottom = Math.max(bottom, rect.bottom + parseFloat(window.getComputedStyle(part).marginBottom));
+    }
+    return bottom;
+  };
+  // the drawing gets what is free under its column (or gives back what overflows); two
+  // rounds, because a different height can move what sits below it
+  for (let round = 0; round < 2; round++) {
+    const slack = bottomLine() - columnBottom() - 1;
+    if (Math.abs(slack) < 1) break;
+    // at a zoom of z the drawing is fit * z tall; the fit is its height at the zoom of 1
+    const drawn = stage.getBoundingClientRect().height;
+    const fit = Math.max(MIN_STAGE, Math.floor(drawn + slack - (zoom - 1) * (drawn / zoom)));
+    pane.style.setProperty("--stage-fit", `${fit}px`);
+  }
+}
+
 export function setupSplitters({ panes, stageSplit, paneSplit, headSplit, consoleSplit, onResize }) {
   const sizes = load();
   // the console pane (and its gap) to the right of the code takes room from the blocks
@@ -35,7 +77,11 @@ export function setupSplitters({ panes, stageSplit, paneSplit, headSplit, consol
       const most = Math.max(170, document.documentElement.clientWidth - 32 - 24 - 440);
       panes.style.setProperty("--console-w", `${Math.max(170, Math.min(sizes.console, most))}px`);
     } else panes.style.removeProperty("--console-w");
-    if (sizes.stage) panes.style.setProperty("--stage-h", `${sizes.stage}px`);
+    if (sizes.stage) {
+      // in the window-tall layout the panes below keep their 180px (the page never scrolls)
+      const room = window.matchMedia(FITTED).matches ? panes.clientHeight - 12 - 28 - 180 : Infinity;
+      panes.style.setProperty("--stage-h", `${Math.max(MIN_STAGE, Math.min(sizes.stage, room))}px`);
+    }
     else panes.style.removeProperty("--stage-h");
     // the goal column beside the stage ("beside the stage" layout): its width
     const stagePane = panes.querySelector(".stage-pane");
@@ -43,6 +89,7 @@ export function setupSplitters({ panes, stageSplit, paneSplit, headSplit, consol
       const most = Math.max(220, stagePane.clientWidth - 300);
       stagePane.style.setProperty("--head-w", `${Math.max(220, Math.min(sizes.head, most))}px`);
     } else stagePane?.style.removeProperty("--head-w");
+    fitStage(panes);
     onResize();
   };
 
@@ -130,6 +177,25 @@ export function setupSplitters({ panes, stageSplit, paneSplit, headSplit, consol
   }
 
   window.addEventListener("resize", apply);
+  // the stage pane changes size when the top bar wraps, the goal grows or a run shows the
+  // call stack: the drawing follows (a frame later, so a drag doesn't measure twice)
+  let pending = 0;
+  const refit = () => {
+    cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(() => {
+      const before = panes.querySelector(".stage-pane")?.style.getPropertyValue("--stage-fit");
+      fitStage(panes);
+      if (panes.querySelector(".stage-pane")?.style.getPropertyValue("--stage-fit") !== before) onResize();
+    });
+  };
+  if (window.ResizeObserver) {
+    const watch = new ResizeObserver(refit);
+    const pane = panes.querySelector(".stage-pane");
+    if (pane) {
+      watch.observe(pane);
+      for (const part of pane.children) watch.observe(part);
+    }
+  }
   // "Everything back to normal size" (zoom.js): the bars go back to their places too
   window.addEventListener("codezoo-zoom-reset", () => {
     for (const key of Object.keys(sizes)) delete sizes[key];

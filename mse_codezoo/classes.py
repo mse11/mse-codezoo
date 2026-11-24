@@ -51,7 +51,7 @@ MAX_LEVELS = 50
 MAX_SHARES = 300
 MAX_SHARE_BYTES = 200_000
 MAX_TITLE = 60
-SHARE_KINDS = ("program", "level")
+SHARE_KINDS = ("program", "level", "game")
 SHARE_STATUSES = ("pending", "approved", "rejected", "reported")
 
 
@@ -387,6 +387,8 @@ class ClassStore:
             raise ClassError(t("You can share a program or a level."))
         if kind == "level" and not validate_level_data(payload.get("level")).ok:
             raise ClassError(t("That level isn't finished yet: test it in the editor first."))
+        if kind == "game":
+            _check_game(payload)
         data = self._read(info.id)
         if len(data["shares"]) >= MAX_SHARES:
             raise ClassError(t("The class has shared a lot today! Ask the teacher to tidy up."))
@@ -422,3 +424,20 @@ class ClassStore:
             item["status"] = status
         self._write(info.id, data)
         return item
+
+
+def _check_game(payload: dict[str, Any]) -> None:
+    """A shared game (phase 8): the game itself, its code and its design card."""
+    from mse_codezoo.gamemode import GameError, GameSpec  # game mode loads only when used
+
+    if not isinstance(payload.get("source"), str):
+        raise ClassError(t("You can share a program or a level."))
+    try:
+        GameSpec.from_dict(payload.get("game"))
+    except (GameError, ValueError):
+        raise ClassError(t("That game can't be played yet: press Play first.")) from None
+    design = payload.get("design", {})
+    if not isinstance(design, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) and len(v) <= 300 for k, v in design.items()
+    ):
+        raise ClassError(t("The design card has too much text."))

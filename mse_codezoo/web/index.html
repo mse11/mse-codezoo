@@ -19,15 +19,7 @@
       <a class="mode" href="game.html"><span aria-hidden="true">🎮</span> <span data-i18n>Game</span></a>
     </nav>
     <span id="class-name" class="class-name" hidden></span>
-    <select id="level-select" data-i18n-label="Choose a level"></select>
-    <!-- the top bar in groups: running the program, the player and their choices, making
-         things, and the grown-ups' area at the end -->
-    <div class="controls bar-group run-group" role="group" aria-label="Run" data-i18n-label="Run">
-      <button id="run" class="primary" type="button">▶ Run</button>
-      <button id="step" type="button"><span class="icon" aria-hidden="true">⏭</span> <span data-i18n>Step</span></button>
-      <button id="reset" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Reset</span></button>
-      <label class="speed"><span data-i18n>Speed</span> <input id="speed" type="range" min="1" max="5" value="3"></label>
-    </div>
+    <!-- first row: the player and their choices, with the grown-ups' area at the end of the group -->
     <div class="who bar-group user-group" role="group" aria-label="You" data-i18n-label="You">
       <span class="player-pick">
         <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
@@ -41,8 +33,17 @@
       <button id="reset-view" type="button" class="look-button" data-i18n-title="Everything back to normal size" aria-label="Everything back to normal size" data-i18n-label="Everything back to normal size"><span aria-hidden="true">⤢</span> 100%</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
       <button id="class-button" type="button" class="zoo" hidden>🏫 <span data-i18n>Our class</span> <span id="class-badge" class="badge" hidden></span></button>
+      <button id="grownups" type="button" class="grownups"><span aria-hidden="true">⚙️</span> <span data-i18n>Grown-ups</span></button>
     </div>
-    <button id="grownups" type="button" class="grownups" data-i18n>Grown-ups</button>
+    <span class="bar-break" aria-hidden="true"></span>
+    <!-- second row: the level and what runs it, together in one group -->
+    <div class="controls bar-group run-group" role="group" aria-label="Run" data-i18n-label="Run">
+      <select id="level-select" data-i18n-label="Choose a level"></select>
+      <button id="run" class="primary" type="button">▶ Run</button>
+      <button id="step" type="button"><span class="icon" aria-hidden="true">⏭</span> <span data-i18n>Step</span></button>
+      <button id="reset" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Reset</span></button>
+      <label class="speed"><span data-i18n>Speed</span> <input id="speed" type="range" min="1" max="5" value="3"></label>
+    </div>
   </header>
 
   <nav class="tabs" aria-label="Panes">

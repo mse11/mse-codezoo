@@ -55,6 +55,20 @@ Game mode (phase 8, see ``gamemode.py``): a running game stays in memory between
     POST /api/game/start {game | gameData, source, animal?, seed?} -> {session, state, ...}
     POST /api/game/tick  {session, keys: ["left", ...]}            -> {state, events, lines}
     POST /api/game/stop  {session}
+    POST /api/game/test  {game | gameData, source, animal?, games?} -> the playtest bot's report
+    POST /api/game/preview {gameData, animal?}  a game from the world editor or a share link
+
+Playing together (G3, see ``gamerooms.py``): rooms where several animals share one world.
+The game runs here; devices send keys and get every tick pushed as server-sent events.
+    GET  /api/rooms                                   open worlds to join
+    POST /api/room/open  {game | gameData, source, profile?, look?} -> {room, seat, number}
+    POST /api/room/join  {room, profile?, look?}       -> {room, seat, number}
+    POST /api/room/start {room, seat}                  only the one who opened it
+    POST /api/room/keys  {room, seat, keys}
+    POST /api/room/react {room, seat, emoji}           an emoji from a fixed list, no chat
+    POST /api/room/leave {room, seat}
+    GET  /api/room/events?room=                        text/event-stream, one message a tick
+The offline build has no rooms: playing together needs a server on the local network.
 """
 
 from __future__ import annotations
@@ -62,6 +76,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import re
+import secrets
 from dataclasses import asdict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -69,7 +84,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from mse_codezoo import __version__, gamemode, ir, pilot, versions
+from mse_codezoo import __version__, gamemode, gamerooms, ir, pilot, versions
 from mse_codezoo.cards import card_for_code, card_public, cards_html
 from mse_codezoo.game import (
     attempt_from_run,
@@ -108,6 +123,7 @@ PILOT_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/pilot$")
 PICTURE_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/picture$")
 CHECK_PATH = re.compile(r"^/api/profiles/(?P<id>p[0-9a-f]{8})/check$")
 GAME_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
+ROOM_ACTION = re.compile(r"^(open|join|start|keys|react|leave)$")
 QUESTIONS_PATH = re.compile(r"^/api/checks/(?P<module>[a-z0-9-]{1,40})$")
 MAX_MODULES = 5
 
@@ -458,7 +474,12 @@ def api_pilot_event(
 
 def api_games() -> list[dict[str, Any]]:
     return [
-        {"id": spec.id, "title": spec.title_text(), "template": spec.template}
+        {
+            "id": spec.id,
+            "title": spec.title_text(),
+            "template": spec.template,
+            "animal": spec.animal,
+        }
         for spec in gamemode.all_games()
     ]
 
@@ -472,26 +493,51 @@ def api_game(game_id: str, animal: str | None) -> dict[str, Any]:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
 
 
-def api_game_start(body: dict[str, Any]) -> dict[str, Any]:
+def _game_spec(body: dict[str, Any]) -> gamemode.GameSpec:
+    """The game a request names: a bundled game's id, or a whole game (``gameData``) from
+    the world editor, a share link or a class share."""
     try:
         if "gameData" in body:
-            spec = gamemode.GameSpec.from_dict(body["gameData"])
-        else:
-            game_id = body.get("game")
-            if not isinstance(game_id, str) or not GAME_ID.match(game_id):
-                raise ApiError(HTTPStatus.BAD_REQUEST, "game must be a game id")
-            spec = gamemode.find_game(game_id)
+            return gamemode.GameSpec.from_dict(body["gameData"])
+        game_id = body.get("game")
+        if not isinstance(game_id, str) or not GAME_ID.match(game_id):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "game must be a game id")
+        return gamemode.find_game(game_id)
     except (gamemode.GameError, ValueError) as exc:
         raise ApiError(HTTPStatus.BAD_REQUEST, str(exc)) from None
+
+
+def _source(body: dict[str, Any]) -> str:
     source = body.get("source", "")
     if not isinstance(source, str):
         raise ApiError(HTTPStatus.BAD_REQUEST, "source must be text")
-    seed = body.get("seed", 0)
+    return source
+
+
+def _animal(body: dict[str, Any]) -> str | None:
     animal = body.get("animal")
+    return animal if isinstance(animal, str) and animal in animal_names() else None
+
+
+def api_game_test(body: dict[str, Any], seconds: float = 20.0) -> dict[str, Any]:
+    """ "Test my game": the playtest bot plays it ``games`` times (30 unless asked)."""
+    spec = _game_spec(body)
+    games = body.get("games", gamemode.BOT_GAMES)
+    if isinstance(games, bool) or not isinstance(games, int):
+        games = gamemode.BOT_GAMES
+    return gamemode.playtest(
+        spec, _source(body), games=games, animal=_animal(body), seconds=seconds
+    )
+
+
+def api_game_start(body: dict[str, Any]) -> dict[str, Any]:
+    spec = _game_spec(body)
+    source = _source(body)
+    seed = body.get("seed", 0)
     game = gamemode.Game(
         spec,
         source,
-        animal=animal if isinstance(animal, str) else None,
+        animal=_animal(body),
         seed=seed if isinstance(seed, int) and not isinstance(seed, bool) else 0,
         version=_python(body.get("python")),
     )
@@ -507,6 +553,64 @@ def api_game_tick(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(keys, list):
         raise ApiError(HTTPStatus.BAD_REQUEST, "keys must be a list")
     return game.to_json(game.tick([key for key in keys if isinstance(key, str)]))
+
+
+# --- playing together (G3) ------------------------------------------------------------
+
+
+def _room_player(body: dict[str, Any], store: ProfileStore) -> tuple[str, str, str]:
+    """Who is joining: a player of this family or class, or else a numbered guest."""
+    profile = body.get("profile")
+    if isinstance(profile, str):
+        for found in store.profiles():
+            if found.id == profile:
+                return found.id, found.name, found.picture
+    return f"guest-{secrets.token_hex(3)}", t("Guest"), ""
+
+
+def _look(body: dict[str, Any]) -> str:
+    look = body.get("look")
+    return look if isinstance(look, str) and look in animal_names() else ""
+
+
+def _seat_answer(room: gamerooms.Room, seat: gamerooms.Seat) -> dict[str, Any]:
+    """A seat in a room, and the room's game to draw (it may not be the one on screen)."""
+    return {
+        "room": room.public(),
+        "seat": seat.token,
+        "number": room.number(seat),
+        "game": gamemode.game_to_json(room.spec),
+    }
+
+
+def api_room(action: str, body: dict[str, Any], store: ProfileStore) -> dict[str, Any]:
+    rooms = gamerooms.ROOMS
+    try:
+        if action == "open":
+            spec = _game_spec(body)
+            source = _source(body)
+            profile, name, picture = _room_player(body, store)
+            title = " ".join(str(body.get("title") or "").split())[:60] or spec.title_text()
+            room = rooms.open(spec, source, title)
+            return _seat_answer(room, room.join(profile, name, picture, _look(body)))
+        room = rooms.get(body.get("room"))
+        if action == "join":
+            profile, name, picture = _room_player(body, store)
+            return _seat_answer(room, room.join(profile, name, picture, _look(body)))
+        if action == "start":
+            return room.start(body.get("seat"), version=_python(body.get("python")))
+        if action == "keys":
+            room.keys(body.get("seat"), body.get("keys"))
+            return {"ok": True}
+        if action == "react":
+            room.react(body.get("seat"), body.get("emoji"))
+            return {"ok": True}
+        if action == "leave":
+            room.leave(body.get("seat"))
+            return {"ok": True}
+    except gamerooms.RoomError as exc:
+        raise ApiError(HTTPStatus.CONFLICT, str(exc)) from None
+    raise ApiError(HTTPStatus.NOT_FOUND, "no such API")
 
 
 def _text(body: dict[str, Any], key: str) -> str:
@@ -547,6 +651,13 @@ def dispatch(
             return api_games()
         if path.startswith("/api/games/"):
             return api_game(unquote(path.removeprefix("/api/games/")), query.get("animal"))
+        if path == "/api/rooms":
+            return {"rooms": gamerooms.ROOMS.list(), "reactions": list(gamerooms.REACTIONS)}
+        if path == "/api/room/events":
+            try:
+                return gamerooms.EventStream(gamerooms.ROOMS.get(query.get("room")))
+            except gamerooms.RoomError as exc:
+                raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
         if match := QUESTIONS_PATH.match(path):
             return {"module": match["module"], "questions": pilot.questions(match["module"])}
         if path.startswith("/api/levels/"):
@@ -590,6 +701,12 @@ def dispatch(
     if path == "/api/game/stop":
         gamemode.SESSIONS.stop(body.get("session"))
         return {"ok": True}
+    if path == "/api/game/test":
+        return api_game_test(body)
+    if path == "/api/game/preview":
+        return gamemode.game_to_json(_game_spec(body), _animal(body))
+    if path.startswith("/api/room/") and ROOM_ACTION.match(path.removeprefix("/api/room/")):
+        return api_room(path.removeprefix("/api/room/"), body, store)
     if path == "/api/levels/check":
         return api_check_level(body)
     if path == "/api/levels/preview":
@@ -607,6 +724,9 @@ def dispatch_json(
     """``dispatch`` with JSON in and out, for the offline build's web worker."""
     query = json.loads(query_json or "{}")
     body = json.loads(body_json or "{}")
+    if path.startswith(("/api/room/", "/api/rooms")):
+        message = "Playing together needs a classroom hub on the local network."
+        return json.dumps({"status": 404, "data": {"error": message}})
     with use_lang(lang):
         try:
             return json.dumps({"status": 200, "data": dispatch(method, path, query, body, store)})
@@ -647,7 +767,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._cards()
             elif path.startswith("/api/"):
                 query = {k: v[0] for k, v in parse_qs(urlsplit(self.path).query).items()}
-                self._json(self._dispatch("GET", path, query, {}, store))
+                answer = self._dispatch("GET", path, query, {}, store)
+                if isinstance(answer, gamerooms.EventStream):
+                    self._stream(answer)
+                else:
+                    self._json(answer)
             else:
                 self._static(path)
         except ApiError as exc:
@@ -733,6 +857,25 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(payload)
+
+    def _stream(self, stream: gamerooms.EventStream) -> None:
+        """Server-sent events: one ``data:`` line per message, a comment to keep alive."""
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+        self.close_connection = True
+        messages = stream.messages()
+        try:
+            for message in messages:
+                text = ": still here\n\n" if message is None else f"data: {json.dumps(message)}\n\n"
+                self.wfile.write(text.encode("utf-8"))
+                self.wfile.flush()
+        except OSError:
+            pass  # the device went away
+        finally:
+            messages.close()
 
     def _static(self, path: str) -> None:
         relative = unquote(path).lstrip("/") or "index.html"

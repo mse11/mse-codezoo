@@ -142,7 +142,7 @@ export function setupZoom({ area, target = area, place, name, variable = "--zoom
 
 // The Blocks pane: Blockly's own zoom.
 export function setupBlocksZoom({ pane, workspace, startScale = 0.8 }) {
-  addButtons(pane.querySelector(".pane-title"), {
+  const group = addButtons(pane.querySelector(".pane-title"), {
     zoomOut: () => workspace.zoomCenter(-1),
     zoomIn: () => workspace.zoomCenter(1),
     fit: () => {
@@ -151,6 +151,23 @@ export function setupBlocksZoom({ pane, workspace, startScale = 0.8 }) {
     },
     fitLabel: "Fit the blocks in view",
   });
+  // The trash can sits with these buttons, not in a corner of the blocks (style.css hides
+  // Blockly's own): a tap opens the deleted blocks, to drag one back. Deleting stays the
+  // same: drag a block back to the list on the left.
+  const trash = workspace.trashcan;
+  if (trash) {
+    const bin = button("🗑", "Deleted blocks: tap to get one back", () => {
+      if (trash.contentsIsOpen()) trash.closeFlyout();
+      else if (trash.hasContents()) trash.openFlyout();
+    });
+    bin.classList.add("trash-button");
+    group.prepend(bin);
+    const update = () => {
+      bin.disabled = !trash.hasContents();
+    };
+    workspace.addChangeListener(update);
+    update();
+  }
   // the title has its own zoom (all titles together), so it is left to that
   onCtrlWheel(pane, (direction) => workspace.zoomCenter(direction), { capture: true, skip: ".pane-title" });
   window.addEventListener(RESET, () => {

@@ -6,6 +6,7 @@
 import { api, getClassCode, setClassCode } from "./api.js";
 import { displayName, FACES } from "./players.js";
 import { t } from "./i18n.js";
+import { encodeShare } from "./share.js";
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 4000;
@@ -294,6 +295,7 @@ export class Classroom {
     play.addEventListener("click", () => {
       $("class-dialog").close();
       if (share.kind === "program") this.onPlayProgram(share.payload);
+      else if (share.kind === "game") location.href = `game.html#play=${encodeShare(share.payload)}`;
       else this.onPlayLevel(share.payload.level);
     });
     const report = el("button", { type: "button", class: "small" }, t("🚩 Tell the teacher"));
@@ -314,7 +316,7 @@ export class Classroom {
         "div",
         { class: "share-text" },
         el("strong", {}, share.title),
-        el("span", { class: "note" }, `${displayName(share)} · ${t(share.kind === "level" ? "a level" : "a program")}`),
+        el("span", { class: "note" }, `${displayName(share)} · ${t({ level: "a level", game: "a game" }[share.kind] || "a program")}`),
       ),
       el("div", { class: "share-actions" }, play, report),
     );

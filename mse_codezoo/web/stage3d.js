@@ -383,6 +383,64 @@ function makeFlag() {
   return flag;
 }
 
+// --- game mode objects: doors, switches, power-ups, and the rings of playing together ---
+
+// a wooden gate between two posts; the plank sinks into the ground when it opens
+function makeDoor() {
+  const door = new THREE.Group();
+  for (const side of [-0.4, 0.4]) {
+    const post = mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), 0x6d4c41);
+    post.position.set(side, 0.45, 0);
+    door.add(post);
+  }
+  const plank = mesh(new THREE.BoxGeometry(0.68, 0.7, 0.1), 0xa1887f);
+  plank.position.y = 0.4;
+  const band = mesh(new THREE.BoxGeometry(0.7, 0.08, 0.12), 0x5d4037);
+  band.position.y = 0.55;
+  const gate = new THREE.Group();
+  gate.add(plank, band);
+  door.add(gate);
+  door.userData.gate = gate;
+  return door;
+}
+
+// a round plate on the ground with a lever that flips over
+function makeSwitch() {
+  const group = new THREE.Group();
+  const plate = mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.06, 16), 0x90a4ae);
+  plate.position.y = 0.03;
+  const lever = new THREE.Group();
+  const stick = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.38, 6), 0x546e7a);
+  stick.position.y = 0.19;
+  const knob = mesh(new THREE.SphereGeometry(0.08, 10, 8), 0xe53935);
+  knob.position.y = 0.4;
+  lever.add(stick, knob);
+  lever.position.y = 0.05;
+  lever.rotation.z = -0.5;
+  group.add(plate, lever);
+  group.userData.lever = lever;
+  group.userData.knob = knob;
+  return group;
+}
+
+// a glowing star that spins above its square
+function makePower() {
+  const group = new THREE.Group();
+  const star = mesh(new THREE.OctahedronGeometry(0.2, 0), 0xffd600, { emissive: 0xffab00, emissiveIntensity: 0.7 });
+  star.position.y = 0.4;
+  group.add(star);
+  return group;
+}
+
+// the coloured ring under each animal when children play together (numbers 1-4)
+const PLAYER_COLOURS = [0xff7043, 0x42a5f5, 0x66bb6a, 0xab47bc];
+function makePlayerRing(number) {
+  const ring = mesh(new THREE.TorusGeometry(0.38, 0.05, 6, 24), PLAYER_COLOURS[(number - 1) % PLAYER_COLOURS.length]);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.03;
+  return ring;
+}
+
 // Squares the animal must reach, for a goal flag.
 // Game mode critters (game.js): an animal of the zoo when the kind is one, else a little
 // creature of simple shapes. Kinds are the program's own words (`Guard(..., kind="ghost")`).
@@ -699,6 +757,9 @@ export class Stage3D {
     for (const item of this.items?.values() || []) {
       if (!reducedMotion.matches) item.rotation.y += 0.01;
     }
+    for (const power of this.powers?.values() || []) {
+      if (!reducedMotion.matches) power.rotation.y += 0.03;
+    }
     this.renderer.render(this.scene, this.camera);
     this.positionOverlay();
     requestAnimationFrame(this.loop);
@@ -874,11 +935,93 @@ export class Stage3D {
   loadGame(game) {
     this.load({ pack: game.pack, world: game.world, goal: null });
     this.critters = new Map();
+    this.others = new Map(); // the other players' animals, by number
+    this.rings = new Map();
+    this.doors = new Map();
+    this.switches = new Map();
+    this.powers = new Map();
+    // the world's doors, switches and power-ups as they are before the game starts
+    for (const object of game.world.objects || []) {
+      const key = object.at.join(",");
+      if (object.type === "door") this.placeObject(this.doors, key, makeDoor(), object.at).userData.open = false;
+      if (object.type === "switch") this.placeObject(this.switches, key, makeSwitch(), object.at);
+      if (object.type === "power") this.placeObject(this.powers, key, makePower(), object.at);
+      if (object.type === "door" && object.open) {
+        const door = this.doors.get(key);
+        door.userData.open = true;
+        door.userData.gate.position.y = -0.75;
+      }
+    }
   }
 
-  showGame(state, tickMs = 150) {
+  placeObject(map, key, model, [x, y]) {
+    model.position.set(x, 0, y);
+    this.board.add(model);
+    map.set(key, model);
+    return model;
+  }
+
+  setDoor(door, open, time) {
+    if (!door || door.userData.open === open) return;
+    door.userData.open = open;
+    const gate = door.userData.gate;
+    const from = gate.position.y;
+    const to = open ? -0.75 : 0;
+    this.retween(gate, time, (e) => (gate.position.y = from + (to - from) * e));
+  }
+
+  // doors, switches and power-ups after a tick
+  showObjects(state, time) {
+    for (const [x, y, open] of state.doors || []) this.setDoor(this.doors.get(`${x},${y}`), open, time);
+    for (const [x, y, on] of state.switches || []) {
+      const model = this.switches.get(`${x},${y}`);
+      if (!model) continue;
+      model.userData.lever.rotation.z = on ? 0.5 : -0.5;
+      model.userData.knob.material.color.setHex(on ? 0x43a047 : 0xe53935);
+    }
+    const powers = new Set((state.powers || []).map(([x, y]) => `${x},${y}`));
+    for (const [key, model] of this.powers) {
+      if (powers.has(key)) continue;
+      this.powers.delete(key);
+      this.retween(model, time, (e) => model.scale.setScalar(Math.max(0.01, 1 + e)), () => model.parent?.remove(model));
+    }
+  }
+
+  // playing together: player 1 is the stage's own animal, the others get their own models;
+  // each stands on a ring in its player's colour
+  showPlayers(players, time, me) {
+    const seen = new Set();
+    for (const player of players) {
+      seen.add(player.number);
+      let model = player.number === 1 ? this.monkey : this.others.get(player.number);
+      if (!model) {
+        model = makeAnimal(player.look || this.level.pack.id);
+        model.position.set(player.at[0], 0, player.at[1]);
+        model.rotation.y = ANGLE[player.facing];
+        this.board.add(model);
+        this.others.set(player.number, model);
+      }
+      if (player.number !== 1) this.glide(model, player.at, player.facing, time);
+      let ring = this.rings.get(player.number);
+      if (!ring) {
+        ring = makePlayerRing(player.number);
+        this.rings.set(player.number, ring);
+      }
+      if (ring.parent !== model) model.add(ring);
+      ring.scale.setScalar(player.number === me ? 1.15 : 1);
+    }
+    for (const [number, model] of this.others) {
+      if (seen.has(number)) continue;
+      model.parent?.remove(model);
+      this.others.delete(number);
+    }
+  }
+
+  showGame(state, tickMs = 150, me = 0) {
     const time = Math.max(40, tickMs * 0.85);
     this.glide(this.monkey, state.animal.at, state.animal.facing, time);
+    this.showObjects(state, time);
+    if (state.players?.length) this.showPlayers(state.players, time, me);
     this.position = [...state.animal.at];
     this.facing = state.animal.facing;
     const present = new Set(state.items.map(([x, y]) => `${x},${y}`));
@@ -921,6 +1064,7 @@ export class Stage3D {
   // a bump in a game: a quick squash, no move (target: "animal" or a critter's id)
   bumpGame(target) {
     const model = target === "animal" ? this.monkey : this.critters?.get(target);
+    // (in a shared world the page doesn't know whose bump it was, so it sends none)
     if (!model || reducedMotion.matches || model.userData.squash) return;
     const base = model.scale.x;
     model.userData.squash = true;

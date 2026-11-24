@@ -114,7 +114,7 @@ select {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem 1rem;
+  gap: 0.6rem 0.7rem;
   padding: 0.6rem 16px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
@@ -136,6 +136,21 @@ select {
   grid-template-rows: var(--stage-h, auto) 12px minmax(300px, 1fr);
   grid-template-areas: "stage stage stage stage stage" "hsplit hsplit hsplit hsplit hsplit" "blocks vsplit code csplit console";
   padding: 12px 16px 16px;
+}
+/* A computer or tablet: the page is exactly one window tall, like an app. The stage and the
+   panes below share the room under the top bar (the bar between them still moves), and the
+   stage's drawing fits its pane (--stage-fit, layout.js). A phone, or a very short window,
+   scrolls as before. */
+@media (min-width: 801px) and (min-height: 520px) {
+  body { height: 100dvh; }
+  /* beside the stage, a long goal or result scrolls in its own column (contain: size keeps
+     its text from making the rows, and so the stage pane, taller) */
+  html[data-layout="side"] .stage-pane > .stage-head { contain: size; overflow: auto; }
+  .panes {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-rows: var(--stage-h, minmax(0, 1.25fr)) 12px minmax(180px, 1fr);
+  }
 }
 
 /* The movable bars between the parts: a line along their whole length with a grip (three
@@ -236,6 +251,9 @@ html[data-cub="true"] .panes {
 .pane-title > :first-child { margin-right: auto; }
 /* −, + and fit for each pane (zoom.js) */
 .zoom-tools { display: inline-flex; gap: 2px; }
+/* the blocks' trash can is a button in the title bar (zoom.js), not a drawing in a corner */
+.blocks-pane .blocklyTrash { display: none; }
+.zoom-tools .trash-button:disabled { opacity: 0.4; }
 .zoom-tools .zoom-button {
   min-height: 1.8em;
   min-width: 1.8em;
@@ -282,6 +300,9 @@ html[data-cub="true"] .panes {
     column-gap: 0.5rem;
   }
   html[data-layout="side"] .stage-pane > * { grid-column: 1; }
+  /* no gaps for the empty rows under the stage: the parts keep their own space instead */
+  html[data-layout="side"] .stage-pane { row-gap: 0; }
+  html[data-layout="side"] .stage-pane > :is(#stage, .callstack, .lanes, .timeline) { margin-top: 10px; }
   html[data-layout="side"] .stage-pane > .cub-levels { grid-column: 1 / -1; }
   html[data-layout="side"] .stage-pane > #split-head {
     display: block;
@@ -307,12 +328,12 @@ html[data-cub="true"] .panes {
 .goal .hint { color: var(--text); font-style: italic; }
 .goal button.small { min-height: 2em; padding: 0.2em 0.7em; font-size: 0.9em; }
 
-.stage { display: flex; justify-content: center; }
+.stage { display: flex; justify-content: center; flex-shrink: 0; } /* never squashed: it is fitted (layout.js) */
 
 .stage-svg {
   width: 100%;
   max-width: calc(35rem * var(--stage-zoom, 1));
-  max-height: calc(46vh * var(--stage-zoom, 1));
+  max-height: calc(var(--stage-fit, 46vh) * var(--stage-zoom, 1));
   overflow: visible;
 }
 
@@ -348,7 +369,7 @@ html[data-cub="true"] .panes {
   position: relative;
   display: block;
   width: 100%;
-  height: calc(clamp(220px, 46vh, 520px) * var(--stage-zoom, 1));
+  height: calc(var(--stage-fit, clamp(220px, 46vh, 520px)) * var(--stage-zoom, 1));
   border-radius: 0.6rem;
   overflow: hidden;
   background: linear-gradient(#bfe3f5, #e8f5e9);
@@ -465,6 +486,68 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 
 .code-area textarea[readonly] { cursor: default; }
 
+/* Python colours (syntax.js): the coloured copy of the code lies exactly under the
+   textarea, whose own letters are transparent; the caret and selection stay visible */
+.code-area .code-colours {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  font: inherit;
+  white-space: pre;
+  tab-size: 4;
+  overflow: hidden;
+  color: var(--text);
+  pointer-events: none;
+}
+.code-area textarea.coloured { color: transparent; caret-color: var(--text); }
+.code-area textarea.coloured::selection { color: transparent; background: color-mix(in srgb, var(--accent) 35%, transparent); }
+/* each word in the colour of its block (blocks.js COLOURS): on the dark theme the very
+   block colours, on the light one darker shades of them, so the text stays easy to read */
+.syn-motion { color: var(--blk-motion); }
+.syn-action { color: var(--blk-action); }
+.syn-say { color: var(--blk-say); }
+.syn-sensor { color: var(--blk-sensor); }
+.syn-loop { color: var(--blk-loop); }
+.syn-logic { color: var(--blk-logic); }
+.syn-func { color: var(--blk-func); }
+.syn-error { color: var(--blk-error); }
+.syn-list { color: var(--blk-list); }
+.syn-variable { color: var(--blk-variable); }
+.syn-math { color: var(--blk-math); }
+.syn-text { color: var(--blk-text); }
+.syn-trick { color: var(--blk-trick); }
+.syn-note { color: var(--blk-note); font-style: italic; }
+.syn-keyword, .syn-strong { font-weight: 700; }
+:root {
+  --blk-motion: #2463c9; --blk-action: #a95f00; --blk-say: #a13ea1; --blk-sensor: #1d7fa6;
+  --blk-loop: #2a8a2a; --blk-logic: #2b7a7a; --blk-func: #7d3f8c; --blk-error: #b33a3a;
+  --blk-list: #5b4594; --blk-variable: #c05600; --blk-math: #23862c; --blk-text: #94591a;
+  --blk-trick: #b8501d; --blk-note: #6a7462;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --blk-motion: #4C97FF; --blk-action: #FFAB19; --blk-say: #CF63CF; --blk-sensor: #5CB1D6;
+    --blk-loop: #59C059; --blk-logic: #5CA6A6; --blk-func: #B27CC0; --blk-error: #E07070;
+    --blk-list: #9C85D0; --blk-variable: #FF8C1A; --blk-math: #40BF4A; --blk-text: #D69A50;
+    --blk-trick: #E6732E; --blk-note: #8E9A82;
+  }
+}
+:root[data-theme="dark"] {
+  --blk-motion: #4C97FF; --blk-action: #FFAB19; --blk-say: #CF63CF; --blk-sensor: #5CB1D6;
+  --blk-loop: #59C059; --blk-logic: #5CA6A6; --blk-func: #B27CC0; --blk-error: #E07070;
+  --blk-list: #9C85D0; --blk-variable: #FF8C1A; --blk-math: #40BF4A; --blk-text: #D69A50;
+  --blk-trick: #E6732E; --blk-note: #8E9A82;
+}
+/* high contrast: one strong text colour; keywords and commands stay bold, comments italic */
+html[data-contrast="true"] {
+  --blk-motion: var(--text); --blk-action: var(--text); --blk-say: var(--text); --blk-sensor: var(--text);
+  --blk-loop: var(--text); --blk-logic: var(--text); --blk-func: var(--text); --blk-error: var(--text);
+  --blk-list: var(--text); --blk-variable: var(--text); --blk-math: var(--text); --blk-text: var(--text);
+  --blk-trick: var(--text); --blk-note: var(--text);
+}
+
 .line-mark {
   position: absolute;
   left: 0;
@@ -494,6 +577,20 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
   background: color-mix(in srgb, var(--panel) 60%, transparent);
 }
 .who { margin-left: auto; }
+/* the main page: the player's group right after the modes (the grown-ups' button is its last) */
+.who.user-group { margin-left: 0; }
+/* a little narrower buttons in the player's group, so it fits beside the modes on a
+   1280px laptop and the top bar stays two rows (the stage keeps the height) */
+.user-group > button, .user-group > select, .user-group .player-pick > * { padding-inline: 0.6rem; }
+.user-group > .flag-select { padding-left: 2.3em; } /* room for the drawn flag (it ends at 2.1em) */
+/* two rows: logo, modes and the player's group on top; the level and its run buttons below */
+.bar-break { flex-basis: 100%; height: 0; }
+.run-group #level-select { min-width: 0; max-width: min(28rem, 100%); }
+@media (max-width: 800px) {
+  /* a phone: the level takes the group's whole first line, the buttons go below it */
+  .run-group { width: 100%; box-sizing: border-box; }
+  .run-group #level-select { flex: 1 1 100%; width: 100%; max-width: 100%; }
+}
 /* the modes after the logo (Learn, Levels, Game): a switch like 2D/3D, three equal parts,
    the green knob under the mode this page is */
 .modes {

@@ -701,6 +701,7 @@ async function playSharedLevel(level, { quiet = true } = {}) {
 
 async function showLevel(level) {
   state.level = level;
+  code.setCommands(level.pack.actions); // the animal's own command names, in their blocks' colours
   state.variant = 0;
   state.hintsShown = 0;
   state.guess = null;
@@ -834,6 +835,7 @@ async function changeLanguage(code, { save = true } = {}) {
     ? await api.previewLevel(state.shared, state.animal)
     : await api.level(state.level.id, state.animal);
   state.level = level;
+  code.setCommands(level.pack.actions); // the animal's own command names, in their blocks' colours
   renderGoal();
   renderWorlds();
   renderAnimals();

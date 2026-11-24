@@ -85,6 +85,8 @@ async function call(method, path, body) {
   return data;
 }
 
+const gameRef = (game) => (typeof game === "string" ? { game } : game);
+
 export const api = {
   info: () => call("GET", "/api/info"),
   levels: (animal) => call("GET", `/api/levels${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
@@ -104,9 +106,20 @@ export const api = {
   games: () => call("GET", "/api/games"),
   game: (id, animal) =>
     call("GET", `/api/games/${encodeURIComponent(id)}${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
-  gameStart: (game, source, animal) => call("POST", "/api/game/start", { game, source, animal }),
+  // `game` is a bundled game's id, or {gameData} for a game from the world editor or a link
+  gameStart: (game, source, animal) => call("POST", "/api/game/start", { ...gameRef(game), source, animal }),
   gameTick: (session, keys) => call("POST", "/api/game/tick", { session, keys }),
   gameStop: (session) => call("POST", "/api/game/stop", { session }),
+  gameTest: (game, source, animal, games) => call("POST", "/api/game/test", { ...gameRef(game), source, animal, games }),
+  gamePreview: (gameData, animal) => call("POST", "/api/game/preview", { gameData, animal }),
+  // playing together on a classroom hub (G3): every tick is pushed to an EventSource
+  rooms: () => call("GET", "/api/rooms"),
+  room: (action, body) => call("POST", `/api/room/${action}`, body),
+  roomEvents: (room) => {
+    const query = new URLSearchParams({ room, lang: lang() });
+    if (classCode) query.set("code", classCode); // an EventSource can't send headers
+    return new EventSource(`/api/room/events?${query}`);
+  },
 
   profiles: () => call("GET", "/api/profiles"),
   addProfile: (name, picture, cub = false) => call("POST", "/api/profiles", { name, picture, cub }),

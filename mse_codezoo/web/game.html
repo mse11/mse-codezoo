@@ -23,6 +23,7 @@
       <button id="stop" type="button" disabled><span class="icon" aria-hidden="true">■</span> <span data-i18n>Stop</span></button>
       <button id="restart" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Start code again</span></button>
     </div>
+    <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
     <select id="lang" class="lang-select" data-i18n-label="Language"></select>
   </header>
   <main class="game-main">
@@ -36,6 +37,32 @@
           <button id="view-3d" type="button" class="small" aria-pressed="false">3D</button>
         </span>
       </div>
+      <!-- the world editor (G2): pick a brush, then tap squares on the board -->
+      <div id="world-tools" class="world-tools" hidden>
+        <div class="brushes" role="radiogroup" data-i18n-label="What to put on the board">
+          <button type="button" class="small" data-brush="." aria-pressed="true"><span aria-hidden="true">⬜</span> <span data-i18n>Ground</span></button>
+          <button type="button" class="small" data-brush="#" aria-pressed="false"><span aria-hidden="true">🪨</span> <span data-i18n>Stone</span></button>
+          <button type="button" class="small" data-brush="B" aria-pressed="false"><span aria-hidden="true" id="brush-item">🍌</span> <span data-i18n>Item</span></button>
+          <button type="button" class="small" data-brush="~" aria-pressed="false"><span aria-hidden="true">🌊</span> <span data-i18n>Water</span></button>
+          <button type="button" class="small" data-brush="t" aria-pressed="false"><span aria-hidden="true">🌴</span> <span data-i18n>Tree</span></button>
+          <button type="button" class="small" data-brush="start" aria-pressed="false"><span aria-hidden="true">🏁</span> <span data-i18n>Start</span></button>
+          <button type="button" class="small" data-brush="object" aria-pressed="false"><span aria-hidden="true">🐾</span> <span data-i18n>Object</span></button>
+          <button type="button" class="small" data-brush="door" aria-pressed="false"><span aria-hidden="true">🚪</span> <span data-i18n>Door</span></button>
+          <button type="button" class="small" data-brush="switch" aria-pressed="false"><span aria-hidden="true">🔘</span> <span data-i18n>Switch</span></button>
+          <button type="button" class="small" data-brush="power" aria-pressed="false"><span aria-hidden="true">💫</span> <span data-i18n>Power-up</span></button>
+        </div>
+        <label class="object-class"><span data-i18n>Its class in the code</span>
+          <input id="object-class" value="Guard" maxlength="30" spellcheck="false" autocomplete="off">
+        </label>
+        <div class="world-size">
+          <button type="button" class="small" id="grow-x" data-i18n>Wider</button>
+          <button type="button" class="small" id="shrink-x" data-i18n>Narrower</button>
+          <button type="button" class="small" id="grow-y" data-i18n>Taller</button>
+          <button type="button" class="small" id="shrink-y" data-i18n>Shorter</button>
+          <button type="button" class="small" id="world-done" data-i18n>Done editing</button>
+        </div>
+        <p id="world-msg" class="note" aria-live="polite"></p>
+      </div>
       <div id="stage" class="game-stage" tabindex="0" data-i18n-label="The game. Use the arrow keys to play."></div>
       <div class="pad" role="group" data-i18n-label="Game buttons">
         <button type="button" class="pad-up" data-key="up" data-i18n-label="Up">▲</button>
@@ -44,14 +71,69 @@
         <button type="button" class="pad-right" data-key="right" data-i18n-label="Right">▶</button>
         <button type="button" class="pad-down" data-key="down" data-i18n-label="Down">▼</button>
       </div>
+      <div id="reactions" class="reactions" role="group" data-i18n-label="Send an emoji" hidden></div>
       <ul id="help" class="game-help"></ul>
+
+      <!-- make it yours (G1 and G2): test, edit the world, share -->
+      <div class="game-make">
+        <button id="test" type="button"><span aria-hidden="true">🤖</span> <span data-i18n>Test my game</span></button>
+        <button id="edit-world" type="button"><span aria-hidden="true">🧱</span> <span data-i18n>Edit the world</span></button>
+        <button id="share-link" type="button"><span aria-hidden="true">🔗</span> <span data-i18n>Share as a link</span></button>
+        <button id="share-class" type="button" hidden><span aria-hidden="true">🏫</span> <span data-i18n>Share with the class</span></button>
+      </div>
+      <div id="test-report" class="test-report" aria-live="polite"></div>
+      <p id="share-msg" class="note" aria-live="polite"></p>
+
+      <!-- playing together (G3): only on a classroom hub -->
+      <section id="together" class="together" hidden>
+        <h2><span aria-hidden="true">👫</span> <span data-i18n>Play together</span></h2>
+        <p class="note" data-i18n>Up to 4 animals in one world. Everyone plays the code of the one who opens it.</p>
+        <div id="room-lobby">
+          <button id="room-open" type="button" class="primary" data-i18n>Open a world with my game</button>
+          <ul id="room-list" class="room-list"></ul>
+        </div>
+        <div id="room-here" hidden>
+          <p><strong id="room-title"></strong> · <span id="room-status"></span></p>
+          <ul id="room-players" class="room-players"></ul>
+          <button id="room-start" type="button" class="primary" data-i18n>▶ Start for everyone</button>
+          <button id="room-leave" type="button" data-i18n>Leave the world</button>
+        </div>
+        <p id="room-msg" class="note" aria-live="polite"></p>
+      </section>
+
+      <!-- games classmates shared, once the teacher said yes -->
+      <section id="class-games" class="class-games" hidden>
+        <h2><span aria-hidden="true">🏫</span> <span data-i18n>Games from the class</span></h2>
+        <div id="class-games-list"></div>
+      </section>
     </section>
+
     <section class="game-code-pane">
+      <!-- lesson rounds (G1): grow a game one visible change at a time -->
+      <details id="rounds-box" class="rounds-box" open>
+        <summary><span aria-hidden="true">🪜</span> <span data-i18n>Make it in rounds</span> <span id="rounds-count" class="note"></span></summary>
+        <ol id="rounds" class="rounds"></ol>
+        <div id="twists" class="twists" hidden></div>
+        <button id="rounds-begin" type="button" class="small" data-i18n>Start the rounds from a nearly empty game</button>
+      </details>
       <div class="game-code">
         <div id="gutter" class="gutter" aria-hidden="true"></div>
-        <textarea id="source" spellcheck="false" data-i18n-label="The game's code"></textarea>
+        <div class="code-area"><textarea id="source" spellcheck="false" data-i18n-label="The game's code"></textarea></div>
       </div>
       <div id="report" class="game-report" aria-live="polite"></div>
+      <!-- which handler fired on each tick, and what it changed (newest tick on top) -->
+      <details id="lanes-box" class="lanes-box">
+        <summary><span aria-hidden="true">🛤️</span> <span data-i18n>Which handler fired?</span></summary>
+        <div id="lanes" class="lanes"></div>
+        <p class="note lanes-legend" data-i18n>🐾 moved the animal · ⭐ score · 🍌 items · 🐊 critters · 🧱 built · 🚪 doors · 🏁 won or lost · 💬 printed · 🔔 sound</p>
+      </details>
+      <!-- the design card: spec before building -->
+      <details id="design-box" class="design-box">
+        <summary><span aria-hidden="true">📝</span> <span data-i18n>My design card</span></summary>
+        <label><span data-i18n>My game in one sentence</span><input id="design-idea" maxlength="200"></label>
+        <label><span data-i18n>How do I win?</span><input id="design-win" maxlength="200"></label>
+        <label><span data-i18n>How do I lose?</span><input id="design-lose" maxlength="200"></label>
+      </details>
       <details open>
         <summary data-i18n>What a game program can use</summary>
         <ul class="game-api">
@@ -60,8 +142,14 @@
           <li><code>def on_item(item):</code> <span data-i18n>the animal arrived on an item</span></li>
           <li><code>def on_touch(critter):</code> <span data-i18n>a critter and the animal met</span></li>
           <li><code>class Guard(Critter):</code> <span data-i18n>your own critter; give it an on_tick(self)</span></li>
-          <li><code>self.step() self.turn_left() self.turn_around() self.face("up") self.wall_ahead() self.x self.y</code></li>
-          <li><code>go("left") where() ticks() critters() score.add(1) score.value win() lose()</code></li>
+          <li><code>self.step() self.turn_left() self.turn_around() self.face("up") self.wall_ahead() self.remove() self.x self.y</code></li>
+          <li><code>go("left") grab() where() ticks() critters() score.add(1) score.value win() lose()</code></li>
+          <li><code>build.block(x, y, "stone") build.clear(x, y) build.item(x, y) build.what(x, y)</code> <span data-i18n>build with code: stone, water, tree, ice, bridge</span></li>
+          <li><code>def on_switch(name):</code> <span data-i18n>the animal stepped on a switch; it opens or closes the doors called name</span></li>
+          <li><code>def on_power():</code> <span data-i18n>the animal took a power-up (without it, the critters freeze for a while)</span></li>
+          <li><code>door("door").open() door("door").close() door("door").toggle() door("door").is_open()</code></li>
+          <li><code>sound("ding")</code> <span data-i18n>also "boing", "pop", "drum", "whoosh", "tada", "oops", "click"</span></li>
+          <li><code>player() animals()</code> <span data-i18n>playing together: whose animal moves, and where all of them are</span></li>
         </ul>
       </details>
       <pre id="output" class="game-output" aria-live="polite"></pre>

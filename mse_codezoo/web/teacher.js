@@ -8,6 +8,10 @@ import { describeGoal } from "./goals.js";
 import { LANGS, concept, initialLang, lang, langLabel, setLang, t, translatePage } from "./i18n.js";
 import { openLook, setupThemeButton } from "./look.js";
 import { displayName, FACES } from "./players.js";
+import { encodeShare } from "./share.js";
+
+// a shared game opens on the game page of this computer, ready for the projector
+const gameLink = (payload) => `game.html#play=${encodeShare(payload)}`;
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 5000;
@@ -313,6 +317,7 @@ function renderShares() {
   );
 }
 
+const KINDS = { level: "a level", program: "a program", game: "a game" };
 const STATUS = { pending: "waiting for you", approved: "the class can see it", rejected: "not shown", reported: "a child asked you to look" };
 
 function shareCard(share) {
@@ -342,6 +347,7 @@ function shareCard(share) {
 const shareLevels = new Map();
 function shareLevel(share) {
   const { level, animal } = share.payload || {};
+  if (share.kind === "game") return Promise.resolve(null); // a game carries its own world
   const key = share.kind === "level" ? `share:${share.id}` : `${level}:${animal || ""}:${lang()}`;
   if (!shareLevels.has(key)) {
     const load = share.kind === "level" ? api.previewLevel(level, animal) : api.level(level, animal);
@@ -360,9 +366,14 @@ function shareText(share) {
     { class: "share-text" },
     title,
     goal,
-    el("span", { class: "hint" }, `${displayName(share)} · ${t(share.kind === "level" ? "a level" : "a program")} · ${t(STATUS[share.status])}`),
+    el("span", { class: "hint" }, `${displayName(share)} · ${t(KINDS[share.kind] || "a program")} · ${t(STATUS[share.status])}`),
   );
-  if (share.kind === "program" && share.payload?.source) {
+  if (share.kind === "game") {
+    // what the child wants the game to be (the design card), so the teacher can say yes
+    const { idea, win, lose } = share.payload?.design || {};
+    goal.textContent = [idea, win && `🏆 ${win}`, lose && `💥 ${lose}`].filter(Boolean).join(" · ");
+  }
+  if ((share.kind === "program" || share.kind === "game") && share.payload?.source) {
     box.append(el("details", { class: "share-code" }, el("summary", {}, t("Show the program")), el("pre", {}, share.payload.source)));
   }
   shareLevel(share).then((level) => {
@@ -479,7 +490,9 @@ function project(share) {
   $("t-projector-title").textContent = share.title;
   $("t-projector-who").textContent = displayName(share);
   $("t-projector-code").textContent =
-    share.kind === "program" ? share.payload.source : JSON.stringify(share.payload.level.world, null, 2);
+    share.kind === "level" ? JSON.stringify(share.payload.level.world, null, 2) : share.payload.source;
+  $("t-projector-play").hidden = share.kind !== "game";
+  $("t-projector-play").onclick = () => window.open(gameLink(share.payload), "_blank");
   $("t-projector").showModal();
 }
 
