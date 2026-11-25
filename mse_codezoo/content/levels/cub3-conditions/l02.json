@@ -1,0 +1,47 @@
+{
+  "id": "cub3-l02",
+  "title": "Too early",
+  "module": "cub-conditions",
+  "cub": "fix",
+  "concepts": [
+    "if"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range",
+    "if",
+    "item_here"
+  ],
+  "hints": [
+    "Nothing is here yet. One step more!"
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Priskoro",
+      "hints": [
+        "Tu ešte nič nie je. Ešte jeden krok!"
+      ]
+    }
+  },
+  "starter": "step(1)\nif item_here():\n    grab()\n"
+}

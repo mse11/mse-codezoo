@@ -1,0 +1,48 @@
+{
+  "id": "cub5-l01",
+  "title": "Tell a story",
+  "module": "cub-story",
+  "cub": "make",
+  "concepts": [
+    "call"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "..B..",
+      ".#...",
+      "...B."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "free"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range",
+    "say"
+  ],
+  "hints": [
+    "There is no right answer: walk, turn, grab and say what you like!"
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Vymysli príbeh",
+      "hints": [
+        "Nie je tu správna odpoveď: choď, otáčaj sa, chytaj a hovor, čo chceš!"
+      ],
+      "coplay": "Nech vám dieťa najprv povie príbeh, potom mu ho pomôžte poskladať. Každé spustenie môže byť nový príbeh."
+    }
+  },
+  "coplay": "Ask the child to tell you the story first, then help them build it. Each run can be a new story."
+}

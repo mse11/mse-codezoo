@@ -781,6 +781,9 @@ export class Stage3D {
       node.style.left = `${x}px`;
       node.style.top = `${y}px`;
     }
+    // the words go above a face (🤔); with no room above it on a short stage, beside it
+    const both = !this.bubble.hidden && !this.mood.hidden;
+    this.bubble.classList.toggle("beside", both && y - this.mood.offsetHeight - this.bubble.offsetHeight < 4);
     const top = this.monkey.position.clone();
     top.y += 0.85;
     top.project(this.camera);
@@ -805,6 +808,26 @@ export class Stage3D {
     point.project(this.camera);
     const box = this.container.getBoundingClientRect();
     return { x: box.left + ((point.x + 1) / 2) * box.width, y: box.top + ((1 - point.y) / 2) * box.height };
+  }
+
+  // the world square under a tap or click ([x, y]), or null off the board: a ray from the
+  // camera through the point, onto the ground (the world editor in 3D)
+  squareAt(event) {
+    if (!this.board || !this.width) return null;
+    const box = this.renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2(
+      ((event.clientX - box.left) / box.width) * 2 - 1,
+      -((event.clientY - box.top) / box.height) * 2 + 1,
+    );
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(pointer, this.camera);
+    const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    if (!ray.ray.intersectPlane(ground, hit)) return null;
+    const local = this.board.worldToLocal(hit.clone());
+    const x = Math.round(local.x);
+    const y = Math.round(local.z);
+    return x >= 0 && y >= 0 && x < this.width && y < this.height ? [x, y] : null;
   }
 
   hitAnimal(event) {

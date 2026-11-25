@@ -104,3 +104,54 @@ def test_each_block_knows_the_module_that_unlocks_it():
     assert modules["while"] == 6 and modules["def"] == 7 and modules["class"] == 11
     assert level_to_json(find_level("m01-l01"))["blockModules"] == modules
     assert "This one unlocks in module {n}." in GALLERY and '"Module {n}"' in I18N
+
+
+# --- every gallery block, built by the real blocks.js in Node, for every animal ------------
+
+
+def _gallery_from_node():
+    import json
+    import shutil
+    import subprocess
+
+    from mse_codezoo.levels import ANIMALS_DIR, load_pack
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is not installed (the gallery check runs blocks.js in Node)")
+    names = {
+        path.parent.name: load_pack(path.parent.name).actions
+        for path in sorted(ANIMALS_DIR.glob("*/pack.json"))
+    }
+    script = Path(__file__).parent / "js" / "gallery_entries.mjs"
+    done = subprocess.run(
+        [node, str(script), json.dumps(names)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=120,
+    )
+    assert done.returncode == 0, done.stderr[-2000:]
+    return names, json.loads(done.stdout)
+
+
+def test_every_gallery_block_prints_and_reads_back_for_every_animal():
+    from mse_codezoo import ir
+
+    names, data = _gallery_from_node()
+    keys = palette_keys()
+    for animal, entries in data["entries"].items():
+        assert not data["skipped"][animal], (animal, data["skipped"][animal])
+        assert {e["key"] for e in entries} == keys, animal
+        renamed = {old: new for old, new in names[animal].items() if old != new}
+        for entry in entries:
+            program = ir.from_dict({"type": "Program", "id": "gallery", "body": entry["stmts"]})
+            text = print_program(program).text
+            assert text.strip(), (animal, entry["key"])
+            assert parse(text).ok, (animal, entry["key"], text)
+            # the code side uses this animal's own command names (the penguin's catch)
+            for old, new in renamed.items():
+                assert not re.search(rf"\b{old}\(", text), (animal, entry["key"], text)
+                if entry["key"] == old:
+                    assert f"{new}(" in text, (animal, entry["key"], text)
+            assert entry["meaning"], (animal, entry["key"])

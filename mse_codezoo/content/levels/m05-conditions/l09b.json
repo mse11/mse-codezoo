@@ -1,0 +1,68 @@
+{
+  "id": "m05-l09b",
+  "title": "Look before you grab",
+  "module": "conditions",
+  "concepts": [
+    "condition",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "debug": true,
+  "ask": {
+    "line": 2,
+    "name": "here"
+  },
+  "world": {
+    "tiles": [
+      "...B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math"
+  ],
+  "starter": "step(2)\nhere = item_here()\nif here:\n    grab()\n",
+  "hints": [
+    "Step through and watch here: is there a {B} where the monkey stands?",
+    "here is False, so the if skips grab(). The monkey stopped one square too early.",
+    "The {B} is 3 squares away: step(3)."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Pozri sa, kým chytíš",
+      "hints": [
+        "Prejdi to po krokoch a sleduj here: je tam, kde opička stojí, {B}?",
+        "here je False, takže if preskočí grab(). Opička zastala o políčko skôr.",
+        "{B} je 3 políčka ďaleko: step(3)."
+      ]
+    }
+  }
+}

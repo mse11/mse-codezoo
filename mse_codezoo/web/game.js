@@ -13,10 +13,11 @@
 // sounds made on the spot (fun.js), following the Sounds switch.
 
 import { api } from "./api.js";
+import { GAME_PALETTE, createWorkspace } from "./blocks.js";
 import "./look.js"; // the "Look and feel" settings apply here too
 import { reducedMotion } from "./look.js";
 import { fillLangSelect, initialLang, setLang, t, translatePage } from "./i18n.js";
-import { sfx, setupSoundButton } from "./fun.js";
+import { music, sfx, setupSoundButton } from "./fun.js";
 import { decodeShare, encodeShare } from "./share.js";
 import { colourTextarea, setCommandNames } from "./syntax.js";
 import { EMOJI } from "./stage.js";
@@ -108,7 +109,6 @@ function savedView() {
 
 async function setView(view, { save = false } = {}) {
   let next = view === "3d" ? "3d" : "2d";
-  if (state.editing) next = "2d"; // the world editor uses the flat board
   if (next === "3d" && !state.stage3d) {
     try {
       const { Stage3D, webglAvailable } = await import("./stage3d.js");
@@ -122,7 +122,7 @@ async function setView(view, { save = false } = {}) {
   state.view = next;
   $("view-2d").setAttribute("aria-pressed", String(next === "2d"));
   $("view-3d").setAttribute("aria-pressed", String(next === "3d"));
-  $("view-3d").disabled = (!state.stage3d && view === "3d" && next === "2d") || state.editing;
+  $("view-3d").disabled = !state.stage3d && view === "3d" && next === "2d";
   if (save) {
     try {
       localStorage.setItem(VIEW_KEY, next);
@@ -290,6 +290,85 @@ function fitBoard() {
   board.style.transform = `scale(${scale})`;
   board.style.marginBottom = `${(scale - 1) * board.offsetHeight}px`;
   state.nodes.scale = scale;
+}
+
+// the game music's pace: how close the nearest critter is to an animal (0 far .. 1 next to it)
+function danger(game) {
+  const animals = game.players?.length ? game.players.map((p) => p.at) : [game.animal?.at].filter(Boolean);
+  let nearest = Infinity;
+  for (const critter of game.critters || []) {
+    for (const at of animals) nearest = Math.min(nearest, Math.abs(critter.at[0] - at[0]) + Math.abs(critter.at[1] - at[1]));
+  }
+  return nearest === Infinity ? 0 : Math.max(0, Math.min(1, 1 - (nearest - 1) / 5));
+}
+
+// 🎶: the game music on or off (it also follows 🎵, like every sound)
+// a game opens with its starter; a bug hunt ("bug-…") opens with its broken program, the
+// one its rounds start from (the starter is the fixed game, for the playtest bot)
+function firstCode(game) {
+  return game.id?.startsWith("bug-") && game.lesson ? game.lesson : game.starter;
+}
+
+// --- the blocks view of the game's code: the same program, kept in step by the engine ----
+// (code -> /api/parse -> blocks; blocks -> /api/print -> code), with handler blocks
+// ("when a key is pressed") for `def on_key(key):` and the game's own commands
+
+const GAME_NAMES = { step: "step", turn_left: "turn_left", turn_right: "turn_right", grab: "grab", say: "say" };
+let gameBlocks = null;
+let blocksSequence = 0;
+
+async function showBlocks(on) {
+  $("blocks-msg").textContent = "";
+  if (on) {
+    const text = $("source").value;
+    const parsed = await api.parse(text).catch(() => null);
+    if (!parsed?.ok) {
+      // code with a mistake stays code: blocks would lose what doesn't parse yet
+      $("blocks-msg").textContent = t("Fix the code first, then the blocks can show it.");
+      return;
+    }
+    $("game-blocks").hidden = false;
+    document.querySelector(".game-code").hidden = true;
+    gameBlocks ||= createWorkspace($("game-blocks"), () => blocksChanged(), { game: true });
+    gameBlocks.setPalette(GAME_PALETTE);
+    gameBlocks.load(parsed.program, GAME_NAMES, text, parsed.positions);
+    gameBlocks.resize();
+  } else {
+    $("game-blocks").hidden = true;
+    document.querySelector(".game-code").hidden = false;
+  }
+  $("view-code").setAttribute("aria-pressed", String(!on));
+  $("view-blocks").setAttribute("aria-pressed", String(on));
+}
+
+async function blocksChanged() {
+  const mine = ++blocksSequence;
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  if (mine !== blocksSequence || !gameBlocks) return;
+  try {
+    const printed = await api.print(gameBlocks.toProgram(GAME_NAMES));
+    if (mine !== blocksSequence) return;
+    $("source").value = printed.text;
+    $("source").dispatchEvent(new Event("input")); // saved as the draft, the gutter follows
+  } catch (error) {
+    $("blocks-msg").textContent = error.message;
+  }
+}
+
+function setupMusicButton() {
+  const button = $("music");
+  if (!button) return;
+  const show = () => {
+    const on = music.on();
+    button.setAttribute("aria-pressed", String(on));
+    button.title = on ? t("Game music on") : t("Game music off");
+    button.setAttribute("aria-label", button.title);
+  };
+  button.addEventListener("click", () => {
+    music.set(!music.on());
+    show();
+  });
+  show();
 }
 
 function drawState(game) {
@@ -473,6 +552,24 @@ function addCode(code) {
 
 // --- "Which handler fired?": one row per tick, a column per handler -----------------------
 
+// the game program's variables after a tick, changed ones lit (the debugger on the game page)
+let lastVars = {};
+function showVars(vars) {
+  if (!vars) return;
+  const rows = Object.entries(vars).map(([name, value]) => {
+    const row = el("tr", lastVars[name] !== undefined && lastVars[name] !== value ? "changed" : "");
+    const head = el("th", "", name);
+    head.scope = "row";
+    row.append(head, el("td", "", value));
+    return row;
+  });
+  const body = el("tbody");
+  body.append(...rows);
+  $("game-vars").replaceChildren(body);
+  $("game-vars-none").hidden = rows.length > 0;
+  lastVars = vars;
+}
+
 function addLane(tick, fired) {
   if (!fired?.length) return;
   state.lanes.unshift({ tick, fired });
@@ -556,9 +653,10 @@ function picked() {
   return storage.read(ROUNDS_KEY)[`${gameKey()}:twist`] || null;
 }
 
+// a round's needs: names the program must have, and "!name" ones it must not (a bug hunt)
 function has(needs) {
   const features = new Set(state.features || []);
-  return needs.every((need) => features.has(need));
+  return needs.every((need) => (need.startsWith("!") ? !features.has(need.slice(1)) : features.has(need)));
 }
 
 // a round counts once the code has what it asks for; a round stays done after that
@@ -720,6 +818,8 @@ async function loop() {
   flash(data.events);
   playSounds(data.events);
   addLane(data.state.tick, data.fired);
+  showVars(data.vars);
+  if (data.state.status === "playing") music.beat(data.state.tick, danger(data.state));
   drawGutter(data.lines);
   addOutput(data.output, data.notes);
   if (data.state.status !== "playing") {
@@ -814,7 +914,8 @@ async function setEditing(on) {
   $("edit-world").setAttribute("aria-pressed", String(on));
   $("world-msg").textContent = on ? t("Pick something, then tap squares on the board.") : "";
   if (on) $("brush-item").textContent = itemEmoji("B");
-  await setView(on ? "2d" : savedView() || "3d");
+  // the world is edited in the view the child is using (2D board or 3D stage)
+  await setView(savedView() || state.view || "3d");
   if (state.game) {
     state.last = null;
     drawBoard();
@@ -890,7 +991,14 @@ async function useSpec(spec) {
 }
 
 function boardClick(event) {
-  if (!state.editing || !state.nodes.board) return;
+  if (!state.editing) return;
+  // the 3D stage: the square under the tap, found by the stage itself
+  if (state.view === "3d" && state.stage3d) {
+    const square = state.stage3d.squareAt(event);
+    if (square) editSquare(...square);
+    return;
+  }
+  if (!state.nodes.board) return;
   const box = state.nodes.board.getBoundingClientRect();
   const scale = state.nodes.scale || 1;
   const x = Math.floor((event.clientX - box.left) / (CELL * scale));
@@ -1010,7 +1118,8 @@ async function drawRooms() {
       const item = el("li", "room");
       const who = room.players.map((p) => p.name).join(", ");
       item.append(el("strong", "", room.title), el("span", "note", ` ${room.players.length}/${room.max} · ${who}`));
-      if (room.status === "lobby" && room.players.length < room.max) {
+      // a world can be joined until it is full, also while its game runs
+      if (room.joinable ?? (room.status === "lobby" && room.players.length < room.max)) {
         const join = el("button", "small primary", t("Join"));
         join.type = "button";
         join.addEventListener("click", () => joinRoom(room.id));
@@ -1110,6 +1219,8 @@ async function roomMessage(message) {
     flash(message.events || []);
     playSounds(message.events);
     addLane(message.state.tick, message.fired);
+    showVars(message.vars);
+    if (message.state.status === "playing") music.beat(message.state.tick, danger(message.state));
     addOutput(message.output, message.notes);
     if (message.error) showProblems(message);
   }
@@ -1183,7 +1294,7 @@ async function loadGame(id) {
   $("game-select").querySelector('option[value=""]')?.remove();
   state.game = await api.game(id, $("animal-select").value);
   const draft = storage.read(DRAFT_KEY)[id];
-  $("source").value = draft ?? state.game.starter;
+  $("source").value = draft ?? firstCode(state.game);
   showGame();
   const url = new URL(location.href);
   url.searchParams.set("game", id);
@@ -1259,12 +1370,13 @@ async function start() {
 
 function wire() {
   setupSoundButton($("sounds"));
+  setupMusicButton();
   $("lanes-box").addEventListener("toggle", () => $("lanes-box").open && drawLanes());
   $("play").addEventListener("click", play);
   $("stop").addEventListener("click", stop);
   $("restart").addEventListener("click", () => {
     if (!state.game) return;
-    $("source").value = state.game.starter;
+    $("source").value = firstCode(state.game);
     saveDraft();
     drawGutter();
   });
@@ -1293,6 +1405,8 @@ function wire() {
     drawGutter();
   });
   $("source").addEventListener("scroll", () => ($("gutter").scrollTop = $("source").scrollTop));
+  $("view-code").addEventListener("click", () => showBlocks(false));
+  $("view-blocks").addEventListener("click", () => showBlocks(true));
   for (const id of Object.values(DESIGN_FIELDS)) $(id).addEventListener("input", saveDesign);
   $("test").addEventListener("click", testGame);
   $("edit-world").addEventListener("click", () => setEditing(!state.editing));

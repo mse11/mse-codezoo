@@ -29,6 +29,21 @@ export class CodeView {
       return node;
     };
     this.pointer = arrow("next", "▶");
+    // breakpoints: a click on a line number puts a red dot there; Run pauses before that line
+    this.breakpoints = new Set();
+    this.dots = document.createElement("div");
+    this.dots.className = "breakpoint-dots";
+    this.dots.setAttribute("aria-hidden", "true");
+    gutter.parentElement.insertBefore(this.dots, gutter);
+    gutter.addEventListener("click", (event) => {
+      const style = getComputedStyle(textarea);
+      const y = event.clientY - gutter.getBoundingClientRect().top - parseFloat(style.paddingTop) + textarea.scrollTop;
+      const line = Math.floor(y / parseFloat(style.lineHeight)) + 1;
+      if (line < 1 || line > textarea.value.split("\n").length) return;
+      if (this.breakpoints.has(line)) this.breakpoints.delete(line);
+      else this.breakpoints.add(line);
+      this.renderDots();
+    });
     this.values = new Map();
     this.valuesNow = 0;
     this.valueLayer = document.createElement("div");
@@ -51,6 +66,7 @@ export class CodeView {
       this.positionMark();
       this.positionTints();
       this.renderValues();
+      this.renderDots();
     });
     textarea.addEventListener("keydown", (event) => {
       if (event.key === "Tab" && !textarea.readOnly && !event.shiftKey) {
@@ -144,6 +160,27 @@ export class CodeView {
     this.mark.style.height = `${lineHeight}px`;
     this.pointer.style.top = this.mark.style.top;
     this.pointer.style.height = this.pointer.style.lineHeight = `${lineHeight}px`;
+  }
+
+  setBreakpoints(lines) {
+    this.breakpoints = new Set(lines);
+    this.renderDots();
+  }
+
+  renderDots() {
+    const count = this.textarea.value.split("\n").length;
+    for (const line of [...this.breakpoints]) if (line > count) this.breakpoints.delete(line);
+    const { lineHeight, padding } = this.metrics();
+    this.dots.replaceChildren(
+      ...[...this.breakpoints].map((line) => {
+        const dot = document.createElement("span");
+        dot.className = "breakpoint-dot";
+        dot.textContent = "●";
+        dot.style.top = `${padding + (line - 1) * lineHeight - this.textarea.scrollTop}px`;
+        dot.style.height = dot.style.lineHeight = `${lineHeight}px`;
+        return dot;
+      }),
+    );
   }
 
   // "show values": Map(line -> text), written after each line's code; `now` is the line

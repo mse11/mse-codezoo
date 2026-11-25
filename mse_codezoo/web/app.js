@@ -51,6 +51,7 @@ const state = {
   outfit: "", // what the animal wears, from the player's habitat
   stack: [], // the call stack while a run plays: one burrow per function call
   cub: false, // Cub mode (ages 6-8, phase 7): the player's setting, from their progress
+  watchExpressions: [], // what the child watches in the debugger ("a * 2"), sent with each run
   guess: null, // a "predict" cub level: the square the child tapped, [x, y]
   tinted: new Set(), // statement ids whose code lines were tinted last time (new ones glow)
 };
@@ -70,6 +71,15 @@ const code = new CodeView({
 const watch = new Watch();
 const watchBar = new WatchBar($("watch"), {
   onBack: () => seek(Math.max(0, state.stepIndex - 1)),
+  // a new watched expression needs a new run: the engine works the values out at each step
+  onWatch: (text) => {
+    if (!state.watchExpressions.includes(text) && state.watchExpressions.length < 5) state.watchExpressions.push(text);
+    invalidateRun();
+  },
+  onUnwatch: (text) => {
+    state.watchExpressions = state.watchExpressions.filter((item) => item !== text);
+    invalidateRun();
+  },
   onNext: () => {
     stopPlayback();
     play({ single: true });
@@ -80,7 +90,7 @@ function renderWatch() {
   const total = state.run?.steps?.length || 0;
   const on = debugSwitches.get();
   $("watch").hidden = !on.console;
-  if (!$("watch").hidden) watchBar.render(watch, total, state.over);
+  if (!$("watch").hidden) watchBar.render(watch, total, state.over, state.watchExpressions);
   code.setValues(on.code ? watch.lines : new Map(), watch.step?.line || 0);
 }
 
@@ -349,7 +359,7 @@ function renderCubLevels() {
     el(
       "div",
       { class: "cub-module", role: "group", "aria-label": t("Part {n}", { n: m + 1 }) },
-      el("span", { class: "cub-module-icon", "aria-hidden": "true" }, m === 0 ? "🐾" : "🔂"),
+      el("span", { class: "cub-module-icon", "aria-hidden": "true" }, CUB_ICONS[levels[0].module] || (m === 0 ? "🐾" : "🔂")),
       ...levels.map((level, i) => {
         const stars = state.progress[level.id]?.stars || 0;
         const starsText = stars ? `, ${t("{n} of 3 stars", { n: stars })}` : "";
@@ -373,6 +383,9 @@ function renderCubLevels() {
 }
 
 // what Cub mode says the goal is: short, and read aloud
+// the cub strip's picture for each cub module
+const CUB_ICONS = { "cub-sequences": "🐾", "cub-loops": "🔂", "cub-conditions": "❓", "cub-tricks": "🐧", "cub-story": "📖" };
+
 function cubGoalText(level) {
   const animal = level.pack.animalName || level.pack.animal;
   if (level.cub === "predict") return t("Where will the {animal} stop? Tap a square, then press Run.", { animal });
@@ -629,6 +642,8 @@ function renderGoal() {
   hintButton.disabled = level.hints.length === 0 || state.hintsShown >= level.hints.length;
   if (state.cub) {
     const cubParts = [el("h2", {}, level.title, " ", readAloudButtons()), el("p", { class: "cub-goal" }, cubGoalText(level))];
+    // for the grown-up beside the cub (read by the grown-up, so it isn't read aloud)
+    if (level.coplay) cubParts.push(el("p", { class: "coplay" }, `👪 ${level.coplay}`));
     if (level.cub === "predict") cubParts.push(predictGrid(level));
     cubParts.push(el("div", { class: "hint-row" }, hintButton, hint));
     $("goal").replaceChildren(...cubParts.filter(Boolean));
@@ -643,9 +658,48 @@ function renderGoal() {
     el("p", {}, t("Stars for: {rules}", { rules: rules.length ? rules.join("; ") : t("just solving it") })),
   ];
   if (level.starter) parts.push(el("p", {}, t("This program has a bug. Run it, watch, then fix it!")));
+  if (level.ask) parts.push(renderAsk(level.ask));
   if (level.locked) parts.push(el("p", { class: "message err" }, `🔒 ${level.locked}`));
   parts.push(el("div", { class: "hint-row" }, hintButton, hint));
   $("goal").replaceChildren(...parts.filter(Boolean));
+}
+
+// A debugger question (level "ask"): what a variable holds after a line runs. The child
+// guesses first; when the run passes that line, the guess is checked against the value the
+// debugger saw. It doesn't change the stars: it is practice in reading a program.
+function renderAsk(ask) {
+  const input = el("input", { type: "text", class: "ask-guess", size: "8", autocomplete: "off", spellcheck: "false", "aria-label": t("My guess") });
+  input.value = state.askGuess || "";
+  input.addEventListener("input", () => {
+    state.askGuess = input.value;
+  });
+  const answer = el("span", { class: "ask-answer", "aria-live": "polite" });
+  state.askAnswer = answer;
+  return el(
+    "div",
+    { class: "ask" },
+    el("p", {}, `❓ ${t("What will {name} hold after line {line} runs? Guess, then press Step.", ask)}`),
+    el("label", { class: "ask-row" }, el("span", {}, t("My guess")), input),
+    answer,
+  );
+}
+
+const plainValue = (text) => String(text ?? "").trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+
+// the run passed the asked line: check the guess (once per run)
+function checkAsk(step) {
+  const ask = state.level?.ask;
+  if (!ask || state.askDone || step.error || step.line !== ask.line || !state.askAnswer) return;
+  state.askDone = true;
+  const value = watch.locals.get(ask.name) ?? watch.globals.get(ask.name);
+  const guess = plainValue(state.askGuess);
+  let text;
+  if (value === undefined) text = t("{name} has no value yet after line {line}.", ask);
+  else if (!guess) text = t("{name} holds {value}.", { ...ask, value });
+  else if (guess === plainValue(value)) text = `✅ ${t("Right! {name} holds {value}.", { ...ask, value })}`;
+  else text = `🤔 ${t("{name} holds {value}, you guessed {guess}. Step through again and watch it change.", { ...ask, value, guess })}`;
+  state.askAnswer.textContent = text;
+  speak(text);
 }
 
 function renderWorlds() {
@@ -735,6 +789,9 @@ async function showLevel(level) {
   state.variant = 0;
   state.hintsShown = 0;
   state.guess = null;
+  state.askGuess = ""; // the debugger question's guess (renderAsk)
+  code.setBreakpoints([]); // a new level starts without breakpoints
+  state.askDone = false;
   state.text = "";
   state.sourceMap = {};
   invalidateRun();
@@ -891,9 +948,9 @@ async function changeLanguage(code, { save = true } = {}) {
 
 const MAX_CONSOLE = 20000; // characters kept; older text scrolls away
 
-function printToConsole(text, glow) {
+function printToConsole(text, glow, error = false) {
   const box = $("console");
-  const piece = el("span", glow ? { class: "fresh" } : {}, text);
+  const piece = el("span", { class: [glow ? "fresh" : "", error ? "console-error" : ""].join(" ").trim() }, text);
   box.append(piece);
   while (box.textContent.length > MAX_CONSOLE && box.firstChild !== piece) box.firstChild.remove();
   box.scrollTop = box.scrollHeight;
@@ -945,6 +1002,8 @@ function invalidateRun() {
   blocks.highlight(null);
   watch.reset();
   renderWatch();
+  state.askDone = false;
+  if (state.askAnswer) state.askAnswer.textContent = "";
 }
 
 // The call stack as nested burrows: one box for every function that is still running.
@@ -1050,6 +1109,8 @@ async function seek(index) {
   state.stack = [];
   renderStack();
   watch.reset();
+  state.askDone = false; // stepping back over the asked line asks again
+  if (state.askAnswer) state.askAnswer.textContent = "";
   code.highlight(0);
   blocks.highlight(null);
   const saved = stage.duration;
@@ -1068,7 +1129,7 @@ async function ensureRun() {
   stage.reset();
   const result = state.shared
     ? await api.runLevelData(state.shared, state.text, state.variant)
-    : await api.run(state.level.id, state.text, state.player?.id, state.variant, { animal: state.level.pack.id, hints: state.hintsShown });
+    : await api.run(state.level.id, state.text, state.player?.id, state.variant, { animal: state.level.pack.id, hints: state.hintsShown, watch: state.watchExpressions });
   state.run = result;
   state.stepIndex = 0;
   renderLanes(result);
@@ -1090,6 +1151,7 @@ async function playStep(step, index) {
   blocks.highlight(marked ? blockAtLine(marked) : null, kind);
   watch.apply(step, index);
   watch.next = next;
+  checkAsk(step);
   if (!state.seeking) renderWatch();
   for (const event of step.events) {
     if (event.type === "call") {
@@ -1143,6 +1205,13 @@ async function play({ single = false } = {}) {
     markLanes(state.stepIndex);
     if (token !== state.token) return;
     if (single) break;
+    // a breakpoint (a red dot on a line number): pause before that line runs
+    const upcoming = run.steps[state.stepIndex];
+    if (upcoming && code.breakpoints.has(upcoming.line)) {
+      state.playing = false;
+      updateButtons();
+      return;
+    }
     await new Promise((resolve) => setTimeout(resolve, stage.duration / 2));
     if (token !== state.token) return;
   }
@@ -1457,10 +1526,42 @@ function setTyping(on) {
 }
 $("edit-code").addEventListener("click", () => setTyping($("edit-code").getAttribute("aria-pressed") !== "true"));
 
+// 🐸 the pond: Python's >>> prompt under the console (repl.py on the engine). Its variables
+// live as long as this page; ↑ and ↓ go through the lines typed, like the 3.13 REPL
+const pond = { session: null, history: [], back: 0, more: false };
+$("pond-input").placeholder = t("Try Python here, then press Enter");
+$("pond").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const line = $("pond-input").value;
+  if (!line.trim() && !pond.more) return;
+  $("pond-input").value = "";
+  if (line.trim()) pond.history.push(line);
+  pond.back = 0;
+  printToConsole(`${pond.more ? "..." : ">>>"} ${line}\n`, false);
+  try {
+    const reply = await api.pond(pond.session, line);
+    pond.session = reply.session;
+    pond.more = reply.more;
+    if (reply.output.length) printToConsole(`${reply.output.join("\n")}\n`, true);
+    if (reply.error) printToConsole(`${reply.error}\n`, true, true);
+  } catch (error) {
+    pond.more = false;
+    printToConsole(`${error.message}\n`, false, true);
+  }
+  $("pond-prompt").textContent = pond.more ? "..." : ">>>";
+});
+$("pond-input").addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+  event.preventDefault();
+  pond.back = Math.max(0, Math.min(pond.history.length, pond.back + (event.key === "ArrowUp" ? 1 : -1)));
+  $("pond-input").value = pond.back ? pond.history[pond.history.length - pond.back] : "";
+});
+
 // 📖 the block and command gallery (gallery.js), from the Blocks pane or the Python pane
 const gallery = new Gallery($("block-gallery"), {
   context: () => ({
     names: state.level?.pack.actions || {},
+    levelId: state.shared ? null : state.level?.id, // where a gallery example plays
     unlocked: state.level?.unlockedBlocks || [],
     modules: state.level?.blockModules || {},
     typing: $("edit-code").getAttribute("aria-pressed") === "true",
@@ -1482,6 +1583,8 @@ const gallery = new Gallery($("block-gallery"), {
     return blocks.addEntry(entry.key);
   },
 });
+// "📖 Show in the gallery" from a block's menu (right click or long press, blocks.js)
+window.addEventListener("codezoo-gallery", (event) => gallery.open({ from: "blocks", key: event.detail }));
 for (const button of document.querySelectorAll(".gallery-open")) {
   button.addEventListener("click", () => {
     if (button.dataset.gallery === "blocks") {

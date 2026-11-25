@@ -279,8 +279,9 @@ def _rounds(data: Any) -> list[dict[str, Any]]:
         if not isinstance(entry, dict):
             raise GameError(f"round {number} must be an object")
         needs = entry.get("needs", [])
+        # "!name": the round wants that name gone (a bug hunt: `score.set` out of on_tick)
         if not isinstance(needs, list) or not all(
-            isinstance(n, str) and CLASS_NAME.fullmatch(n) for n in needs
+            isinstance(n, str) and CLASS_NAME.fullmatch(n.removeprefix("!")) for n in needs
         ):
             raise GameError(f"round {number}: needs must be a list of names")
         found = {
@@ -407,11 +408,21 @@ def find_game(game_id: str, root: Path = GAMES_DIR) -> GameSpec:
     raise GameError(f"no game called {game_id!r}")
 
 
+def round_done(needs: list[str], features: list[str] | set[str]) -> bool:
+    """A lesson round counts once the program has every name it needs, and none of the
+    "!name" ones (a bug hunt's round: the line that caused the bug is gone)."""
+    have = set(features)
+    return all(n[1:] not in have if n.startswith("!") else n in have for n in needs)
+
+
 def all_games(root: Path = GAMES_DIR) -> list[GameSpec]:
-    """Every game, the templates in their lesson order: collect, dodge, chase, maze."""
+    """Every game, the templates in their lesson order: collect, dodge, chase, maze; the
+    bug hunts ("bug-…": a lesson that starts from a broken game) after them."""
     games = [load_game(path) for path in game_files(root)]
     order = {name: i for i, name in enumerate(TEMPLATES)}
-    return sorted(games, key=lambda g: (order.get(g.template, len(order)), g.id))
+    return sorted(
+        games, key=lambda g: (g.id.startswith("bug-"), order.get(g.template, len(order)), g.id)
+    )
 
 
 def game_to_json(spec: GameSpec, animal: str | None = None) -> dict[str, Any]:
@@ -1402,7 +1413,17 @@ class Game:
             "handlers": sorted(self.handlers),
             "fired": result.fired,
             "features": self.features() if result.tick == 0 else None,
+            # the debugger: the game program's own variables after this tick (score, lives...)
+            "vars": self.variables(),
         }
+
+    def variables(self) -> dict[str, str]:
+        """The program's own variables now, as short text (the debugger's filter: no
+        commands, classes or modules), for the game page's Variables box."""
+        from mse_codezoo.interpreter import _watched
+
+        runner = getattr(self, "runner", None)
+        return _watched(runner.env) if runner is not None else {}
 
 
 def clean_keys(keys: Any) -> list[str]:

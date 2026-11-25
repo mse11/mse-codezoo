@@ -59,9 +59,14 @@ ERROR_KINDS = {  # LearnerError.kind (or "syntax") -> mistake kind
     "crack": "uncaught_error",
     "key": "type_mixup",
 }
+# the cub modules every cub plays; conditions, tricks and story are extras
+CUB_CORE = ("cub-sequences", "cub-loops")
 MODULE_EMOJI = {
     "cub-sequences": "🐾",
     "cub-loops": "🔂",
+    "cub-conditions": "❓",
+    "cub-tricks": "🐧",
+    "cub-story": "📖",
     "sequences": "👣",
     "loops-1": "🔁",
     "variables": "📦",
@@ -581,7 +586,8 @@ class ProfileStore:
                 status = "not yet"
             rows.append({"concept": concept, "status": status, **row})
         mistakes = sorted(data["mistakes"].items(), key=lambda kv: -kv[1])
-        cub_ids = [lv.id for lv in levels if lv.module.startswith("cub-")]
+        # ready for the main course: the two core cub modules (the extras are for fun)
+        cub_ids = [lv.id for lv in levels if lv.module in CUB_CORE]
         cub_solved = sum(1 for i in cub_ids if data["levels"].get(i, {}).get("solved"))
         week = [(dt.date.today() - dt.timedelta(days=d)).isoformat() for d in range(7)]
         return {
@@ -608,6 +614,9 @@ def module_name(module: str) -> str:
     names = {
         "cub-sequences": t("Cub: steps and turns"),
         "cub-loops": t("Cub: repeat"),
+        "cub-conditions": t("Cub: look first (age 7+)"),
+        "cub-tricks": t("Cub: the penguin slides"),
+        "cub-story": t("Cub: tell a story"),
         "sequences": t("Sequences"),
         "loops-1": t("Loops"),
         "variables": t("Variables"),

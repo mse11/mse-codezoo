@@ -94,6 +94,8 @@ export const api = {
     call("GET", `/api/levels/${encodeURIComponent(id)}${animal ? `?animal=${encodeURIComponent(animal)}` : ""}`),
   animals: () => call("GET", "/api/animals"),
   parse: (source) => call("POST", "/api/parse", { source }),
+  // the console's >>> prompt: one line into this browser's pond (repl.py)
+  pond: (session, line) => call("POST", "/api/pond", { session, line, python }),
   print: (program) => call("POST", "/api/print", { program }),
   run: (level, source, profile, variant = 0, extra = {}) =>
     call("POST", "/api/run", { level, source, profile, variant, save: true, ...extra }),

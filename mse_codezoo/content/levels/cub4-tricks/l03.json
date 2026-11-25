@@ -1,0 +1,46 @@
+{
+  "id": "cub4-l03",
+  "title": "Slide around the rock",
+  "module": "cub-tricks",
+  "cub": "make",
+  "concepts": [
+    "call"
+  ],
+  "animal": "penguin",
+  "world": {
+    "tiles": [
+      "...#",
+      "B..."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "slide"
+  ],
+  "hints": [
+    "Slide, turn, one step down, turn again, slide back."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Šmykni sa okolo kameňa",
+      "hints": [
+        "Šmykni sa, otoč sa, krok dole, znova sa otoč, šmykni sa späť."
+      ]
+    }
+  },
+  "signature": true
+}

@@ -329,3 +329,8 @@ html[data-motion="reduce"] .float-emoji { animation: none; }
 .lanes-table .lane-tick { color: var(--muted); text-align: right; }
 .lanes-table .lane-fired { background: var(--mark-run); }
 .lanes-legend { font-size: 0.8rem; }
+
+/* the game's code as blocks (game.js showBlocks) */
+.code-views { display: flex; gap: 0.4rem; align-items: center; margin: 0.4rem 0; }
+.code-views button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.game-blocks { min-height: 360px; height: 52vh; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; }

@@ -1,0 +1,6 @@
+slide()
+turn_right()
+step(1)
+turn_right()
+slide()
+catch()

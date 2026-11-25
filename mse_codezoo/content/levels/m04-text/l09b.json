@@ -1,0 +1,72 @@
+{
+  "id": "m04-l09b",
+  "title": "Loud enough?",
+  "module": "text",
+  "concepts": [
+    "text",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "debug": true,
+  "ask": {
+    "line": 2,
+    "name": "word"
+  },
+  "world": {
+    "tiles": [
+      "..B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "all",
+    "goals": [
+      {
+        "type": "collect_all",
+        "item": "B"
+      },
+      {
+        "type": "say",
+        "text": "YUM!"
+      }
+    ]
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "print",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "text",
+    "math",
+    "str",
+    "text_method"
+  ],
+  "starter": "word = \"yum!\"\nword = word.lower()\nstep(2)\ngrab()\nsay(word)\n",
+  "hints": [
+    "Step through and watch word after line 2.",
+    "lower() makes small letters, but the monkey should shout YUM!",
+    "Use word.upper() for big letters."
+  ],
+  "mode": "both_editable",
+  "i18n": {
+    "sk": {
+      "title": "Dosť nahlas?",
+      "hints": [
+        "Prejdi to po krokoch a sleduj word po riadku 2.",
+        "lower() robí malé písmená, ale opička má zakričať YUM!",
+        "Na veľké písmená použi word.upper()."
+      ]
+    }
+  }
+}

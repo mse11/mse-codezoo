@@ -32,7 +32,19 @@ from mse_codezoo.interpreter import RunResult, is_generator_body
 from mse_codezoo.lang_python import print_program
 from mse_codezoo.world import World
 
-GOAL_TYPES = ("collect_all", "reach", "say", "avoid", "build", "print", "time", "file", "all")
+# "free": story mode (Cub mode), no goal: whatever the child makes the animal do counts
+GOAL_TYPES = (
+    "collect_all",
+    "reach",
+    "say",
+    "avoid",
+    "build",
+    "print",
+    "time",
+    "file",
+    "all",
+    "free",
+)
 
 
 def concept_name(node_type: str) -> str:
@@ -146,6 +158,8 @@ def goal_met(goal: dict[str, Any], world: World) -> tuple[bool, str]:
     pack = world.pack
     animal = pack.animal_name()
     match goal.get("type"):
+        case "free":
+            return True, t("What a story! Make another one.")
         case "collect_all":
             item = goal["item"]
             avoid = goal.get("avoid")

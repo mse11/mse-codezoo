@@ -193,6 +193,37 @@ function funLayer() {
 }
 
 // "+1 🍌" rising from the animal
+// --- game music: a soft bass line that follows the game (the game page) ----------------
+
+const MUSIC_KEY = "codezoo.music";
+const BASS = [131, 165, 196, 165, 147, 175, 220, 175]; // C E G E, D F A F: calm, never shrill
+
+export const music = {
+  on() {
+    try {
+      return localStorage.getItem(MUSIC_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  },
+  set(on) {
+    try {
+      localStorage.setItem(MUSIC_KEY, on ? "on" : "off");
+    } catch {
+      // storage blocked: the choice lasts until the page is closed
+    }
+  },
+  // one game tick; `danger` (0 calm .. 1 a critter next to the animal) sets the pace: a note
+  // every 4 ticks when calm, every 2, then every tick an octave up when a critter is close
+  beat(tick, danger = 0) {
+    if (!this.on()) return;
+    const every = danger > 0.66 ? 1 : danger > 0.33 ? 2 : 4;
+    if (tick % every) return;
+    const note = BASS[Math.floor(tick / every) % BASS.length] * (danger > 0.66 ? 2 : 1);
+    tone({ freq: note, type: "triangle", dur: 0.2, vol: 0.035 });
+  },
+};
+
 export function floatText(point, text, kind = "") {
   if (!point) return;
   const node = document.createElement("div");

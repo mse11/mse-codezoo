@@ -1,0 +1,48 @@
+{
+  "id": "cub4-l01",
+  "title": "Whee, sliding!",
+  "module": "cub-tricks",
+  "cub": "predict",
+  "concepts": [
+    "call"
+  ],
+  "animal": "penguin",
+  "world": {
+    "tiles": [
+      "....#"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      3,
+      0
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "slide"
+  ],
+  "hints": [
+    "The penguin slides until something is in the way. Where?"
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Hurá, šmýkačka!",
+      "hints": [
+        "Tučniak sa šmýka, kým mu niečo nezavadzia. Kde?"
+      ]
+    }
+  },
+  "signature": true
+}

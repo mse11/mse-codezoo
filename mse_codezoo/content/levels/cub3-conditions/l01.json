@@ -1,0 +1,49 @@
+{
+  "id": "cub3-l01",
+  "title": "Look, then grab",
+  "module": "cub-conditions",
+  "cub": "predict",
+  "concepts": [
+    "if"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B.."
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "reach",
+    "at": [
+      3,
+      0
+    ]
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range",
+    "if",
+    "item_here"
+  ],
+  "hints": [
+    "The monkey looks at every square. Where does it stop?"
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Pozri sa, potom chyť",
+      "hints": [
+        "Opička sa pozrie na každé políčko. Kde zastane?"
+      ]
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "id": "bug-score",
+  "title": {
+    "en": "Bug hunt: who takes my points?",
+    "sk": "Hľadanie chyby: kto mi berie body?"
+  },
+  "template": "collect",
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      "B..B..B",
+      ".......",
+      "B..B..B"
+    ],
+    "start": [3, 1, "north"]
+  },
+  "rules": {
+    "win": "collect_all"
+  },
+  "max_ticks": 900,
+  "help": {
+    "en": [
+      "A bug hunt: two handlers fight over the score.",
+      "Play, grab a banana and watch ⭐: does the score grow?",
+      "Open “Which handler fired?”: which handler changes ⭐ on every tick?"
+    ],
+    "sk": [
+      "Hľadanie chyby: dve obsluhy sa bijú o skóre.",
+      "Hraj, chyť banán a sleduj ⭐: rastie skóre?",
+      "Otvor „Ktorá obsluha sa spustila?“: ktorá mení ⭐ v každom ťahu?"
+    ]
+  },
+  "lesson": "# Bug hunt: the score never grows. Who takes the points?\n# Play, then open \"Which handler fired?\" and look for the star.\n\n\ndef on_key(key):\n    if key != \"space\":\n        go(key)\n\n\ndef on_item(item):\n    grab()\n    score.add(1)\n\n\ndef on_tick():\n    score.set(0)\n",
+  "rounds": [
+    {
+      "title": {
+        "en": "Stop the fight",
+        "sk": "Zastav bitku"
+      },
+      "goal": {
+        "en": "`on_item` adds a point, but `on_tick` sets the score back to 0 on every tick. Take `score.set(0)` out of `on_tick`.",
+        "sk": "`on_item` pridá bod, ale `on_tick` v každom ťahu vráti skóre na 0. Vyber `score.set(0)` z `on_tick`."
+      },
+      "needs": ["!set"],
+      "hint": {
+        "en": "def on_tick():\n    pass\n",
+        "sk": "def on_tick():\n    pass\n"
+      }
+    },
+    {
+      "title": {
+        "en": "Share the score fairly",
+        "sk": "Deľte sa o skóre férovo"
+      },
+      "goal": {
+        "en": "Two handlers may both change the score if they add, not reset: in `on_tick` give a bonus point every 50 ticks with `ticks()`.",
+        "sk": "Dve obsluhy môžu meniť skóre obe, ak pridávajú, nie nulujú: v `on_tick` daj bonusový bod každých 50 ťahov pomocou `ticks()`."
+      },
+      "needs": ["ticks"],
+      "hint": {
+        "en": "def on_tick():\n    if ticks() % 50 == 0:\n        score.add(1)\n",
+        "sk": "def on_tick():\n    if ticks() % 50 == 0:\n        score.add(1)\n"
+      }
+    },
+    {
+      "title": {
+        "en": "Win with points",
+        "sk": "Vyhraj s bodmi"
+      },
+      "goal": {
+        "en": "In `on_item`, call `win()` once the score reaches 6.",
+        "sk": "V `on_item` zavolaj `win()`, keď skóre dosiahne 6."
+      },
+      "needs": ["win"],
+      "hint": {
+        "en": "def on_item(item):\n    grab()\n    score.add(1)\n    if score.value >= 6:\n        win()\n",
+        "sk": "def on_item(item):\n    grab()\n    score.add(1)\n    if score.value >= 6:\n        win()\n"
+      }
+    },
+    {
+      "title": {
+        "en": "A guard that takes points",
+        "sk": "Strážca, ktorý berie body"
+      },
+      "goal": {
+        "en": "Make `class Guard(Critter):` that walks, and in `on_touch(critter)` take one point with `score.add(-1)`: a fair way to lose points.",
+        "sk": "Urob `class Guard(Critter):`, ktorý chodí, a v `on_touch(critter)` uber jeden bod pomocou `score.add(-1)`: férový spôsob, ako body strácať."
+      },
+      "needs": ["critter_tick", "on_touch"],
+      "hint": {
+        "en": "class Guard(Critter):\n    def on_tick(self):\n        if self.wall_ahead():\n            self.turn_around()\n        else:\n            self.step()\n\n\nguard = Guard(0, 1, \"east\")\n\n\ndef on_touch(critter):\n    score.add(-1)\n",
+        "sk": "class Guard(Critter):\n    def on_tick(self):\n        if self.wall_ahead():\n            self.turn_around()\n        else:\n            self.step()\n\n\nguard = Guard(0, 1, \"east\")\n\n\ndef on_touch(critter):\n    score.add(-1)\n"
+      }
+    },
+    {
+      "title": {
+        "en": "Make it more fun",
+        "sk": "Sprav ju zábavnejšou"
+      },
+      "goal": {
+        "en": "Pick a twist card and add it to your game. Then press \"Test my game\".",
+        "sk": "Vyber si kartu s nápadom a pridaj ho do hry. Potom stlač „Otestuj moju hru“."
+      },
+      "needs": [],
+      "twist": true
+    }
+  ],
+  "starter": "def on_key(key):\n    if key != \"space\":\n        go(key)\n\n\ndef on_item(item):\n    grab()\n    score.add(1)\n\n\ndef on_tick():\n    if ticks() % 50 == 0:\n        score.add(1)\n"
+}

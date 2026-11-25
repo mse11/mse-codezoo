@@ -6,6 +6,7 @@
 // - "show values" in the Python pane: the newest values written beside each line.
 
 import { t } from "./i18n.js";
+import { speak } from "./speech.js";
 
 // The 🐞 switches: one just before Run for all panes, and one in each pane's title
 // (Blocks: line numbers on the blocks; Python: values beside the code; Console: the
@@ -86,6 +87,7 @@ export class Watch {
     this.calls = []; // names of the calls running now, outermost first
     this.changed = new Set(); // "g:name" / "l:name" changed by the last step
     this.lines = new Map(); // line -> "fish = 2, i = 1" (the newest time it ran)
+    this.expressions = new Map(); // a watched expression -> its value now
     this.step = null;
     this.index = 0; // steps played so far
     this.next = 0; // the line that runs next (0: none, the run ended or broke)
@@ -107,6 +109,10 @@ export class Watch {
       this.globals.set(name, value);
       this.changed.add(`g:${name}`);
       shown.push(`${name} = ${value}`);
+    }
+    for (const [text, value] of Object.entries(scope.w || {})) {
+      this.expressions.set(text, value);
+      this.changed.add(`w:${text}`);
     }
     // a new call starts with all of its variables new; back in the caller they're old
     const entering = scope.f && scope.f.length > this.calls.length;
@@ -150,23 +156,81 @@ function table(values, prefix, changed, label) {
 
 // The Variables bar. `box` holds the parts made here; `onBack` / `onNext` move a step.
 export class WatchBar {
-  constructor(box, { onBack, onNext }) {
+  // onWatch(text) / onUnwatch(text): the child adds or removes a watched expression
+  constructor(box, { onBack, onNext, onWatch = () => {}, onUnwatch = () => {} }) {
     this.box = box;
+    this.onUnwatch = onUnwatch;
+    this.exprInput = make("input", { type: "text", class: "watch-input", autocomplete: "off", spellcheck: "false", maxlength: "60" });
+    this.exprAdd = make("button", { type: "button", class: "watch-add" }, "👀");
+    const add = () => {
+      const text = this.exprInput.value.trim();
+      if (!text) return;
+      this.exprInput.value = "";
+      onWatch(text);
+    };
+    this.exprAdd.addEventListener("click", add);
+    this.exprInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") add();
+    });
+    this.watchRow = make("div", { class: "watch-add-row" }, this.exprInput, this.exprAdd);
     this.count = make("span", { class: "watch-count" });
     this.back = make("button", { type: "button", class: "watch-back" }, "◀");
     this.next = make("button", { type: "button", class: "watch-next" }, "▶");
+    // 🔊 reads the last step and the values that changed (the device's own voice)
+    this.say = make("button", { type: "button", class: "watch-say" }, "🔊");
+    this.say.addEventListener("click", () => speak(this.spoken(), { force: true }));
     this.back.addEventListener("click", () => onBack());
     this.next.addEventListener("click", () => onNext());
     this.note = make("p", { class: "watch-note" });
     this.body = make("div", { class: "watch-body" });
     box.replaceChildren(
-      make("div", { class: "watch-head" }, make("span", { class: "watch-title" }, `🔍 ${t("Variables")}`), this.count, this.back, this.next),
+      make("div", { class: "watch-head" }, make("span", { class: "watch-title" }, `🔍 ${t("Variables")}`), this.count, this.say, this.back, this.next),
       this.note,
       this.body,
     );
   }
 
-  render(watch, total, over = false) {
+  // what 🔊 says: the step, then each value that changed ("a is 4")
+  spoken() {
+    const watch = this.watch;
+    if (!watch || watch.empty) return t("Press Step to run one line and see what your variables hold.");
+    const changed = [...watch.changed].map((key) => {
+      const [scope, name] = [key.slice(0, 1), key.slice(2)];
+      const value = (scope === "l" ? watch.locals : watch.globals).get(name);
+      return t("{name} is {value}", { name, value });
+    });
+    return [this.note.textContent.replace(/[▷▶⚠]/g, ""), ...changed].join(". ");
+  }
+
+  // the watched expressions: one row each, with its value now and × to stop watching it
+  expressionRows(watch, expressions) {
+    const rows = expressions.map((text) => {
+      const value = watch.expressions.get(text) ?? "—";
+      const remove = make("button", { type: "button", class: "watch-remove", title: t("Stop watching"), "aria-label": t("Stop watching") }, "×");
+      remove.addEventListener("click", () => this.onUnwatch(text));
+      return make(
+        "tr",
+        watch.changed.has(`w:${text}`) ? { class: "changed" } : {},
+        make("th", { scope: "row" }, text),
+        make("td", { class: value.startsWith("⚠") ? "watch-bad" : "" }, value),
+        make("td", { class: "watch-x" }, remove),
+      );
+    });
+    return [
+      make("h3", {}, `👀 ${t("Watching")}`),
+      rows.length ? make("table", { class: "watch-table", "aria-label": t("Watching") }, make("tbody", {}, ...rows)) : "",
+      this.watchRow,
+    ];
+  }
+
+  render(watch, total, over = false, expressions = []) {
+    this.watch = watch;
+    this.exprInput.placeholder = t("watch: a * 2");
+    this.exprInput.setAttribute("aria-label", t("An expression to watch, like a * 2"));
+    this.exprAdd.title = t("Watch it");
+    this.exprAdd.setAttribute("aria-label", t("Watch it"));
+    this.say.title = t("Read it aloud");
+    this.say.setAttribute("aria-label", t("Read it aloud"));
     this.box.querySelector(".watch-title").textContent = `🔍 ${t("Variables")}`;
     this.back.title = t("Step back");
     this.back.setAttribute("aria-label", t("Step back"));
@@ -178,7 +242,7 @@ export class WatchBar {
     this.note.className = watch.empty ? "watch-note hint" : "watch-note";
     if (watch.empty) {
       this.note.textContent = t("Press Step to run one line and see what your variables hold.");
-      this.body.replaceChildren();
+      this.body.replaceChildren(...this.expressionRows(watch, expressions));
       return;
     }
     const step = watch.step;
@@ -189,7 +253,7 @@ export class WatchBar {
       : step.error
         ? t("line {line}: {message}", { line: step.line, message: what })
         : `${t("line {line} ran", { line: step.line })}${what ? `: ${what}` : ""}`;
-    this.note.replaceChildren(ran);
+    this.note.replaceChildren(step.lane && step.lane !== "main" ? `[${step.lane}] ${ran}` : ran);
     if (watch.next) this.note.append(make("span", { class: "watch-next-line" }, `▶ ${t("next: line {line}", { line: watch.next })}`));
     this.note.classList.toggle("error", Boolean(step.error));
     const parts = [];
@@ -209,6 +273,7 @@ export class WatchBar {
         ? table(watch.globals, "g", watch.changed, t("In the file"))
         : make("p", { class: "watch-none" }, t("No variables yet.")),
     );
+    parts.push(...this.expressionRows(watch, expressions));
     this.body.replaceChildren(...parts);
   }
 }

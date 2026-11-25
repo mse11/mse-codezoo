@@ -105,7 +105,38 @@ const PALETTE = {
   fly: { type: "cz_trick_number", fields: { TRICK: "fly" }, inputs: { N: num(2) } },
   stretch: { type: "cz_trick_number", fields: { TRICK: "stretch" }, inputs: { N: num(0) } },
   reach: { type: "cz_reach", inputs: { N: num(0) } },
+  // phase 4 language: lambda, with, match (module 11 and the islands)
+  lambda: { type: "cz_lambda", fields: { PARAMS: "x" }, inputs: { BODY: { block: { type: "cz_math", fields: { OP: "*" }, inputs: { A: { block: { type: "cz_var", fields: { NAME: "x" } } }, B: num(2) } } } } },
+  with: { type: "cz_with", fields: { AS: "log" }, inputs: { CTX: { block: { type: "cz_call_value", fields: { NAME: "open" }, inputs: { A: txt("log.txt") } } } } },
+  match: {
+    type: "cz_match",
+    inputs: {
+      SUBJECT: { block: { type: "cz_var", fields: { NAME: "footprint" } } },
+      CASES: { block: { type: "cz_case", inputs: { VALUE: txt("paw") }, next: { block: { type: "cz_case_else" } } } },
+    },
+  },
+  // game mode (the game page): handlers and the game's own commands
+  handler: { type: "cz_handler" },
+  go: { type: "cz_go", inputs: { DIR: { block: { type: "cz_var", fields: { NAME: "key" } } } } },
+  win: { type: "cz_win" },
+  lose: { type: "cz_lose" },
+  score_add: { type: "cz_score_add", inputs: { N: num(1) } },
 };
+
+// game handlers: what the "when…" block offers, and the inputs each one gets
+export const GAME_HANDLERS = {
+  on_key: ["key"],
+  on_tick: [],
+  on_item: ["item"],
+  on_touch: ["critter"],
+  on_switch: ["name"],
+  on_power: [],
+};
+// the game page's palette (game.js)
+export const GAME_PALETTE = [
+  "handler", "go", "grab", "win", "lose", "score_add", "say", "if", "if_else", "compare", "logic", "not",
+  "var", "text", "number", "set", "change", "math", "for_range", "while", "def", "call", "class", "comment",
+];
 
 // Cub mode (phase 7): pictures instead of words on the first blocks, for children who can't
 // read yet. Same block types, so the IR mapping and the code don't change.
@@ -131,6 +162,111 @@ const dropdown = (name, options) => ({ type: "field_dropdown", name, options: op
 export function defineBlocks() {
   Blockly.common.defineBlocksWithJsonArray([
     {
+      type: "cz_handler",
+      message0: t("when %1"),
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "HANDLER",
+          options: [
+            [t("a key is pressed (key)"), "on_key"],
+            [t("every tick"), "on_tick"],
+            [t("I grab an item (item)"), "on_item"],
+            [t("a critter touches me (critter)"), "on_touch"],
+            [t("a switch flips (name)"), "on_switch"],
+            [t("I get a power-up"), "on_power"],
+          ],
+        },
+      ],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.func,
+      tooltip: `def on_… · ${t("The game runs these blocks when it happens.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_lambda",
+      message0: t("function of %1 → %2"),
+      args0: [{ type: "field_input", name: "PARAMS", text: "x" }, { type: "input_value", name: "BODY" }],
+      inputsInline: true,
+      colour: COLOURS.func,
+      tooltip: `lambda · ${t("A tiny command without a name: its inputs, then what it gives back.")}`,
+      ...value,
+    },
+    {
+      type: "cz_with",
+      message0: t("with %1 as %2"),
+      args0: [{ type: "input_value", name: "CTX" }, { type: "field_input", name: "AS", text: "" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.error,
+      tooltip: `with · ${t("Use something, and put it back afterwards (a file is closed, a lock let go).")}`,
+      ...statement,
+    },
+    {
+      type: "cz_match",
+      message0: t("match %1"),
+      args0: [{ type: "input_value", name: "SUBJECT" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "CASES", check: "case" }],
+      colour: COLOURS.logic,
+      tooltip: `match · ${t("Compare one value with each case, top to bottom; the first that fits runs.")}`,
+      ...statement,
+    },
+    {
+      type: "cz_case",
+      message0: t("case %1"),
+      args0: [{ type: "input_value", name: "VALUE" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.logic,
+      tooltip: `case · ${t("When the value is this one. A variable here catches any value into it.")}`,
+      previousStatement: "case",
+      nextStatement: "case",
+    },
+    {
+      type: "cz_case_else",
+      message0: t("case anything else (_)"),
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.logic,
+      tooltip: `case _ · ${t("When no case above fits.")}`,
+      previousStatement: "case",
+      nextStatement: "case",
+    },
+    {
+      // a case with a pattern blocks can't show (a list shape, `|`, `if`): kept exactly
+      type: "cz_case_raw",
+      message0: "case %1",
+      args0: [{ type: "field_label_serializable", name: "TEXT", text: "…" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: COLOURS.raw,
+      tooltip: t("The first line is kept exactly as typed; the inside is blocks."),
+      previousStatement: "case",
+      nextStatement: "case",
+    },
+    {
+      type: "cz_go",
+      message0: t("go %1"),
+      args0: [{ type: "input_value", name: "DIR" }],
+      inputsInline: true,
+      colour: COLOURS.motion,
+      tooltip: `go() · ${t("Move one square: \"up\", \"down\", \"left\" or \"right\" (or the key pressed).")}`,
+      ...statement,
+    },
+    { type: "cz_win", message0: t("win 🏁"), colour: COLOURS.logic, tooltip: `win() · ${t("The game ends: you won!")}`, ...statement },
+    { type: "cz_lose", message0: t("lose"), colour: COLOURS.logic, tooltip: `lose() · ${t("The game ends: you lost.")}`, ...statement },
+    {
+      type: "cz_score_add",
+      message0: t("score + %1"),
+      args0: [{ type: "input_value", name: "N" }],
+      inputsInline: true,
+      colour: COLOURS.math,
+      tooltip: `score.add() · ${t("Add points to the score (or take some away with a minus).")}`,
+      ...statement,
+    },
+    {
       type: "cz_step",
       message0: label("step %1", "👣 %1"),
       args0: [{ type: "input_value", name: "N" }],
@@ -144,7 +280,7 @@ export function defineBlocks() {
     { type: "cz_grab", message0: label("grab", "✋"), colour: COLOURS.action, tooltip: `grab() · ${t("Pick up what is on this square.")}`, ...statement },
     {
       type: "cz_say",
-      message0: t("say %1"),
+      message0: label("say %1", "💬 %1"),
       args0: [{ type: "input_value", name: "TEXT" }],
       inputsInline: true,
       colour: COLOURS.say,
@@ -187,7 +323,7 @@ export function defineBlocks() {
     },
     {
       type: "cz_if",
-      message0: t("if %1"),
+      message0: label("if %1", "❓ %1"),
       args0: [{ type: "input_value", name: "COND" }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
@@ -575,7 +711,7 @@ export function defineBlocks() {
         {
           type: "field_dropdown",
           name: "SENSOR",
-          options: [[t("is blocked?"), "is_blocked"], [t("item here"), "item_here"], [t("item ahead"), "item_ahead"]],
+          options: [[label("is blocked?", "🧱?"), "is_blocked"], [label("item here", "👀⬇"), "item_here"], [label("item ahead", "👀➡"), "item_ahead"]],
         },
       ],
       colour: COLOURS.sensor,
@@ -757,8 +893,25 @@ function stepMarks(workspace, container) {
   };
 }
 
-export function createWorkspace(container, onChange) {
+// "📖 Show in the gallery" on a block's menu (right click, or a long press on a touch screen):
+// opens the gallery at that block (app.js listens for "codezoo-gallery")
+function registerGalleryMenu() {
+  const registry = Blockly.ContextMenuRegistry?.registry;
+  if (!registry || registry.getItem?.("cz_gallery")) return;
+  registry.register({
+    id: "cz_gallery",
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+    displayText: () => `📖 ${t("Show in the gallery")}`,
+    preconditionFn: (scope) => (scope.block && paletteKeyOf(scope.block) ? "enabled" : "hidden"),
+    callback: (scope) => window.dispatchEvent(new CustomEvent("codezoo-gallery", { detail: paletteKeyOf(scope.block) })),
+    weight: -10,
+  });
+}
+
+// `game`: the game page's workspace (handler blocks for `def on_key(key):` and the like)
+export function createWorkspace(container, onChange, { game = false } = {}) {
   defineBlocks();
+  registerGalleryMenu();
   const workspace = Blockly.inject(container, {
     toolbox: { kind: "flyoutToolbox", contents: [] },
     media: "vendor/blockly/media/", // local copy; the default loads icons from static.blockly.com
@@ -805,7 +958,7 @@ export function createWorkspace(container, onChange) {
       Blockly.Events.disable();
       try {
         workspace.clear();
-        const context = { names, sourceText, positions };
+        const context = { names, sourceText, positions, game };
         const first = chainState(program.body, context);
         // x: room on the left for the line numbers and step arrows (stepMarks)
         if (first) Blockly.serialization.blocks.append({ ...first, x: 56, y: 24 }, workspace);
@@ -948,17 +1101,23 @@ export const GALLERY_GROUPS = ["motion", "action", "trick", "say", "loop", "logi
 // IR (for the code side, printed by the engine) is what the block becomes in a program.
 // `names`: the animal's command names ({"grab": "catch"}). A value block (a number, `a + 1`)
 // becomes an expression statement, so it prints as the expression alone.
-export function galleryEntries(names = {}) {
+// game blocks: only in the game page's gallery and palette
+const GAME_ONLY = new Set(["handler", "go", "win", "lose", "score_add"]);
+
+export function galleryEntries(names = {}, { game = false } = {}) {
   defineBlocks();
   const workspace = new Blockly.Workspace();
   const entries = [];
+  entries.skipped = {}; // key -> why it couldn't be built (for tests/test_gallery.py)
   try {
-    for (const [key, entry] of Object.entries(PALETTE)) {
+    for (const [key] of Object.entries(PALETTE)) {
+      if (GAME_ONLY.has(key) && !game) continue;
       let block;
       try {
         block = Blockly.serialization.blocks.append({ ...galleryState(key), id: `g_${key}` }, workspace, { recordUndo: false });
-      } catch {
-        continue; // a block this build doesn't define
+      } catch (error) {
+        entries.skipped[key] = String(error?.message || error); // a block this build doesn't define
+        continue;
       }
       const statement = !block.outputConnection;
       const stmts = statement
@@ -1078,6 +1237,11 @@ function exprState(expr, context) {
     return { ...base, type: "cz_reach", inputs: { N: input(expr.value.args[0], context) } };
   }
   switch (expr.type) {
+    case "Lambda":
+      if (expr.params.every((p) => p.default == null && (p.kind || "plain") === "plain")) {
+        return { ...base, type: "cz_lambda", fields: { PARAMS: expr.params.map((p) => p.name).join(", ") }, inputs: { BODY: input(expr.body, context) } };
+      }
+      break;
     case "Const":
       if (typeof expr.value === "number") return { ...base, type: "cz_number", fields: { NUM: expr.value } };
       if (typeof expr.value === "string") return { ...base, type: "cz_text", fields: { TEXT: expr.value } };
@@ -1184,6 +1348,33 @@ function exprState(expr, context) {
   };
 }
 
+// One `case` of a match: a value or `_` as plain case blocks, any other pattern (or a guard)
+// kept exactly, showing its line as typed
+function caseState(one, context) {
+  const body = chainState(one.body, context);
+  const inner = body ? { DO: { block: body } } : {};
+  const pattern = one.pattern;
+  if (!one.guard && pattern.type === "PatternCapture" && pattern.name == null) {
+    return { id: one.id, type: "cz_case_else", ...(body ? { inputs: inner } : {}) };
+  }
+  if (!one.guard && pattern.type === "PatternCapture") {
+    return { id: one.id, type: "cz_case", inputs: { VALUE: { block: { type: "cz_var", fields: { NAME: pattern.name } } }, ...inner } };
+  }
+  if (!one.guard && pattern.type === "PatternValue" && pattern.value.type === "Const") {
+    return { id: one.id, type: "cz_case", inputs: { VALUE: input(pattern.value, context), ...inner } };
+  }
+  const span = context.positions?.[one.id];
+  const line = span && context.sourceText ? context.sourceText.split("\n")[span.line - 1] || "" : "";
+  const text = line.trim().replace(/^case\s+/, "").replace(/:\s*(#.*)?$/, "") || "…";
+  return {
+    id: one.id,
+    type: "cz_case_raw",
+    fields: { TEXT: text },
+    data: JSON.stringify({ pattern, guard: one.guard }),
+    ...(body ? { inputs: inner } : {}),
+  };
+}
+
 // A call to a command the learner taught (not an animal action, not a Python builtin).
 function isUserCall(call, context) {
   const actions = new Set(Object.values(context.names));
@@ -1211,6 +1402,43 @@ function blockState(stmt, context) {
     return Object.keys(clean).length ? { ...state, inputs: clean } : state;
   };
 
+  if (
+    stmt.type === "With" && !stmt.is_async && stmt.items.length === 1
+    && (!stmt.items[0].target || stmt.items[0].target.type === "Name")
+  ) {
+    const [item] = stmt.items;
+    return withInputs(
+      { ...base, type: "cz_with", fields: { AS: item.target?.name || "" } },
+      { CTX: input(item.context, context), DO: body(stmt.body) },
+    );
+  }
+  if (stmt.type === "Match") {
+    const states = stmt.cases.map((one) => caseState(one, context));
+    for (let i = states.length - 2; i >= 0; i--) states[i].next = { block: states[i + 1] };
+    return withInputs({ ...base, type: "cz_match" }, { SUBJECT: input(stmt.subject, context), CASES: states[0] ? { block: states[0] } : undefined });
+  }
+  // the game page: handlers and the game's own commands get their own blocks
+  if (context.game) {
+    const handler = stmt.type === "FunctionDef" && GAME_HANDLERS[stmt.name];
+    if (
+      handler && !stmt.decorators?.length && !stmt.is_async
+      && stmt.params.map((p) => p.name).join() === handler.join() && stmt.params.every((p) => p.default == null)
+    ) {
+      return withInputs({ ...base, type: "cz_handler", fields: { HANDLER: stmt.name } }, { DO: body(stmt.body) });
+    }
+    const value = stmt.type === "ExprStmt" ? stmt.value : null;
+    if (value?.type === "Call" && noKeywords(value)) {
+      if (value.func === "go" && value.args.length === 1) return { ...base, type: "cz_go", inputs: { DIR: input(value.args[0], context) } };
+      if (value.func === "win" && !value.args.length) return { ...base, type: "cz_win" };
+      if (value.func === "lose" && !value.args.length) return { ...base, type: "cz_lose" };
+    }
+    if (
+      value?.type === "MethodCall" && value.method === "add" && value.obj?.type === "Name" && value.obj.name === "score"
+      && value.args.length === 1 && noKeywords(value)
+    ) {
+      return { ...base, type: "cz_score_add", inputs: { N: input(value.args[0], context) } };
+    }
+  }
   if (stmt.type === "ExprStmt" && stmt.value.type === "Call" && noKeywords(stmt.value)) {
     const { func, args } = stmt.value;
     if (func === names.step && args.length <= 1) {
@@ -1308,14 +1536,14 @@ function blockState(stmt, context) {
     return { ...base, type: "cz_import", fields: { MODULE: stmt.module, NAMES: stmt.names.join(", ") } };
   }
   if (stmt.type === "Global") return { ...base, type: "cz_global", fields: { NAMES: stmt.names.join(", ") } };
-  if (stmt.type === "For" && simpleName(stmt.target) && !(stmt.iter.type === "Call" && stmt.iter.func === "range")) {
+  if (stmt.type === "For" && !stmt.is_async && simpleName(stmt.target) && !(stmt.iter.type === "Call" && stmt.iter.func === "range")) {
     return withInputs(
       { ...base, type: "cz_for_each", fields: { VAR: stmt.target.name } },
       { LIST: input(stmt.iter, context), DO: body(stmt.body) },
     );
   }
   if (
-    stmt.type === "For" &&
+    stmt.type === "For" && !stmt.is_async &&
     simpleName(stmt.target) &&
     stmt.iter.type === "Call" &&
     stmt.iter.func === "range" &&
@@ -1521,6 +1749,13 @@ function exprOf(block, names) {
       };
     case "cz_items":
       return { type: "MethodCall", id, obj: exprAt(block, "VALUE", null, names), method: "items", args: [], keywords: [] };
+    case "cz_lambda":
+      return {
+        type: "Lambda",
+        id,
+        params: nameList(block.getFieldValue("PARAMS")).map((param, i) => ({ type: "Param", id: `${id}.p${i}`, name: param, default: null })),
+        body: exprAt(block, "BODY", null, names),
+      };
     case "cz_raw_value": {
       const data = readData(block);
       if (data.raw) return reId(data.raw, id);
@@ -1596,6 +1831,65 @@ function blockToStmt(block, names) {
       break;
     case "cz_continue":
       stmt = { type: "Continue", id };
+      break;
+    case "cz_with": {
+      const as = String(block.getFieldValue("AS") || "").trim();
+      stmt = {
+        type: "With",
+        id,
+        items: [{ type: "WithItem", id: `${id}.item`, context: exprAt(block, "CTX", null, names), target: as ? name(`${id}.as`, as) : null }],
+        body: body("DO"),
+        is_async: false,
+      };
+      break;
+    }
+    case "cz_match": {
+      const cases = [];
+      for (let child = block.getInputTargetBlock("CASES"); child; child = child.getNextBlock()) {
+        const caseBody = chainToStmts(child.getInputTargetBlock("DO"), names);
+        const data = readData(child);
+        let pattern;
+        if (child.type === "cz_case_else") pattern = { type: "PatternCapture", id: `${child.id}.p`, name: null };
+        else if (child.type === "cz_case_raw" && data.pattern) pattern = reId(data.pattern, `${child.id}.p`);
+        else {
+          const target = child.getInputTargetBlock("VALUE");
+          // a variable in a case catches the value (Python's rule); anything else is compared
+          pattern = target?.type === "cz_var"
+            ? { type: "PatternCapture", id: `${child.id}.p`, name: safeName(target.getFieldValue("NAME")) }
+            : { type: "PatternValue", id: `${child.id}.p`, value: exprAt(child, "VALUE", 0, names) };
+        }
+        const guard = child.type === "cz_case_raw" && data.guard ? reId(data.guard, `${child.id}.g`) : null;
+        cases.push({ type: "MatchCase", id: child.id, pattern, guard, body: caseBody });
+      }
+      stmt = { type: "Match", id, subject: exprAt(block, "SUBJECT", null, names), cases };
+      break;
+    }
+    case "cz_handler": {
+      const handler = block.getFieldValue("HANDLER");
+      stmt = {
+        type: "FunctionDef",
+        id,
+        name: handler,
+        params: (GAME_HANDLERS[handler] || []).map((param, i) => ({ type: "Param", id: `${id}.p${i}`, name: param, default: null })),
+        body: body("DO"),
+      };
+      break;
+    }
+    case "cz_go":
+      stmt = call(id, "go", [exprAt(block, "DIR", "up", names)]);
+      break;
+    case "cz_win":
+      stmt = call(id, "win");
+      break;
+    case "cz_lose":
+      stmt = call(id, "lose");
+      break;
+    case "cz_score_add":
+      stmt = {
+        type: "ExprStmt",
+        id,
+        value: { type: "MethodCall", id: `${id}.call`, obj: name(`${id}.score`, "score"), method: "add", args: [exprAt(block, "N", 1, names)], keywords: [] },
+      };
       break;
     case "cz_def":
       stmt = {

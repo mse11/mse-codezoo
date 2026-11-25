@@ -8,6 +8,10 @@
   ],
   "animal": "monkey",
   "debug": true,
+  "ask": {
+    "line": 13,
+    "name": "a"
+  },
   "world": {
     "tiles": [
       ".....B"

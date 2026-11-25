@@ -1,0 +1,117 @@
+{
+  "id": "i313-l03",
+  "title": "Boss: the fish counter",
+  "module": "island-3.13",
+  "concepts": [
+    "free threading",
+    "threads",
+    "debugging"
+  ],
+  "animal": "octopus",
+  "signature": true,
+  "minPython": "3.13",
+  "world": {
+    "tiles": [
+      ".....",
+      "..B..",
+      "....."
+    ],
+    "start": [
+      2,
+      1,
+      "north"
+    ]
+  },
+  "variants": [
+    {
+      "tiles": [
+        ".....",
+        "..B..",
+        "....."
+      ],
+      "start": [
+        2,
+        1,
+        "north"
+      ],
+      "gil": false,
+      "goal": {
+        "type": "print",
+        "text": "fish: 200"
+      }
+    }
+  ],
+  "goal": {
+    "type": "print",
+    "text": "fish: 200"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "while",
+    "if",
+    "if_else",
+    "compare",
+    "logic",
+    "not",
+    "is_blocked",
+    "item_here",
+    "item_ahead",
+    "text",
+    "number",
+    "set",
+    "change",
+    "var",
+    "math",
+    "break",
+    "continue",
+    "def",
+    "call",
+    "return",
+    "global",
+    "import",
+    "try",
+    "raise",
+    "assert",
+    "list",
+    "for_each",
+    "append",
+    "len",
+    "index",
+    "dict",
+    "get",
+    "items",
+    "set_of",
+    "lambda",
+    "yield",
+    "class",
+    "decorator",
+    "with",
+    "async_def",
+    "await",
+    "match",
+    "stretch"
+  ],
+  "starter": "import threading\n\nfish = 0\n\n\ndef catch_fish():\n    global fish\n    for _ in range(50):\n        seen = fish\n        fish = seen + 1\n\n\narms = [threading.Thread(target=catch_fish) for _ in range(4)]\nfor arm in arms:\n    arm.start()\nfor arm in arms:\n    arm.join()\nprint(\"fish:\", fish)\n",
+  "hints": [
+    "Four arms catch 50 fish each, so the count should be 200. Run it in both worlds: it isn't.",
+    "Between `seen = fish` and `fish = seen + 1` another arm can sneak in and its fish get lost. Without the GIL (world 2) the arms really run at the same time, so even more get lost.",
+    "Make the two lines one step nobody can break into: `lock = threading.Lock()` and put them inside `with lock:`."
+  ],
+  "mode": "code_first",
+  "i18n": {
+    "sk": {
+      "title": "Boss: počítadlo rýb",
+      "hints": [
+        "Štyri chápadlá chytia po 50 rýb, takže počet má byť 200. Spusti to v oboch svetoch: nie je.",
+        "Medzi `seen = fish` a `fish = seen + 1` sa môže vkradnúť iné chápadlo a jeho ryby sa stratia. Bez GIL (svet 2) bežia chápadlá naozaj naraz, takže sa ich stratí ešte viac.",
+        "Sprav z tých dvoch riadkov jeden krok, do ktorého nikto nevstúpi: `lock = threading.Lock()` a daj ich do `with lock:`."
+      ]
+    }
+  }
+}

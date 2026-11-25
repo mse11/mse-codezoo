@@ -1067,7 +1067,7 @@
       "additionalProperties": false
     },
     "For": {
-      "description": "``for target in iter:``; the target is a ``Name`` or a ``Tuple`` of names.",
+      "description": "``for target in iter:``; the target is a ``Name`` or a ``Tuple`` of names.\n``async for`` (``is_async``) goes through an async generator, waiting for each item.",
       "type": "object",
       "properties": {
         "type": {
@@ -1094,6 +1094,9 @@
           "items": {
             "$ref": "#/$defs/Stmt"
           }
+        },
+        "is_async": {
+          "type": "boolean"
         }
       },
       "required": [

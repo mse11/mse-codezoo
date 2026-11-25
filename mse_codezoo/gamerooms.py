@@ -83,6 +83,32 @@ class MultiGame(Game):
         ]
         self.current = self.players[0]
         self.multi_inputs: list[dict[str, list[str]]] = []
+        # players who joined a game already running: {"tick": n, "name", "look"}, so a
+        # replay adds them before the same tick (lockstep stays exact)
+        self.joins: list[dict[str, Any]] = []
+
+    def add_player(self, name: str, look: str) -> PlayerState:
+        """A late joiner's animal: on the free square nearest the world's start."""
+        self.keep()
+        world, first = self.world, self.players[0]
+        here = (world.x, world.y, world.facing)
+        world.x, world.y, world.facing = first.start
+        squares = start_squares(self, len(self.players) + 1)
+        world.x, world.y, world.facing = here
+        taken = {(p.x, p.y) for p in self.players}
+        x, y, facing = next((s for s in squares if (s[0], s[1]) not in taken), squares[-1])
+        player = PlayerState(
+            len(self.players) + 1,
+            name,
+            x,
+            y,
+            facing,
+            (x, y, facing),
+            look if look in animal_names() else "",
+        )
+        self.players.append(player)
+        self.joins.append({"tick": len(self.multi_inputs), "name": name, "look": look})
+        return player
 
     # --- whose animal is in the world ----------------------------------------------
 
@@ -207,11 +233,17 @@ def replay(
     inputs: list[dict[str, list[str]]],
     *,
     seed: int = 0,
+    joins: list[dict[str, Any]] | None = None,
 ) -> MultiGame:
-    """The same game again from its recorded keys (what lockstep promises)."""
+    """The same game again from its recorded keys (what lockstep promises), with the
+    players who joined late added before the same ticks."""
     game = MultiGame(spec, source, players, seed=seed)
     game.start()
-    for keys in inputs:
+    waiting = sorted(joins or [], key=lambda join: join["tick"])
+    for index, keys in enumerate(inputs):
+        while waiting and waiting[0]["tick"] <= index:
+            join = waiting.pop(0)
+            game.add_player(join["name"], join["look"])
         game.tick_all({int(n): k for n, k in keys.items()})
     return game
 
@@ -272,14 +304,17 @@ class Room:
                 if seat.profile == profile:
                     seat.look = look or seat.look
                     return seat
-            if self.status != LOBBY:
-                raise RoomError(t("This game has started already. Wait for the next one!"))
+            if self.status == ENDED:
+                raise RoomError(t("That world has closed. Open a new one!"))
             if len(self.seats) >= MAX_PLAYERS:
                 raise RoomError(
                     t("This world is full: {count} animals already.", count=MAX_PLAYERS)
                 )
             seat = Seat(secrets.token_urlsafe(12), profile, name, picture, look)
             self.seats.append(seat)
+            if self.status == RUNNING and self.game is not None:
+                # joining a game that has started: a new animal near the start
+                self.game.add_player(name, look)
             self.broadcast({"type": "room", "room": self.public()})
             return seat
 
@@ -448,7 +483,18 @@ class Room:
                 {"number": n, "name": s.name, "picture": s.picture, "look": s.look}
                 for n, s in enumerate(self.seats, 1)
             ],
+            # a child can join until the world is full, also while the game runs
+            "joinable": self.status != ENDED and len(self.seats) < MAX_PLAYERS,
         }
+
+    def teacher(self) -> dict[str, Any]:
+        """What the teacher's screen shows about a room: the game, who plays, how far."""
+        data = self.public()
+        game = self.game
+        data["tick"] = game.tick_count if game else 0
+        data["score"] = game.score.value if game else 0
+        data["minutes"] = round((time.time() - self.created) / 60)
+        return data
 
 
 class Rooms:
@@ -488,6 +534,20 @@ class Rooms:
         with self._lock:
             self._tidy()
             return [room.public() for room in self._rooms.values() if room.status != ENDED]
+
+    def teacher_list(self) -> list[dict[str, Any]]:
+        """Every open room for the teacher's screen (newest last)."""
+        with self._lock:
+            self._tidy()
+            rooms = [room for room in self._rooms.values() if room.status != ENDED]
+        return [room.teacher() for room in rooms]
+
+    def close(self, room_id: Any, message: str = "") -> None:
+        """The teacher closes one room; the children in it see why."""
+        room = self.get(room_id)
+        room.end(message)
+        with self._lock:
+            self._rooms.pop(room.id, None)
 
     def close_all(self, message: str = "") -> None:
         with self._lock:

@@ -70,6 +70,46 @@ const safeName = (text) => String(text).replace(/[^\p{L}\p{N}_-]+/gu, "-");
 
 // --- drawing --------------------------------------------------------------------------
 
+// the game worlds children opened (Game mode, G3): a row each, with "Close"
+function renderRooms() {
+  const rooms = data.rooms || [];
+  if (!rooms.length) {
+    $("t-rooms").replaceChildren(el("p", { class: "hint" }, t("No game worlds are open.")));
+    return;
+  }
+  const status = { lobby: t("waiting for players"), playing: t("playing"), ended: t("the end") };
+  $("t-rooms").replaceChildren(
+    el(
+      "table",
+      { class: "t-table" },
+      el(
+        "thead",
+        {},
+        el("tr", {}, ...[t("World"), t("Players"), t("Status"), t("Tick"), t("Score"), t("Minutes"), ""].map((h) => el("th", {}, h))),
+      ),
+      el(
+        "tbody",
+        {},
+        ...rooms.map((room) => {
+          const close = el("button", { type: "button", class: "small" }, t("Close"));
+          close.addEventListener("click", () => act("room/close", { room: room.id }));
+          return el(
+            "tr",
+            {},
+            el("td", {}, room.title),
+            el("td", {}, room.players.map((p) => p.name).join(", ") || "—"),
+            el("td", {}, status[room.status] || room.status),
+            el("td", {}, String(room.tick)),
+            el("td", {}, String(room.score)),
+            el("td", {}, String(room.minutes)),
+            el("td", {}, close),
+          );
+        }),
+      ),
+    ),
+  );
+}
+
 function render() {
   const info = data.class;
   $("t-class").textContent = `${info.name} · ${t(info.type === "workshop" ? "workshop" : "class")}`;
@@ -94,6 +134,7 @@ function render() {
   // that a refresh is just replacing
   changed("players", [data.players, data.pictures, data.pilot, lang()]) && renderPlayers();
   changed("shares", [data.shares, lang()]) && renderShares();
+  changed("rooms", [data.rooms, lang()]) && renderRooms();
   changed("own", [data.levels, lang()]) && renderOwn();
   changed("report", [data.concepts, data.mistakes, data.levelStats, lang()]) && renderReport();
   if (!levelsDrawn) renderLevels();

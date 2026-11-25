@@ -6,7 +6,9 @@
 
 import { api } from "./api.js";
 import { GALLERY_GROUPS, createPreview, galleryEntries } from "./blocks.js";
+import { Watch } from "./debug.js";
 import { t } from "./i18n.js";
+import { speak } from "./speech.js";
 import { highlightPython } from "./syntax.js";
 
 const GROUP_NAMES = {
@@ -81,11 +83,14 @@ export class Gallery {
     this.title = make("h2", { id: "gallery-title" });
     this.search = make("input", { type: "search", class: "gallery-search", autocomplete: "off", spellcheck: "false" });
     this.close = make("button", { type: "button", class: "gallery-close" }, "✕");
+    // 🖨 a sheet of the cards shown (for a teacher: the blocks of a module, on paper)
+    this.print = make("button", { type: "button", class: "gallery-print" }, "🖨");
+    this.print.addEventListener("click", () => this.printSheet());
     this.list = make("nav", { class: "gallery-list" });
     this.card = make("section", { class: "gallery-card", "aria-live": "polite" });
     this.blockBox = make("div", { class: "gallery-block" });
     dialog.replaceChildren(
-      make("div", { class: "gallery-head" }, this.title, this.search, this.close),
+      make("div", { class: "gallery-head" }, this.title, this.search, this.print, this.close),
       make("div", { class: "gallery-body" }, this.list, this.card),
     );
     dialog.setAttribute("aria-labelledby", "gallery-title");
@@ -106,11 +111,14 @@ export class Gallery {
       entry.unlocked = !open.size || open.has(entry.key);
       entry.module = modules[entry.key] || null; // the module that unlocks it
     }
-    // other animals' tricks are not this level's business
-    this.entries = everything.filter((e) => e.unlocked || !TRICKS.has(e.key));
+    // other animals' tricks are not this level's business; a cub sees only their own blocks
+    this.cub = document.documentElement.dataset.cub === "true";
+    this.entries = everything.filter((e) => (this.cub ? e.unlocked : e.unlocked || !TRICKS.has(e.key)));
     this.title.textContent = `📖 ${t("Blocks and commands")}`;
     this.search.placeholder = t("Find a block or a word");
     this.search.setAttribute("aria-label", t("Find a block or a word"));
+    this.print.title = t("Print these cards");
+    this.print.setAttribute("aria-label", t("Print these cards"));
     this.close.title = t("Close");
     this.close.setAttribute("aria-label", t("Close"));
     this.search.value = "";
@@ -179,20 +187,112 @@ export class Gallery {
       make("code", { class: "gallery-code" }, first),
     );
     if (!entry.unlocked) button.title = entry.module ? t("This one unlocks in module {n}.", { n: entry.module }) : t("This one unlocks in a later level.");
-    button.addEventListener("click", () => this.select(entry.key));
+    button.addEventListener("click", () => {
+      this.select(entry.key);
+      if (this.cub) speak(this.spoken(entry), { force: true }); // a cub hears what they tapped
+    });
     return button;
+  }
+
+  // what 🔊 says: the block's words, then what it does (no code: it reads oddly aloud)
+  spoken(entry) {
+    return `${entry.words || entry.key}. ${entry.meaning || ""}`;
+  }
+
+  // the cards shown (after a search, too) as a sheet for paper: block words, code, meaning
+  printSheet() {
+    const shown = new Set([...this.list.querySelectorAll(".gallery-item")].map((node) => node.dataset.key));
+    const sheet = make("div", { id: "gallery-print" }, make("h1", {}, `📖 ${t("Blocks and commands")}`));
+    let heading = null;
+    // this level's blocks first, then by the module that unlocks them (unknown ones last)
+    const order = (e) => (e.unlocked ? 0 : e.module || 99);
+    const cards = this.entries.filter((e) => shown.has(e.key)).sort((a, b) => order(a) - order(b));
+    for (const entry of cards) {
+      const section = entry.unlocked ? t("In this level") : entry.module ? t("Module {n}", { n: entry.module }) : t("Later");
+      if (section !== heading) {
+        heading = section;
+        sheet.append(make("h2", {}, section));
+      }
+      sheet.append(
+        make(
+          "div",
+          { class: "print-card", style: `--c:${entry.colour}` },
+          make("span", { class: "gallery-chip" }, entry.words || entry.key),
+          make("pre", { class: "print-code" }, entry.code || entry.python || ""),
+          make("p", {}, entry.meaning || ""),
+        ),
+      );
+    }
+    document.getElementById("gallery-print")?.remove();
+    document.body.append(sheet);
+    document.documentElement.classList.add("printing-gallery");
+    this.dialog.close(); // a modal dialog would print on top of everything
+    const done = () => {
+      document.documentElement.classList.remove("printing-gallery");
+      sheet.remove();
+      window.removeEventListener("afterprint", done);
+    };
+    window.addEventListener("afterprint", done);
+    window.print();
+  }
+
+  // ▶ the example plays once: the code runs (in this level's world, nothing is recorded), and
+  // the card's code shows the debugger's ▶ on the line that runs next and the values beside
+  // the lines that ran, one step at a time
+  async playExample(entry, pre, button) {
+    const token = (this.playing = (this.playing || 0) + 1);
+    const { levelId } = this.context();
+    const source = entry.code || entry.python || "";
+    if (!levelId || !source) return;
+    button.disabled = true;
+    let run;
+    try {
+      run = await api.run(levelId, `${source}\n`, undefined, 0);
+    } catch {
+      button.disabled = false;
+      return;
+    }
+    const lines = source.split("\n");
+    const watch = new Watch();
+    const draw = (index) => {
+      const next = run.steps?.[index]?.line || 0;
+      pre.replaceChildren(
+        ...lines.map((text, i) => {
+          const line = i + 1;
+          const value = watch.lines.get(line);
+          return make(
+            "div",
+            { class: `play-line${line === next ? " next" : ""}` },
+            make("span", { class: "play-arrow", "aria-hidden": "true" }, line === next ? "▶" : ""),
+            make("span", { html: highlightPython(text).replace(/\n $/, "") }),
+            value ? make("span", { class: "code-value" }, value) : "",
+          );
+        }),
+      );
+    };
+    draw(0);
+    for (const [index, step] of (run.steps || []).entries()) {
+      await new Promise((resolve) => setTimeout(resolve, 650));
+      if (token !== this.playing || !this.dialog.open) return;
+      watch.apply(step, index + 1);
+      draw(index + 1);
+    }
+    button.disabled = false;
   }
 
   select(key) {
     const entry = this.entries.find((e) => e.key === key);
     if (!entry) return;
     this.selected = key;
+    this.playing = (this.playing || 0) + 1; // another card: an example still playing stops
     for (const node of this.list.querySelectorAll(".gallery-item")) node.classList.toggle("selected", node.dataset.key === key);
     this.list.querySelector(".gallery-item.selected")?.scrollIntoView({ block: "nearest" });
     const { typing } = this.context();
     const code = make("pre", { class: "gallery-python", html: highlightPython(entry.code || entry.python || "").replace(/\n $/, "") });
     const parts = this.from === "code" ? [code, this.blockBox] : [this.blockBox, code];
     const canUse = entry.unlocked && (typing || entry.statement);
+    const say = make("button", { type: "button", class: "gallery-say", title: t("Read it aloud"), "aria-label": t("Read it aloud") }, "🔊");
+    say.addEventListener("click", () => speak(this.spoken(entry), { force: true }));
     const use = make("button", { type: "button", class: "gallery-use primary" }, typing ? `✏️ ${t("Write it in my code")}` : `➕ ${t("Add it to my program")}`);
     use.disabled = !canUse;
     use.addEventListener("click", () => {
@@ -205,11 +305,15 @@ export class Gallery {
       : !canUse
         ? t("This block goes into a socket of another block, so it can't stand on its own.")
         : "";
+    // a block that can stand on its own can show what it does
+    const play = make("button", { type: "button", class: "gallery-play" }, `▶ ${t("Play the example")}`);
+    play.hidden = !entry.statement;
+    play.addEventListener("click", () => this.playExample(entry, code, play));
     this.card.replaceChildren(
-      make("h3", { style: `--c:${entry.colour}` }, entry.words || entry.key),
+      make("h3", { style: `--c:${entry.colour}` }, entry.words || entry.key, say),
       ...parts,
       make("p", { class: "gallery-meaning" }, entry.meaning || ""),
-      make("div", { class: "gallery-actions" }, use, why ? make("span", { class: "gallery-why" }, why) : ""),
+      make("div", { class: "gallery-actions" }, use, play, why ? make("span", { class: "gallery-why" }, why) : ""),
     );
     this.preview ||= createPreview(this.blockBox);
     this.preview.resize();

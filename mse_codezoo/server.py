@@ -237,6 +237,13 @@ def api_print(body: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _watch_list(value: Any) -> list[str]:
+    """The expressions the child watches in the debugger: a few short texts."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and 0 < len(item) <= 60][:5]
+
+
 def _modules(body: dict[str, Any]) -> dict[str, str]:
     modules = body.get("modules") or {}
     ok = isinstance(modules, dict) and len(modules) <= MAX_MODULES
@@ -281,6 +288,7 @@ def api_run(
             modules=_modules(body),
             python=_python(body.get("python")),
             watch=True,
+            watch_expressions=_watch_list(body.get("watch")),
         )
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
@@ -675,6 +683,10 @@ def dispatch(
         return api_print(body)
     if path == "/api/run":
         return api_run(body, store, extra_levels)
+    if path == "/api/pond":  # the console's >>> prompt (repl.py)
+        from mse_codezoo.repl import PONDS
+
+        return PONDS.feed(body.get("session"), body.get("line"), _python(body.get("python")))
     if path == "/api/profiles":
         return api_add_profile(body, store)
     if match := TIME_PATH.match(path):

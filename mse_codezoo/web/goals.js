@@ -9,6 +9,8 @@ export function describeGoal(level, goal) {
   const one = (tile) => pack.itemNames?.[tile]?.one || pack.items[tile] || "item";
   const many = (tile) => pack.itemNames?.[tile]?.many || one(tile);
   switch (goal.type) {
+    case "free":
+      return t("No goal: make the {animal} do anything you like and tell a story", { animal });
     case "collect_all": {
       let text = t("Help the {animal} collect every {item}", { animal, item: one(goal.item), items: many(goal.item) });
       if (goal.avoid) text += `, ${t("but leave every {item} alone", { item: one(goal.avoid) })}`;

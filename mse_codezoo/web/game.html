@@ -8,6 +8,8 @@
   <script src="early-look.js"></script>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="game.css">
+  <!-- Blockly for the blocks view of the game's code (vendored for offline use) -->
+  <script src="vendor/blockly/blockly.min.js"></script>
   <script type="module" src="game.js"></script>
 </head>
 <body class="game-page">
@@ -26,6 +28,7 @@
       <button id="restart" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Start code again</span></button>
     </div>
     <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
+    <button id="music" type="button" class="look-button sound-button" aria-pressed="true">🎶</button>
     <select id="lang" class="lang-select" data-i18n-label="Language"></select>
   </header>
   <main class="game-main">
@@ -118,6 +121,13 @@
         <div id="twists" class="twists" hidden></div>
         <button id="rounds-begin" type="button" class="small" data-i18n>Start the rounds from a nearly empty game</button>
       </details>
+      <!-- the game's code as Python or as blocks (one program, kept in step through the engine) -->
+      <div class="code-views" role="group" aria-label="Code or blocks" data-i18n-label="Code or blocks">
+        <button id="view-code" type="button" aria-pressed="true">🐍 Python</button>
+        <button id="view-blocks" type="button" aria-pressed="false">🧩 <span data-i18n>Blocks</span></button>
+        <span id="blocks-msg" class="note" aria-live="polite"></span>
+      </div>
+      <div id="game-blocks" class="blockly game-blocks" hidden></div>
       <div class="game-code">
         <div id="gutter" class="gutter" aria-hidden="true"></div>
         <div class="code-area"><textarea id="source" spellcheck="false" data-i18n-label="The game's code"></textarea></div>
@@ -128,6 +138,12 @@
         <summary><span aria-hidden="true">🛤️</span> <span data-i18n>Which handler fired?</span></summary>
         <div id="lanes" class="lanes"></div>
         <p class="note lanes-legend" data-i18n>🐾 moved the animal · ⭐ score · 🍌 items · 🐊 critters · 🧱 built · 🚪 doors · 🏁 won or lost · 💬 printed · 🔔 sound</p>
+      </details>
+      <!-- the debugger: the program's own variables after each tick (score, lives...) -->
+      <details id="vars-box" class="lanes-box">
+        <summary><span aria-hidden="true">🔍</span> <span data-i18n>Variables</span></summary>
+        <table id="game-vars" class="watch-table"></table>
+        <p id="game-vars-none" class="note" data-i18n>Your game's own variables show up here while it runs.</p>
       </details>
       <!-- the design card: spec before building -->
       <details id="design-box" class="design-box">

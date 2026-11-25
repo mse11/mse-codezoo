@@ -254,7 +254,7 @@ class Hub:
         info = self.info()
         assigned = list(info.settings["assigned"])
         locked = bool(info.settings["locked"]) and bool(assigned)
-        playing = ("/api/run", "/api/game/start", "/api/game/tick", "/api/game/test")
+        playing = ("/api/run", "/api/pond", "/api/game/start", "/api/game/tick", "/api/game/test")
         playing += ("/api/room/open", "/api/room/start", "/api/room/keys")
         if method == "POST" and path in ("/api/room/open", "/api/room/join"):
             if not any(p.id == body.get("profile") for p in self.players().profiles()):
@@ -379,6 +379,12 @@ class Hub:
             self.classes.update(self.class_id, **changes)
             if body.get("pilot") is not None:  # pilot recording for this class (phase 6)
                 store.update_parent(pilot=bool(body["pilot"]))
+            return self.overview()
+        if route == "room/close":  # the teacher closes one game world
+            try:
+                gamerooms.ROOMS.close(body.get("room"), t("The teacher closed this world."))
+            except gamerooms.RoomError as exc:
+                raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None
             return self.overview()
         if route == "pause":
             self.paused = bool(body.get("paused"))
@@ -528,6 +534,8 @@ class Hub:
             "pilot": pilot.enabled(store),
             "ageBands": list(pilot.AGE_BANDS),
             "players": players,
+            # the game worlds children opened (G3): who plays what, how far
+            "rooms": gamerooms.ROOMS.teacher_list(),
             "pictures": list(CLASS_PICTURES),
             "modules": [
                 {

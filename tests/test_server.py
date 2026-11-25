@@ -142,7 +142,7 @@ def test_unknown_level_is_404(base_url):
 
 def test_parse(base_url):
     status, data = get_json(
-        base_url, "/api/parse", {"source": "step(1)\nasync for j in jumps:\n    pass\n"}
+        base_url, "/api/parse", {"source": "step(1)\nfor j in jumps:\n    pass\nelse:\n    pass\n"}
     )
     assert status == 200
     assert data["ok"] is True

@@ -552,6 +552,79 @@ def _typing() -> dict[str, Any]:
     return {name: getattr(typing, name) for name in names}
 
 
+# --- concurrent.interpreters (Python 3.14): several interpreters, nothing shared -----------
+
+MAX_INTERPRETERS = 8
+INTERPRETER_STEPS = 2_000  # each exec() may take this many steps
+
+
+class Interpreter(ZooObject):
+    """One interpreter from ``interpreters.create()``: its own variables, its own imports.
+    ``exec(code)`` runs Python text in it (what it prints shows up as usual); the program's
+    own variables are not there, and nothing it makes comes back except what it prints."""
+
+    ZOO_ATTRS = ("exec", "close", "id")
+    KIND = "an interpreter"
+
+    def __init__(self, runner: Runner, number: int) -> None:
+        self.runner = runner
+        self.id = number
+        self.names: dict[str, Any] = {}  # its own globals, kept between exec() calls
+        self.closed = False
+
+    def exec(self, code: Any) -> None:
+        from mse_codezoo.interpreter import Runner as Inner
+        from mse_codezoo.lang_python import parse
+
+        if self.closed:
+            raise LearnerError(t("This interpreter is closed."), kind="type")
+        if not isinstance(code, str):
+            message = t('`exec()` needs Python code as text, like `exec("print(2 + 2)")`.')
+            raise LearnerError(message, kind="type", exception=TypeError(message))
+        parsed = parse(code, self.runner.version)
+        if not parsed.ok or parsed.program is None:
+            first = parsed.diagnostics[0].message if parsed.diagnostics else ""
+            raise LearnerError(
+                t("The code for the interpreter has a mistake: {what}", what=first), kind="syntax"
+            )
+        inner = Inner(parsed.program, max_steps=INTERPRETER_STEPS, version=self.runner.version)
+        inner.env.update(self.names)
+        inner.globals = inner.env
+        inner.execute()
+        self.names = dict(inner.env)
+        for line in inner.output:
+            self.runner._print(line)
+        if inner.error is not None:
+            raise LearnerError(
+                t("The interpreter stopped: {what}", what=inner.error.message),
+                kind=inner.error.kind,  # its own kind, so the message stays as it is
+                exception=RuntimeError(inner.error.message),
+            )
+
+    def close(self) -> None:
+        self.closed = True
+
+    def __repr__(self) -> str:
+        return f"Interpreter({self.id})"
+
+
+def _interpreters(runner: Runner) -> dict[str, Any]:
+    made: list[Interpreter] = []
+
+    def create() -> Interpreter:
+        if len(made) >= MAX_INTERPRETERS:
+            raise LearnerError(
+                t("That's enough interpreters: at most {n}.", n=MAX_INTERPRETERS), kind="type"
+            )
+        made.append(Interpreter(runner, len(made) + 1))
+        return made[-1]
+
+    def list_all() -> list[Interpreter]:
+        return [one for one in made if not one.closed]
+
+    return {"create": create, "list_all": list_all}
+
+
 def load(runner: Runner, name: str) -> module | None:
     """The zoo's version of a standard module, or ``None`` if it has none."""
     from mse_codezoo import scheduler
@@ -578,6 +651,14 @@ def load(runner: Runner, name: str) -> module | None:
         },
         "asyncio": lambda: scheduler.asyncio_names(runner),
         "threading": lambda: scheduler.threading_names(runner),
+        # Python 3.14: `from concurrent import interpreters` (older programs get the
+        # "arrived in Python 3.14" message from `newer`)
+        "concurrent": lambda: (
+            {"interpreters": module("concurrent.interpreters", _interpreters(runner))}
+            if runner.version >= NEWER_MODULE_NAMES[("concurrent", "interpreters")]
+            else {}
+        ),
+        "concurrent.interpreters": lambda: _interpreters(runner),
         "__future__": lambda: {"annotations": True},
     }
     make = makers.get(name)

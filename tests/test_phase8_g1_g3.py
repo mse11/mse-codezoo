@@ -48,7 +48,7 @@ def rooms(monkeypatch):
 
 
 def test_the_four_templates_come_in_lesson_order():
-    games = gamemode.all_games()
+    games = [g for g in gamemode.all_games() if not g.id.startswith("bug-")]  # bug hunts apart
     assert [g.template for g in games] == ["collect", "dodge", "chase", "maze"]
     for found in games:
         assert found.title.get("sk"), found.id
@@ -75,7 +75,8 @@ def test_the_lesson_start_has_no_round_done_and_the_hints_complete_them():
         lesson = Game(found, found.lesson)
         lesson.start()
         features = set(lesson.features())
-        assert not any(set(r["needs"]) <= features for r in found.rounds if r["needs"]), found.id
+        done = [r for r in found.rounds if r["needs"] and gamemode.round_done(r["needs"], features)]
+        assert not done, found.id
         # every round's hint, added to the starter, makes that round count
         for round_ in found.rounds:
             if round_.get("twist"):
@@ -83,7 +84,10 @@ def test_the_lesson_start_has_no_round_done_and_the_hints_complete_them():
             hint = round_.get("hint", {}).get("en", "")
             game = Game(found, found.starter + "\n\n" + hint)
             game.start()
-            assert set(round_["needs"]) <= set(game.features()), (found.id, round_["title"]["en"])
+            assert gamemode.round_done(round_["needs"], game.features()), (
+                found.id,
+                round_["title"]["en"],
+            )
 
 
 def test_features_name_handlers_critters_and_names():
@@ -525,7 +529,7 @@ def test_a_room_fills_starts_and_ticks(rooms):
     listener = room.listen()
     message = room.start(seats[0].token)
     assert message["type"] == "start" and len(message["state"]["players"]) == 4
-    with pytest.raises(RoomError, match="started"):
+    with pytest.raises(RoomError, match="full"):  # running and full: still no fifth animal
         room.join("p8", "New", "dog", "")
     room.keys(seats[1].token, ["up"] * 20)
     assert len(seats[1].keys) == gamemode.MAX_KEYS  # a few keys per request ...
@@ -849,8 +853,76 @@ def test_playing_together_works_on_the_3d_stage_too():
     ):
         assert part in stage, part
     script = (webbuild.WEB_DIR / "game.js").read_text(encoding="utf-8")
-    assert 'if (state.editing) next = "2d"' in script  # only editing forces the flat board
+    assert "state.stage3d.squareAt(event)" in script  # the world is edited on the 3D stage too
     assert "playSounds(" in script and "drawLanes()" in script
     fun = (webbuild.WEB_DIR / "fun.js").read_text(encoding="utf-8")
     for name in gamemode.SOUNDS:
         assert f"  {name}(" in fun, name  # every sound a program can ask for exists
+
+
+def test_a_child_can_join_a_game_that_has_started(rooms):
+    spec = gamemode.find_game("collect-guard")
+    room = rooms.open(spec, spec.starter, "Bananas")
+    first = room.join("p1", "Ema", "cat", "")
+    room.start(first.token)
+    assert room.public()["joinable"] is True
+    for _ in range(3):
+        room.keys(first.token, ["right"])
+        room.advance()
+    late = room.join("p2", "Ben", "dog", "penguin")  # the game is running
+    assert room.number(late) == 2
+    players = room.game.state()["players"]
+    assert [p["name"] for p in players] == ["Ema", "Ben"]
+    assert players[0]["at"] != players[1]["at"]  # a square of its own, near the start
+    for _ in range(4):
+        room.keys(late.token, ["down"])
+        room.keys(first.token, ["right"])
+        room.advance()
+    # lockstep: the replay adds Ben before the same tick and ends in the same world
+    game = room.game
+    again = gamerooms.replay(spec, spec.starter, [("Ema", "")], game.multi_inputs, joins=game.joins)
+    assert gamerooms.checksum(again.state()) == gamerooms.checksum(game.state())
+    assert game.joins == [{"tick": 3, "name": "Ben", "look": "penguin"}]
+
+
+def test_the_teacher_sees_and_closes_game_worlds(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("3.B", "workshop").id)
+    head = {"X-Teacher-Token": hub.teacher_token}
+    spec = gamemode.find_game("collect-guard")
+    room = gamerooms.ROOMS.open(spec, spec.starter, "Bananas")
+    try:
+        seat = room.join("p1", "Ema", "cat", "")
+        overview = hub.handle("GET", "/api/teacher/overview", {}, {}, head, "t")
+        shown = [r for r in overview["rooms"] if r["id"] == room.id]
+        assert shown and shown[0]["players"][0]["name"] == "Ema" and shown[0]["tick"] == 0
+        assert {"score", "minutes", "status", "title"} <= set(shown[0])
+        after = hub.handle("POST", "/api/teacher/room/close", {}, {"room": room.id}, head, "t")
+        assert room.id not in [r["id"] for r in after["rooms"]] and room.status == "ended"
+        with pytest.raises(RoomError):
+            room.keys(seat.token, ["up"]) or gamerooms.ROOMS.get(room.id)
+    finally:
+        gamerooms.ROOMS.close_all()
+
+
+def test_the_score_bug_hunt():
+    """Two handlers fight over the score: the lesson starts broken, round 1 fixes it."""
+    found = gamemode.find_game("bug-score")
+    broken = Game(found, found.lesson)
+    broken.start()
+    broken.tick(["up"])  # onto the banana: on_item adds a point (on_tick ran before it)...
+    assert broken.score.value == 1
+    after = broken.to_json(broken.tick([]))  # ...and on the next tick on_tick takes it away
+    assert broken.score.value == 0
+    # "Which handler fired?" shows the thief: on_tick changed the score
+    assert "on_tick" in {entry["handler"] for entry in after["fired"]}
+    first = found.rounds[0]
+    assert not gamemode.round_done(first["needs"], broken.features())
+    fixed_source = found.lesson.replace("    score.set(0)\n", "    pass\n")
+    fixed = Game(found, fixed_source)
+    fixed.start()
+    fixed.tick(["up"])
+    assert fixed.score.value == 1
+    assert gamemode.round_done(first["needs"], fixed.features())

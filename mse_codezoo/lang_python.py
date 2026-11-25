@@ -92,7 +92,6 @@ FRIENDLY = {
     "Raise": "`raise`",
     "Assert": "`assert`",
     "AnnAssign": "type hints",
-    "AsyncFor": "async loops",
     "AsyncWith": "async `with` blocks",
     "TypeAlias": "`type` aliases",
     # expressions
@@ -110,7 +109,6 @@ FRIENDLY = {
     "DictComp": "comprehensions",
     "GeneratorExp": "comprehensions",
     "Await": "`await`",
-    "NamedExpr": "`:=`",
     "Starred": "`*` unpacking",
 }
 
@@ -334,7 +332,10 @@ class _Converter:
                     op=BIN_OPS[type(op)],
                     value=self.expr(value),
                 )
-            case ast.For(target=target, iter=iterable, body=body, orelse=[]):
+            case (
+                ast.For(target=target, iter=iterable, body=body, orelse=[])
+                | ast.AsyncFor(target=target, iter=iterable, body=body, orelse=[])
+            ):
                 header_target = self.loop_target(target)
                 header_iter = self.expr(iterable)
                 return ir.For(
@@ -342,6 +343,7 @@ class _Converter:
                     target=header_target,
                     iter=header_iter,
                     body=self.body(body, indent=body[0].col_offset, stop_line=next_line),
+                    is_async=isinstance(node, ast.AsyncFor),
                 )
             case ast.If(test=test, body=body, orelse=orelse):
                 header_test = self.expr(test)
@@ -773,6 +775,10 @@ class _Converter:
                 return ir.YieldFrom(id=expr_id, value=self.expr(value))
             case ast.Await(value=value):
                 return ir.Await(id=expr_id, value=self.expr(value))
+            case ast.NamedExpr(target=ast.Name(id=name), value=value):
+                return ir.NamedExpr(
+                    id=expr_id, target=ir.Name(id=f"{expr_id}.t", name=name), value=self.expr(value)
+                )
             case _ if type(node).__name__ == "TemplateStr":
                 return ir.TString(
                     id=expr_id,
@@ -887,7 +893,9 @@ class _Printer:
             case ir.RawCode(text=text):
                 self.lines += [pad + line if line.strip() else "" for line in text.splitlines()]
             case ir.For(target=target, iter=iterable, body=body):
-                self.emit(f"{pad}for {target_to_text(target)} in {expr_to_text(iterable)}:", stmt)
+                keyword = "async for" if stmt.is_async else "for"
+                head = f"{pad}{keyword} {target_to_text(target)} in {expr_to_text(iterable)}:"
+                self.emit(head, stmt)
                 self.body(body, depth + 1)
             case ir.FunctionDef(name=name, params=params, body=body):
                 self.lines += [f"{pad}@{expr_to_text(d)}" for d in stmt.decorators]
@@ -979,8 +987,12 @@ class _Printer:
 
 def _simple_stmt_text(stmt: ir.Stmt) -> str:
     match stmt:
+        case ir.ExprStmt(value=ir.NamedExpr() as value):
+            return f"({expr_to_text(value)})"
         case ir.ExprStmt(value=value):
             return expr_to_text(value)
+        case ir.Assign(target=target, value=ir.NamedExpr() as value):
+            return f"{target_to_text(target)} = ({expr_to_text(value)})"
         case ir.Assign(target=target, value=value):
             return f"{target_to_text(target)} = {target_to_text(value)}"
         case ir.AnnAssign(target=target, annotation=annotation, value=None):
@@ -1133,7 +1145,7 @@ def _precedence(expr: ir.Expr) -> int:
             return BOOL_PRECEDENCE[op]
         case ir.IfExp():
             return IFEXP_PRECEDENCE
-        case ir.Lambda() | ir.Yield() | ir.YieldFrom():
+        case ir.Lambda() | ir.Yield() | ir.YieldFrom() | ir.NamedExpr():
             return LAMBDA_PRECEDENCE
         case ir.Await():
             return AWAIT_PRECEDENCE
@@ -1176,6 +1188,10 @@ def expr_to_text(expr: ir.Expr) -> str:
             return f"yield from {expr_to_text(value)}"
         case ir.Await(value=value):
             return "await " + _wrap(value, _precedence(value) < ATOM_PRECEDENCE)
+        case ir.NamedExpr(target=target, value=value):
+            # bare: an operand gets brackets from its precedence; a statement of its own or
+            # the right side of `=` must have them (Python's rule), see _simple_stmt_text
+            return f"{target.name} := {expr_to_text(value)}"
         case ir.TString(parts=parts):
             return "t" + _fstring(parts)[1:]
         case ir.Attribute(value=value, attr=attr):

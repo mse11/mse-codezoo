@@ -169,3 +169,81 @@ def test_debug_must_be_true_or_false(tmp_path):
     path.write_text(json_module.dumps(data), encoding="utf-8")
     (tmp_path / "l01.solution.py").write_text("step(2)\ngrab()\n", encoding="utf-8")
     assert "debug must be true or false" in validate_level(path).errors
+
+
+# --- debugger questions, watch expressions, the 🐞 levels in modules 1-5 ------------------
+
+
+def test_watch_expressions_follow_the_program_and_run_nothing_of_its_own():
+    source = "a = 0\nnames = ['x', 'y']\nfor i in range(3):\n    a += 2\n"
+    result = interpreter.run(
+        parse(source).program,
+        watch=True,
+        watch_expressions=["a * 10", "a > 3", "names[1:]", "b + 1", "step(1)"],  # five at most
+    )
+    seen = {}
+    for step in result.steps:
+        seen.update((step.scope or {}).get("w", {}))
+    assert seen["a * 10"] == "60" and seen["a > 3"] == "True"
+    assert seen["names[1:]"] == "['y']"
+    assert seen["b + 1"] == "—"  # no value yet: not an error
+    assert seen["step(1)"].startswith("⚠")  # a command is never run
+
+
+def test_watch_expressions_never_run_a_class_of_the_program():
+    source = (
+        "class Loud:\n"
+        "    def __add__(self, other):\n"
+        "        print('ran!')\n"
+        "        return 1\n"
+        "x = Loud()\n"
+    )
+    result = interpreter.run(parse(source).program, watch=True, watch_expressions=["x + 1"])
+    assert result.output == []  # watching `x + 1` did not call the class's own `+`
+
+
+def test_debugger_question_levels():
+    from mse_codezoo.game import level_to_json
+    from mse_codezoo.levels import find_level
+
+    for level_id in ("m01-l07b", "m02-l04b", "m03-l08b", "m04-l09b", "m05-l09b"):
+        level = find_level(level_id)
+        assert level.debug and level.ask, level_id
+        data = level_to_json(level)
+        assert data["ask"] == level.ask and data["debug"] is True
+        # the asked variable really has a value after the asked line
+        run = interpreter.run(
+            parse(level.starter).program, watch=True, world=None, actions=_stub_actions()
+        )
+        assert run is not None
+
+
+def _stub_actions():
+    noop = lambda *args, **kwargs: None  # noqa: E731
+    return {name: noop for name in ("step", "turn_left", "turn_right", "grab", "say")} | {
+        "item_here": lambda: False
+    }
+
+
+def test_ask_must_name_a_line_and_a_variable(tmp_path):
+    import json as json_module
+
+    from mse_codezoo.levels import validate_level
+
+    base = {
+        "id": "x-l01",
+        "module": "sequences",
+        "concepts": ["call"],
+        "world": {"tiles": ["..B"], "start": [0, 0, "east"]},
+        "goal": {"type": "collect_all", "item": "B"},
+        "starter": "step(1)\ngrab()\n",
+    }
+    for ask, message in (
+        ({"line": 0, "name": "a"}, "line"),
+        ({"line": 1, "name": "2x"}, "name"),
+        ({"line": 9, "name": "a"}, "past the starter"),
+    ):
+        path = tmp_path / "l01.json"
+        path.write_text(json_module.dumps({**base, "ask": ask}), encoding="utf-8")
+        (tmp_path / "l01.solution.py").write_text("step(2)\ngrab()\n", encoding="utf-8")
+        assert any(message in error for error in validate_level(path).errors), ask

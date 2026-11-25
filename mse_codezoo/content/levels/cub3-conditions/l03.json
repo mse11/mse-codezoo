@@ -1,0 +1,46 @@
+{
+  "id": "cub3-l03",
+  "title": "Only where there is one",
+  "module": "cub-conditions",
+  "cub": "make",
+  "concepts": [
+    "if"
+  ],
+  "animal": "monkey",
+  "world": {
+    "tiles": [
+      ".B.B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "constraints": {},
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range",
+    "if",
+    "item_here"
+  ],
+  "hints": [
+    "Repeat: a step, then look. Grab only if something is here."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Len tam, kde niečo je",
+      "hints": [
+        "Opakuj: krok, potom sa pozri. Chyť, len ak tu niečo je."
+      ]
+    }
+  }
+}

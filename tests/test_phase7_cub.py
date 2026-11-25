@@ -3,6 +3,7 @@ per-player switch for grown-ups and teachers, reports and suggestions that keep 
 courses apart, the terminal client, and the web pieces (picture blocks, speech, tints)."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,9 @@ from mse_codezoo.webbuild import build
 
 LEVELS = [load_level(p) for p in level_files()]
 CUBS = [level for level in LEVELS if is_cub(level)]
+# the two modules every cub plays (conditions, tricks and story are extras, tested apart)
+CORE = [level for level in CUBS if level.module in ("cub-sequences", "cub-loops")]
+EXTRAS = [level for level in CUBS if level not in CORE]
 WEB = Path(__file__).parents[1] / "mse_codezoo" / "web"
 
 
@@ -47,7 +51,7 @@ def solve(store, profile, level):
 
 def test_two_cub_modules_of_ten_levels_in_the_predict_fix_make_pattern():
     modules = {}
-    for level in CUBS:
+    for level in CORE:
         modules.setdefault(level.module, []).append(level)
     assert sorted(modules) == ["cub-loops", "cub-sequences"]
     for levels in modules.values():
@@ -58,7 +62,7 @@ def test_two_cub_modules_of_ten_levels_in_the_predict_fix_make_pattern():
 
 
 def test_cub_levels_are_small_and_use_only_the_first_blocks():
-    for level in CUBS:
+    for level in CORE:
         assert level.mode == "blocks_only", level.id
         assert set(level.unlocked_blocks) <= {
             "step",
@@ -279,7 +283,10 @@ def test_the_page_has_the_cub_pieces():
 def test_read_aloud_uses_only_the_devices_own_voices():
     speech = (WEB / "speech.js").read_text(encoding="utf-8")
     assert "speechSynthesis" in speech and "localService" in speech
-    assert "fetch(" not in speech and "http" not in speech  # nothing is sent anywhere
+    # nothing is sent anywhere: the only file read is the app's own list of recordings
+    # (voices/<lang>/manifest.json, next to the page), and no address outside it
+    assert re.findall(r"fetch\(([^)]*)\)", speech) == ["`voices/${code}/manifest.json`"]
+    assert "http" not in speech
     look = (WEB / "look.js").read_text(encoding="utf-8")
     assert 'checkbox("read"' in look and "canSpeak" in look
 
@@ -293,3 +300,37 @@ def test_the_offline_build_carries_cub_mode(tmp_path):
     assert "speech.js" in (site / "sw.js").read_text(encoding="utf-8")  # cached for offline
     with zipfile.ZipFile(site / "engine.zip") as engine:
         assert any("cub1-sequences/l01.json" in name for name in engine.namelist())
+
+
+def test_the_extra_cub_modules():
+    """Conditions (age 7+), the penguin's slide and free story mode: small, in blocks, and
+    each lesson module starts by watching (predict)."""
+    from mse_codezoo.game import level_to_json, run_level
+
+    modules = {}
+    for level in EXTRAS:
+        modules.setdefault(level.module, []).append(level)
+        assert level.mode == "blocks_only" and len(level.world["tiles"]) <= 4, level.id
+        assert level.i18n["sk"]["title"] and len(level.i18n["sk"]["hints"]) == len(level.hints)
+        assert solution_errors(level) == [], level.id
+        assert level_to_json(level)["coplay"], level.id  # a prompt for the grown-up
+    assert sorted(modules) == ["cub-conditions", "cub-story", "cub-tricks"]
+    for name in ("cub-conditions", "cub-tricks"):
+        steps = [level.cub for level in modules[name]]
+        assert steps[0] == "predict" and set(steps) == set(CUB_STEPS), name
+    assert {"if", "item_here"} <= set(modules["cub-conditions"][0].unlocked_blocks)
+    # story mode: no goal, whatever the child makes counts
+    story = modules["cub-story"][0]
+    assert story.goal == {"type": "free"}
+    run = run_level(story, 'turn_left()\nsay("Hello!")\n')
+    assert run.check.solved
+    own = level_to_json(story)["coplay"]
+    assert own.startswith("Ask the child to tell you the story")
+
+
+def test_extra_cub_levels_do_not_change_when_a_cub_is_ready(store):
+    mia = store.add("Mia", "bee", cub=True)
+    for level in CORE:
+        solve(store, mia, level)
+    report = store.report(mia.id, LEVELS)
+    assert report["cub"]["levels"] == 20 and report["cub"]["ready"]

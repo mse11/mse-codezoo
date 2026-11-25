@@ -412,6 +412,78 @@ class coroutine(Awaitable):  # noqa: N801 - like Python's own coroutine type
 coroutine.__module__ = "builtins"
 
 
+class _Handed:
+    """A value an async generator hands out with ``yield`` (its body also passes the
+    scheduler's requests up the same way, so a handed value is wrapped to tell them apart)."""
+
+    __slots__ = ("value",)
+
+    def __init__(self, value: Any) -> None:
+        self.value = value
+
+
+class async_generator(ZooObject):  # noqa: N801 - like Python's own async_generator type
+    """What calling an ``async def`` with ``yield`` gives: ``async for`` asks it for one value
+    at a time, and it may ``await`` in between (other tasks run meanwhile)."""
+
+    KIND = "an async generator"
+
+    def __init__(self, name: str, body: Generator[Any, Any, Any]) -> None:
+        self.name = name
+        self._body = body
+        self.finished = False
+        self.running = False
+
+    def __aiter__(self) -> async_generator:
+        return self
+
+    def __anext__(self) -> _AsyncNext:
+        return _AsyncNext(self)
+
+    def __repr__(self) -> str:
+        return f"<async_generator object {self.name}>"
+
+
+async_generator.__module__ = "builtins"
+
+
+class _AsyncNext(Awaitable):
+    """The next value of an async generator, to wait for: its body runs until it hands
+    a value out (``yield``); its own ``await``s go to the scheduler on the way."""
+
+    KIND = "the next value of an async generator"
+
+    def __init__(self, source: async_generator) -> None:
+        self.source = source
+
+    def wait(self, runner: Runner) -> Generator[Any, Any, Any]:
+        source = self.source
+        if source.finished:
+            raise StopAsyncIteration
+        if source.running:
+            message = t("An async generator can't ask itself for its next value.")
+            raise LearnerError(message, kind="type", exception=RuntimeError(message))
+        source.running = True
+        reply = None
+        try:
+            while True:
+                try:
+                    request = source._body.send(reply)
+                except StopIteration:
+                    source.finished = True
+                    raise StopAsyncIteration from None
+                if isinstance(request, _Handed):
+                    return request.value
+                reply = yield request  # a sleep or a wait: the scheduler's business
+        except BaseException:
+            if not isinstance(source, async_generator) or source.finished:
+                raise
+            source.finished = True
+            raise
+        finally:
+            source.running = False
+
+
 class iterator(ZooObject):  # noqa: N801
     """A lazy iterator from ``map()``, ``zip()`` or ``itertools``; it counts what it hands
     out, so an endless one stops at the zoo's limit instead of freezing the computer."""
@@ -520,6 +592,44 @@ def _short(value: Any) -> str:
 
 
 MAX_WATCHED = 30  # variables shown per scope in the debugger
+MAX_WATCH_EXPRESSIONS = 5  # expressions a child watches at once
+# what a watched expression may contain: values, names, maths, comparisons, indexing. No
+# calls or attributes, so watching never runs the program's own code or moves the animal.
+WATCH_NODES = (
+    ir.Const, ir.Name, ir.BinOp, ir.UnaryOp, ir.Compare, ir.BoolOp, ir.Subscript, ir.Slice,
+    ir.List, ir.Tuple, ir.IfExp,
+)  # fmt: skip
+PLAIN_VALUES = (int, float, str, bool, list, tuple, dict, set, frozenset, range, type(None))
+
+
+def watch_expression(text: str) -> ir.Expr | str:
+    """A child's watch expression as IR, or why it can't be watched (a kind message)."""
+    from dataclasses import fields, is_dataclass
+
+    from mse_codezoo.lang_python import parse
+
+    text = text.strip()
+    if not text or len(text) > 60 or "\n" in text:
+        return t("Watch one short expression, like `a * 2` or `fish > 3`.")
+    parsed = parse(text)
+    body = parsed.program.body if parsed.ok and parsed.program else []
+    if len(body) != 1 or not isinstance(body[0], ir.ExprStmt):
+        return t("Watch one short expression, like `a * 2` or `fish > 3`.")
+
+    def allowed(node: Any) -> bool:
+        if isinstance(node, list):
+            return all(allowed(item) for item in node)
+        if not isinstance(node, ir.Node):
+            return True
+        if not isinstance(node, WATCH_NODES) or not is_dataclass(node):
+            return False
+        return all(allowed(getattr(node, f.name)) for f in fields(node) if f.name != "id")
+
+    if not allowed(body[0].value):
+        return t("Only values, maths and comparisons can be watched (no commands).")
+    return body[0].value
+
+
 MAX_WATCH_TEXT = 60
 
 
@@ -793,6 +903,7 @@ class Runner:
         files: dict[str, str] | None = None,
         gil: bool = True,
         watch: bool = False,
+        watch_expressions: list[str] | None = None,
     ) -> None:
         import random
 
@@ -818,6 +929,12 @@ class Runner:
         self._seen_globals: dict[str, str] = {}
         self._seen_locals: dict[str, str] = {}
         self._seen_frame: tuple[int, ...] = ()
+        # expressions the child watches (the debugger): text -> IR, or why it can't be watched
+        self.watch_expressions = {
+            text: watch_expression(text)
+            for text in (watch_expressions or [])[:MAX_WATCH_EXPRESSIONS]
+        }
+        self._seen_expressions: dict[str, str] = {}
         self.top_current: str | None = None
         self.handling: list[LearnerError] = []  # errors being handled by `except`
         self.events: list[dict[str, Any]] = []  # the interpreter's own: call, return
@@ -973,7 +1090,75 @@ class Runner:
             if gone:
                 scope["l-"] = gone
         self._seen_frame, self._seen_locals = key, local
+        if self.watch_expressions:
+            values = {
+                text: self._watch_value(node) for text, node in self.watch_expressions.items()
+            }
+            changed = {k: v for k, v in values.items() if self._seen_expressions.get(k) != v}
+            if changed:
+                scope["w"] = changed
+            self._seen_expressions = values
         return scope or None
+
+    def _watch_value(self, node: ir.Expr | str) -> str:
+        """A watched expression's value now, as short text ("—" while it can't be worked out:
+        a name that has no value yet, a division by zero...)."""
+        if isinstance(node, str):
+            return f"⚠ {node}"
+        try:
+            text = watch_repr(self._watch_eval(node))
+        except Exception:  # noqa: BLE001 - any trouble only means "no value right now"
+            return "—"
+        return text if len(text) <= MAX_WATCH_TEXT else text[: MAX_WATCH_TEXT - 3] + "..."
+
+    def _watch_eval(self, node: ir.Expr) -> Any:
+        """Works out a watched expression with plain values only, so no code of the
+        program's own (a class's `+` or `[ ]`) ever runs while the child watches."""
+
+        def plain(value: Any) -> Any:
+            if not isinstance(value, PLAIN_VALUES):
+                raise TypeError("not a plain value")
+            return value
+
+        match node:
+            case ir.Const(value=value):
+                return value
+            case ir.Name(name=name):
+                return plain(self._lookup(name))
+            case ir.BinOp(op=op, left=left, right=right):
+                return self._binop(op, self._watch_eval(left), self._watch_eval(right))
+            case ir.UnaryOp(op="not", operand=operand):
+                return not self._watch_eval(operand)
+            case ir.UnaryOp(op=op, operand=operand):
+                value = self._watch_eval(operand)
+                return -value if op == "-" else +value
+            case ir.Compare(left=left, ops=ops, comparators=comparators):
+                value = self._watch_eval(left)
+                for op, right in zip(ops, comparators, strict=True):
+                    other = self._watch_eval(right)
+                    if not self._compare(op, value, other):
+                        return False
+                    value = other
+                return True
+            case ir.BoolOp(op=op, values=values):
+                result: Any = None
+                for item in values:
+                    result = self._watch_eval(item)
+                    if bool(result) == (op == "or"):
+                        return result
+                return result
+            case ir.IfExp(test=test, body=body, orelse=orelse):
+                return self._watch_eval(body if self._watch_eval(test) else orelse)
+            case ir.Subscript(value=value, index=ir.Slice(lower=lower, upper=upper, step=step)):
+                part = [None if p is None else self._watch_eval(p) for p in (lower, upper, step)]
+                return plain(self._watch_eval(value))[slice(*part)]
+            case ir.Subscript(value=value, index=index):
+                return plain(plain(self._watch_eval(value))[self._watch_eval(index)])
+            case ir.List(elts=elts):
+                return [self._watch_eval(e) for e in elts]
+            case ir.Tuple(elts=elts):
+                return tuple(self._watch_eval(e) for e in elts)
+        raise TypeError("not watchable")
 
     def count_iteration(self) -> None:
         """One more item from a lazy iterator; an endless one stops at the zoo's limit."""
@@ -1076,6 +1261,12 @@ class Runner:
                 self._step(stmt, note=self._note(target, result))
             case ir.AugAssign(target=target, op=op, value=value):
                 self._aug_assign(stmt, target, op, value)
+            case ir.For(is_async=True):
+                raise LearnerError(
+                    t("`async for` only works inside an `async def`."),
+                    kind="type",
+                    exception=SyntaxError("'async for' outside async function"),
+                )
             case ir.For(target=target, iter=iterable, body=body):
                 self._for(stmt, target, iterable, body)
             case ir.If(test=test, body=body, orelse=orelse):
@@ -1557,9 +1748,8 @@ class Runner:
         if kind == "function":
             return self._run_function(fn, frame)
         if kind == "async generator":
-            raise LearnerError(
-                t("An `async def` with `yield` inside isn't part of CodeZoo yet."), kind="type"
-            )
+            body = self._framed(frame, self._function_body(fn, frame, False), events=True)
+            return async_generator(fn.name, body)
         label = f"{fn.name}({', '.join(_short(frame.locals[p.name]) for p in fn.node.params)})"
         if kind == "generator":
             body = self._framed(frame, self._function_body(fn, frame, False), events=True)
@@ -1935,7 +2125,7 @@ class Runner:
         found = self._suspend_memo.get(id(stmt))
         if found is None:
             found = any(
-                isinstance(n, SUSPENDS) or (isinstance(n, ir.With) and n.is_async)
+                isinstance(n, SUSPENDS) or (isinstance(n, ir.With | ir.For) and n.is_async)
                 for n in local_walk(stmt)
             )
             self._suspend_memo[id(stmt)] = found
@@ -2000,6 +2190,8 @@ class Runner:
                     except _Continue:
                         pass
                     self._tick(stmt)
+            case ir.For(target=target, iter=iterable, body=body, is_async=True):
+                yield from self._rasync_for(stmt, target, iterable, body, preempt)
             case ir.For(target=target, iter=iterable, body=body):
                 yield from self._resolve(iterable)
                 values = self._loop_values(self._eval(iterable))
@@ -2032,6 +2224,46 @@ class Runner:
                 self._exec(stmt)
                 yield from self._pause(preempt)
 
+    def _rasync_for(
+        self, stmt: ir.For, target: ir.Expr, iterable: ir.Expr, body: list[ir.Stmt], preempt: bool
+    ) -> Generator[Any, Any, None]:
+        """``async for``: wait for each value of an async generator in turn."""
+        frame = self._frame()
+        fn = frame.function if frame is not None else None
+        if fn is None or not fn.node.is_async:
+            raise LearnerError(
+                t("`async for` only works inside an `async def`."),
+                kind="type",
+                exception=SyntaxError("'async for' outside async function"),
+            )
+        yield from self._resolve(iterable)
+        source = self._eval(iterable)
+        if not hasattr(source, "__aiter__"):
+            message = t(
+                "`async for` needs an async generator (an `async def` with `yield`), not {what}.",
+                what=describe(source),
+            )
+            raise LearnerError(message, kind="type", exception=TypeError(message))
+        values = source.__aiter__()
+        first = True
+        while True:
+            try:
+                item = yield from values.__anext__().wait(self)
+            except StopAsyncIteration:
+                break
+            if not first:
+                self._tick(stmt)
+            first = False
+            self._assign(target, item)
+            self._step(stmt, note=self._note(target, item))
+            yield from self._pause(preempt)
+            try:
+                yield from self._rbody(body, preempt)
+            except _Break:
+                break
+            except _Continue:
+                continue
+
     def _loop_values(self, values: Any) -> Iterator[Any]:
         if not self._iterable(values):
             raise LearnerError(
@@ -2063,6 +2295,8 @@ class Runner:
             match part:
                 case ir.Yield(value=value):
                     handed = None if value is None else self._eval(value)
+                    if fn is not None and self._kind(fn.node) == "async generator":
+                        handed = _Handed(handed)  # not a request for the scheduler
                     result = yield handed
                 case ir.YieldFrom(value=value):
                     result = yield from self._yield_from(self._eval(value))
@@ -2536,6 +2770,10 @@ class Runner:
                 return result
             case ir.IfExp(test=test, body=body, orelse=orelse):
                 return self._eval(body if self._test(test) else orelse)
+            case ir.NamedExpr(target=target, value=value):
+                result = self._eval(value)
+                self._assign(target, result)  # `(n := ...)`: the name gets it, and it's used
+                return result
             case ir.FString(parts=parts):
                 return self._checked("".join(self._fpart(part) for part in parts))
             case ir.Subscript(value=value, index=index):
@@ -3324,6 +3562,7 @@ def run(
     files: dict[str, str] | None = None,
     gil: bool = True,
     watch: bool = False,
+    watch_expressions: list[str] | None = None,
 ) -> RunResult:
     """Run to the end and collect every step (``watch``: with the variables' values).
 
@@ -3350,6 +3589,7 @@ def run(
         files=files,
         gil=gil,
         watch=watch,
+        watch_expressions=watch_expressions,
     )
     if world is not None:
         world.runner = runner

@@ -24,6 +24,7 @@ NEWER_BUILTINS: dict[str, tuple[int, int]] = {"frozendict": (3, 15), "sentinel":
 NEWER_MODULE_NAMES: dict[tuple[str, str], tuple[int, int]] = {
     ("itertools", "batched"): (3, 12),
     ("copy", "replace"): (3, 13),
+    ("concurrent", "interpreters"): (3, 14),
 }
 
 

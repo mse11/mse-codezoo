@@ -1,0 +1,59 @@
+{
+  "id": "m03-l08b",
+  "title": "A wrong start",
+  "module": "variables",
+  "concepts": [
+    "variable",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "debug": true,
+  "ask": {
+    "line": 2,
+    "name": "steps"
+  },
+  "world": {
+    "tiles": [
+      "....B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "say",
+    "for_range",
+    "set",
+    "change",
+    "var",
+    "number",
+    "math"
+  ],
+  "starter": "steps = 2\nsteps = steps + 1\nstep(steps)\ngrab()\n",
+  "hints": [
+    "Step through and watch steps: what does it hold when the monkey starts walking?",
+    "steps starts at 2 and grows by 1, so the monkey walks 3 squares. The {B} is 4 away.",
+    "Start with steps = 3."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Zlý začiatok",
+      "hints": [
+        "Prejdi to po krokoch a sleduj steps: koľko v ňom je, keď opička vyrazí?",
+        "steps začína na 2 a pribudne 1, takže opička prejde 3 políčka. {B} je 4 ďaleko.",
+        "Začni so steps = 3."
+      ]
+    }
+  }
+}

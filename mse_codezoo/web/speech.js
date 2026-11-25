@@ -7,6 +7,34 @@
 import { lang } from "./i18n.js";
 
 const MUTE_KEY = "codezoo.mute";
+
+// Recorded voices: voices/<lang>/manifest.json maps a sentence (as it is spoken) to a sound
+// file next to it ({"Help the monkey collect every banana.": "goal-bananas.mp3"}). A
+// sentence with a recording plays it; every other sentence uses the device's own voice.
+// The manifests ship empty: see voices/README.md for how to add recordings.
+const recordings = new Map(); // lang -> Map(sentence -> url), or null while loading
+let playing = null;
+
+function loadRecordings(code) {
+  if (recordings.has(code) || typeof fetch === "undefined") return;
+  recordings.set(code, null);
+  fetch(`voices/${code}/manifest.json`)
+    .then((response) => (response.ok ? response.json() : {}))
+    .then((manifest) => {
+      const found = new Map();
+      for (const [sentence, file] of Object.entries(manifest || {})) {
+        if (typeof file === "string" && /^[\w.-]+\.(mp3|ogg|m4a|wav)$/.test(file)) found.set(speakable(sentence), `voices/${code}/${file}`);
+      }
+      recordings.set(code, found);
+    })
+    .catch(() => recordings.set(code, new Map()));
+}
+
+// the recording for these words in this language, if someone recorded them
+export function recordingFor(words, code = lang()) {
+  loadRecordings(code);
+  return recordings.get(code)?.get(words) || null;
+}
 const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
 let cub = false;
 let muted = readMuted();
@@ -67,9 +95,18 @@ export function speakable(text) {
 
 // speak now, replacing whatever was being said; `force` for the "read it to me" button
 export function speak(text, { force = false } = {}) {
-  if (!synth || (!force && !readAloudOn()) || (force && cub && muted)) return false;
-  const voice = voiceFor();
+  if ((!force && !readAloudOn()) || (force && cub && muted)) return false;
   const words = speakable(text);
+  const recorded = words ? recordingFor(words) : null;
+  if (recorded && typeof Audio !== "undefined") {
+    synth?.cancel();
+    playing?.pause();
+    playing = new Audio(recorded);
+    playing.play().catch(() => {});
+    return true;
+  }
+  if (!synth) return false; // no speech voices in this browser (a recording would have played)
+  const voice = voiceFor();
   if (!voice || !words) return false;
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(words);
@@ -82,6 +119,7 @@ export function speak(text, { force = false } = {}) {
 
 export function stopSpeaking() {
   synth?.cancel();
+  playing?.pause();
 }
 
 // voices often arrive after the page has loaded

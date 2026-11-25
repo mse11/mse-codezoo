@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from mse_codezoo import gamemode, i18n, scheduler, stdlib, world  # noqa: F401 - their ZooObject kinds
-from mse_codezoo.game import level_to_json, run_level
+from mse_codezoo.game import COPLAY, level_to_json, run_level
 from mse_codezoo.i18n import catalog, from_accept_language, normalize, plural, t, use_lang
 from mse_codezoo.interpreter import ZooObject
 from mse_codezoo.lang_python import FRIENDLY, parse
@@ -22,6 +22,7 @@ PACKAGE = Path(i18n.__file__).parent
 def message_ids() -> set[str]:
     """Every literal first argument of a ``t(...)`` call, plus texts passed to t() later."""
     ids = set(FRIENDLY.values()) | set(MISTAKE_KINDS.values()) | set(NEWER_FEATURES)
+    ids |= set(COPLAY.values())  # the grown-up prompts of Cub mode, by cub step
     ids |= {cls.KIND for cls in _all_subclasses(ZooObject)}
     for path in PACKAGE.glob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

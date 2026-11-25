@@ -134,6 +134,12 @@
       <pre id="console" class="console" aria-live="polite"></pre>
       <p id="console-empty" class="console-empty" data-i18n>What print() writes shows up here while the program runs.</p>
       <section id="watch" class="watch" aria-label="Variables" data-i18n-label="Variables" hidden></section>
+      <!-- the pond: Python's >>> prompt, one line at a time (app.js, repl.py) -->
+      <form id="pond" class="pond" autocomplete="off">
+        <span id="pond-prompt" class="pond-prompt" aria-hidden="true">&gt;&gt;&gt;</span>
+        <input id="pond-input" class="pond-input" spellcheck="false" autocapitalize="off" maxlength="400"
+               aria-label="Try a line of Python" data-i18n-label="Try a line of Python">
+      </form>
     </section>
   </main>
 

@@ -81,6 +81,11 @@ class Level:
     cub: str | None = None  # Cub mode step: "predict", "fix" or "make" (CUB_STEPS)
     # a level about the debugger: the page turns the 🐞 switches on when it opens
     debug: bool = False
+    # a debugger question: {"line": 13, "name": "a"} asks what `a` holds after line 13 runs
+    ask: dict[str, Any] | None = None
+    # a prompt for the grown-up beside a cub ("Ask: where will it stop?"); the cub step's
+    # own prompt when a level has none (game.py coplay_text)
+    coplay: str = ""
     path: Path | None = None
 
     def _text(self, key: str, default: Any) -> Any:
@@ -135,8 +140,26 @@ class Level:
             min_python=parse_version(data.get("minPython")),
             cub=data.get("cub"),
             debug=data.get("debug") is True,
+            ask=data.get("ask") if isinstance(data.get("ask"), dict) else None,
+            coplay=str(data.get("coplay", "")),
             path=path,
         )
+
+
+def _ask_errors(data: dict[str, Any]) -> list[str]:
+    """A debugger question: a line of the starter (or the solution) and a variable name."""
+    if "ask" not in data:
+        return []
+    ask = data["ask"]
+    line, name = (ask.get("line"), ask.get("name")) if isinstance(ask, dict) else (None, None)
+    if not isinstance(line, int) or isinstance(line, bool) or line < 1:
+        return ['ask needs "line": a line number from 1']
+    if not isinstance(name, str) or not name.isidentifier():
+        return ['ask needs "name": the variable to ask about']
+    lines = (data.get("starter") or "").splitlines()
+    if lines and line > len(lines):
+        return [f"ask line {line} is past the starter's last line ({len(lines)})"]
+    return []
 
 
 @dataclass
@@ -291,6 +314,7 @@ def validate_level_data(
     report.errors += _cub_errors(data)
     if "debug" in data and not isinstance(data["debug"], bool):
         report.errors.append("debug must be true or false")
+    report.errors += _ask_errors(data)
 
     animal = data.get("animal", DEFAULT_ANIMAL)
     if not (ANIMALS_DIR / animal / "pack.json").is_file():

@@ -1,0 +1,53 @@
+{
+  "id": "m02-l04b",
+  "title": "Where does i start?",
+  "module": "loops",
+  "concepts": [
+    "loop",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "debug": true,
+  "ask": {
+    "line": 2,
+    "name": "i"
+  },
+  "world": {
+    "tiles": [
+      "....B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "unlockedBlocks": [
+    "step",
+    "turn_left",
+    "turn_right",
+    "grab",
+    "for_range"
+  ],
+  "starter": "for i in range(3):\n    step(1)\ngrab()\n",
+  "hints": [
+    "Press Step and watch i under the console: what is it the first time the loop runs?",
+    "range(3) counts 0, 1, 2: three turns. How many squares away is the {B}?",
+    "The {B} is 4 squares away: use range(4)."
+  ],
+  "mode": "blocks_with_preview",
+  "i18n": {
+    "sk": {
+      "title": "Kde začína i?",
+      "hints": [
+        "Stláčaj Krok a sleduj i pod konzolou: koľko je, keď sa cyklus spustí prvýkrát?",
+        "range(3) počíta 0, 1, 2: tri kolá. Koľko políčok je {B} ďaleko?",
+        "{B} je 4 políčka ďaleko: použi range(4)."
+      ]
+    }
+  }
+}

@@ -193,6 +193,7 @@ def run_level(
     modules: Modules | None = None,
     python: tuple[int, int] | None = None,
     watch: bool = False,
+    watch_expressions: list[str] | None = None,
 ) -> LevelRun:
     """``watch``: every step also carries the variables' values, for the debugger."""
     worlds = level.worlds()
@@ -226,6 +227,7 @@ def run_level(
         version=version,
         seed=seed,
         watch=watch,
+        watch_expressions=watch_expressions,
     )
     world.printed = result.output
     also = None
@@ -427,6 +429,8 @@ def level_to_json(
         "starter": reskin_source(level.starter, own, pack),
         "cub": level.cub,
         "debug": level.debug,
+        "ask": level.ask,  # a debugger question (app.js renderAsk)
+        "coplay": coplay_text(level) if level.cub else "",  # for the grown-up (Cub mode)
         "blockModules": block_modules(),  # the gallery's "unlocks in module N"
         "predict": reskin_source(predict_program(level), own, pack)
         if level.cub == "predict"
@@ -435,6 +439,28 @@ def level_to_json(
         "world": world_to_json(level.world, pack),
         "worlds": [world_to_json(spec, pack) for spec, _goal in worlds],
     }
+
+
+# what a grown-up beside a cub can ask, by the level's step (PRIMM: predict, fix, make)
+COPLAY = {
+    "predict": "Ask before running: where do you think the animal will stop? Why?",
+    "fix": (
+        "Let the child find the wrong block first. "
+        "Ask: what did the animal do, and what should it do?"
+    ),
+    "make": (
+        "Ask the child to tell you the plan first, then build it together, one block at a time."
+    ),
+}
+
+
+def coplay_text(level: Level) -> str:
+    """The co-play prompt for the grown-up: the level's own, or its cub step's."""
+    own = level._text("coplay", level.coplay)
+    if own:
+        return own
+    step = COPLAY.get(level.cub or "")
+    return t(step) if step else ""
 
 
 def predict_program(level: Level) -> str:

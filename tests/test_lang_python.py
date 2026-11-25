@@ -107,12 +107,13 @@ def test_positions_point_at_the_input_text():
 
 
 def test_unsupported_code_is_kept_as_raw_code_with_a_note():
-    result = parse("step(1)\nasync for s in spins:\n    # spin\n    turn_left()\nstep(2)\n")
+    source = "step(1)\nfor s in spins:\n    # spin\n    turn_left()\nelse:\n    step(3)\nstep(2)\n"
+    result = parse(source)
     assert result.ok
     raw = result.program.body[1]
     assert isinstance(raw, ir.RawCode)
-    assert raw.text == "async for s in spins:\n    # spin\n    turn_left()"
-    assert "async loops" in result.diagnostics[0].message
+    assert raw.text == "for s in spins:\n    # spin\n    turn_left()\nelse:\n    step(3)"
+    assert "`For`" in result.diagnostics[0].message
     assert result.diagnostics[0].severity == "warning"
     # the comment inside the raw block is not duplicated outside it
     assert [type(s).__name__ for s in result.program.body] == ["ExprStmt", "RawCode", "ExprStmt"]
@@ -122,7 +123,6 @@ def test_unsupported_code_is_kept_as_raw_code_with_a_note():
     ("source", "reason"),
     [
         ("x = [n async for n in logs]\n", "async comprehensions"),
-        ("x = (n := 3)\n", "`:=`"),
         ("f()()\n", "this kind of call"),
         ("def f(a, /):\n    pass\n", "`/` in a function's inputs"),
         ("x = y = 1\n", "several `=`"),

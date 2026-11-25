@@ -227,6 +227,13 @@ select {
 .console-empty { margin: 0; padding: 8px 10px; color: var(--muted); font-size: calc(0.9rem * var(--zoom, 1)); }
 .console .fresh { background: var(--mark-run); border-radius: 3px; transition: background 1.2s ease; }
 html[data-motion="reduce"] .console .fresh { transition: none; }
+/* 🐸 the pond: Python's >>> prompt at the foot of the console (app.js) */
+.pond { display: flex; align-items: center; gap: 0.4rem; border-top: 1px solid var(--border); padding: 4px 10px; font-family: var(--code-font); }
+.pond-prompt { color: var(--blk-loop); font-weight: 700; }
+.pond-input { flex: 1; min-width: 0; font: inherit; border: 0; background: transparent; color: var(--text); padding: 4px 0; }
+.pond-input:focus { outline: none; }
+.pond:focus-within { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+html[data-cub="true"] .pond { display: none; }
 /* the Variables bar under the console (debug.js) */
 .watch {
   flex: 0 1 auto;
@@ -244,10 +251,24 @@ html[data-motion="reduce"] .console .fresh { transition: none; }
 .watch-note { margin: 6px 0; font-family: var(--code-font); overflow-wrap: anywhere; }
 .watch-note.error { color: var(--err); }
 .watch-note.hint { font-family: inherit; color: var(--muted); }
+/* a debugger question in the goal (app.js renderAsk) */
+/* Cub mode: a prompt for the grown-up beside the child (app.js renderGoal) */
+.coplay { font-size: 0.9em; color: var(--muted); border-left: 3px solid var(--border); padding-left: 0.5rem; }
+.ask { border-left: 4px solid var(--accent); padding: 0.3rem 0.6rem; margin: 0.4rem 0; background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 0 0.5rem 0.5rem 0; }
+.ask p { margin: 0 0 0.3rem; }
+.ask-row { display: inline-flex; gap: 0.5rem; align-items: center; }
+.ask-guess { font: inherit; font-family: var(--code-font); width: 6em; padding: 0.2rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.ask-answer { display: block; margin-top: 0.3rem; font-weight: 600; }
 .watch-next-line { display: block; color: var(--accent); }
 .watch h3 { margin: 8px 0 2px; font-size: 0.85em; color: var(--muted); font-weight: 600; }
 .watch-calls { font-family: var(--code-font); font-size: 0.9em; color: var(--muted); }
 .watch-none { margin: 0; color: var(--muted); font-style: italic; }
+/* 👀 watched expressions (debug.js) */
+.watch-add-row { display: flex; gap: 4px; margin-top: 4px; }
+.watch-input { flex: 1; min-width: 0; font: inherit; font-family: var(--code-font); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.watch-x { width: 1%; }
+.watch-remove { padding: 0 6px; min-width: 0; min-height: 0; line-height: 1.3; }
+.watch-bad { color: var(--muted); font-style: italic; font-family: inherit; }
 .watch-table { border-collapse: collapse; width: 100%; font-family: var(--code-font); }
 .watch-table th, .watch-table td { text-align: left; padding: 1px 6px; vertical-align: top; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .watch-table th { color: var(--blk-variable); font-weight: 600; width: 1%; white-space: nowrap; }
@@ -443,6 +464,10 @@ html[data-cub="true"] .panes {
   font-size: 0.95rem;
 }
 .mood3d { font-size: 2rem; animation: hop 0.5s ease-in-out 2; }
+/* both above the animal: the words sit above the face (🤔), never behind it */
+.bubble3d { z-index: 1; }
+.stage-overlay:has(.mood3d:not([hidden])) .bubble3d { transform: translate(-50%, calc(-100% - 2.8rem)); }
+.stage-overlay:has(.mood3d:not([hidden])) .bubble3d.beside { transform: translate(1.5rem, -100%); } /* stage3d.js */
 
 .stage-tools { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; justify-content: flex-start; }
 .stage-tools .view-toggle { margin-left: auto; }
@@ -630,6 +655,11 @@ html[data-contrast="true"] {
 .code { position: relative; }
 .step-arrow { position: absolute; left: 3px; font-size: 0.7em; pointer-events: none; color: var(--accent); }
 .step-arrow.error { color: var(--err); }
+/* breakpoints: a click on a line number (code.js); the ▶ arrow is drawn over the dot */
+.gutter { cursor: pointer; }
+.breakpoint-dots { position: absolute; inset: 0 auto 0 0; width: 1.1rem; pointer-events: none; overflow: hidden; }
+.breakpoint-dot { position: absolute; left: 2px; color: var(--err); font-size: 0.75em; display: flex; align-items: center; }
+.step-arrow { z-index: 1; }
 .code-values { position: absolute; inset: 0; overflow: hidden; pointer-events: none; font: inherit; }
 .code-value {
   position: absolute;
@@ -793,7 +823,28 @@ html[data-cub="true"] .pane-toggles { display: none; }
   .gallery-card { border-left: 0; border-top: 1px solid var(--border); padding: 0.6rem 0 0; }
   .dialog .gallery-head h2 { font-size: 1rem; }
 }
-html[data-cub="true"] .gallery-open { display: none; }
+/* Cub mode: a picture book of the child's own blocks (no code, no search, nothing locked) */
+html[data-cub="true"] .block-gallery :is(.gallery-code, .gallery-python, .gallery-search, .gallery-print, .gallery-why, .gallery-section > h3) { display: none; }
+html[data-cub="true"] .gallery-chip { max-width: none; font-size: 1.1em; padding: 6px 12px; }
+.gallery-say { margin-left: auto; padding: 0 6px; min-height: 0; }
+.gallery-print { min-width: 2.4rem; }
+/* a gallery example playing: ▶ on the line that runs next, values beside the lines that ran */
+.play-line { display: flex; align-items: baseline; gap: 0.4em; white-space: pre; border-radius: 4px; }
+.play-line.next { background: var(--mark-run); }
+.play-arrow { width: 1em; flex: 0 0 1em; color: var(--accent); font-size: 0.8em; }
+.play-line .code-value { position: static; margin-left: 0.6em; }
+/* 🖨 the gallery's sheet: only it is printed (gallery.js printSheet) */
+#gallery-print { display: none; }
+@media print {
+  html.printing-gallery body > :not(#gallery-print) { display: none !important; }
+  html.printing-gallery #gallery-print { display: block; color: #000; background: #fff; font-family: system-ui, sans-serif; }
+  #gallery-print h1 { font-size: 18pt; margin: 0 0 6pt; }
+  #gallery-print h2 { font-size: 13pt; margin: 12pt 0 4pt; border-bottom: 1px solid #999; }
+  #gallery-print .print-card { break-inside: avoid; display: grid; grid-template-columns: 14em 1fr; gap: 2pt 10pt; padding: 4pt 0; border-bottom: 1px dotted #ccc; }
+  #gallery-print .gallery-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; max-width: none; }
+  #gallery-print .print-code { margin: 0; font: 10pt/1.3 ui-monospace, monospace; white-space: pre-wrap; }
+  #gallery-print p { grid-column: 2; margin: 0; font-size: 10pt; }
+}
 .dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .dialog h2 { margin: 0 0 0.8rem; }
 .dialog h3 { margin: 1rem 0 0.5rem; font-size: 1.05rem; }

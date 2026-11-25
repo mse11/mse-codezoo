@@ -168,6 +168,14 @@ class YieldFrom(Expr):
 
 
 @dataclass(kw_only=True)
+class NamedExpr(Expr):
+    """``(n := len(fish))``: put a value in a name and use it right there."""
+
+    target: Name
+    value: Expr
+
+
+@dataclass(kw_only=True)
 class Await(Expr):
     """``await reach(3)``: wait here; other tasks run meanwhile."""
 
@@ -281,11 +289,13 @@ class AugAssign(Stmt):
 
 @dataclass(kw_only=True)
 class For(Stmt):
-    """``for target in iter:``; the target is a ``Name`` or a ``Tuple`` of names."""
+    """``for target in iter:``; the target is a ``Name`` or a ``Tuple`` of names.
+    ``async for`` (``is_async``) goes through an async generator, waiting for each item."""
 
     target: Expr
     iter: Expr
     body: list[Stmt] = field(default_factory=list)
+    is_async: bool = False
 
 
 @dataclass(kw_only=True)
