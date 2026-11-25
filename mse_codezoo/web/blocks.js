@@ -645,6 +645,16 @@ const currentTheme = () => {
 const big = () =>
   document.documentElement.dataset.targets === "true" || document.documentElement.dataset.cub === "true";
 
+// the palette entry a block was made from (by type, and the field that picks a sensor or trick)
+function paletteKeyOf(block) {
+  for (const [key, entry] of Object.entries(PALETTE)) {
+    if (entry.type !== block.type) continue;
+    const fields = entry.fields || {};
+    if (Object.entries(fields).every(([name, value]) => block.getFieldValue(name) === value)) return key;
+  }
+  return null;
+}
+
 function lastInStack(block) {
   let last = block;
   while (last.getNextBlock()) last = last.getNextBlock();
@@ -841,6 +851,28 @@ export function createWorkspace(container, onChange) {
     toProgram(names) {
       return workspaceToProgram(workspace, names);
     },
+    // the gallery's "Use it": a palette entry added at the end of the program (as a tap on a
+    // palette block does with big targets); false for a value block, which can't stand alone
+    addEntry(key) {
+      if (!PALETTE[key]) return false;
+      const top = workspace.getTopBlocks(true).find((b) => b.previousConnection || b.nextConnection);
+      const block = Blockly.serialization.blocks.append(galleryState(key), workspace);
+      if (block.outputConnection) {
+        block.dispose();
+        return false;
+      }
+      const last = top && top !== block ? lastInStack(top) : null;
+      if (last?.nextConnection && block.previousConnection) last.nextConnection.connect(block.previousConnection);
+      else block.moveBy(56, 24 + workspace.getTopBlocks().length * 8);
+      block.select?.();
+      return true;
+    },
+    // the entry of the selected block, for opening the gallery at it
+    selectedEntry() {
+      let block = Blockly.getSelected?.();
+      if (!block || block.workspace !== workspace) return null;
+      return paletteKeyOf(block);
+    },
     // ▶ on the block that runs next (kind "error": in red, on the block that broke)
     highlight(blockId, kind = "run") {
       // a value block (a number, `a + 1`) stands for the statement block it sits in
@@ -860,6 +892,101 @@ export function createWorkspace(container, onChange) {
     },
   };
   return api;
+}
+
+// --- the block and command gallery (gallery.js) -------------------------------------
+
+const FAMILY_OF_COLOUR = Object.fromEntries(Object.entries(COLOURS).map(([family, colour]) => [colour.toLowerCase(), family]));
+// the order of the gallery's groups, as the palette grows through the modules
+// The gallery shows a block that has room for other blocks (a loop, an `if`) with a small
+// example inside, so its code shows what it is for (an empty `if … else` prints as
+// `if False: pass`, without its `else`). Everything else is shown as the palette has it.
+const sensor = (name) => ({ block: { type: "cz_sensor", fields: { SENSOR: name } } });
+const stepOne = { block: { type: "cz_step", inputs: { N: num(1) } } };
+const GALLERY_EXAMPLES = {
+  for_range: { type: "cz_repeat", inputs: { COUNT: num(3), DO: stepOne } },
+  while: { type: "cz_while", inputs: { COND: { block: { type: "cz_not", inputs: { A: sensor("is_blocked") } } }, DO: stepOne } },
+  if: { type: "cz_if", inputs: { COND: sensor("item_here"), DO: { block: { type: "cz_grab" } } } },
+  if_else: { type: "cz_if_else", inputs: { COND: sensor("is_blocked"), DO: { block: { type: "cz_turn_left" } }, ELSE: stepOne } },
+};
+const galleryState = (key) => structuredClone(GALLERY_EXAMPLES[key] || PALETTE[key]);
+
+export const GALLERY_GROUPS = ["motion", "action", "trick", "say", "loop", "logic", "sensor", "variable", "math", "text", "list", "func", "error", "note"];
+
+// Every palette entry as the gallery shows it: built in an invisible workspace from the very
+// toolbox entry the palette uses, so its words, colour and tooltip are the palette's, and its
+// IR (for the code side, printed by the engine) is what the block becomes in a program.
+// `names`: the animal's command names ({"grab": "catch"}). A value block (a number, `a + 1`)
+// becomes an expression statement, so it prints as the expression alone.
+export function galleryEntries(names = {}) {
+  defineBlocks();
+  const workspace = new Blockly.Workspace();
+  const entries = [];
+  try {
+    for (const [key, entry] of Object.entries(PALETTE)) {
+      let block;
+      try {
+        block = Blockly.serialization.blocks.append({ ...galleryState(key), id: `g_${key}` }, workspace, { recordUndo: false });
+      } catch {
+        continue; // a block this build doesn't define
+      }
+      const statement = !block.outputConnection;
+      const stmts = statement
+        ? [blockToStmt(block, names)].filter(Boolean)
+        : [{ type: "ExprStmt", id: `g_${key}.expr`, value: exprOf(block, names) }];
+      const tooltip = String(typeof block.getTooltip === "function" ? block.getTooltip() : block.tooltip || "");
+      const [python, meaning] = tooltip.includes(" · ") ? [tooltip.slice(0, tooltip.lastIndexOf(" · ")), tooltip.slice(tooltip.lastIndexOf(" · ") + 3)] : ["", tooltip];
+      entries.push({
+        key,
+        type: block.type,
+        statement,
+        colour: block.getColour(),
+        family: FAMILY_OF_COLOUR[String(block.getColour()).toLowerCase()] || "note",
+        words: block.toString(undefined, "…").replace(/\s+/g, " ").trim(), // "…": an empty socket
+        python,
+        meaning,
+        stmts,
+      });
+    }
+  } finally {
+    workspace.dispose();
+  }
+  return entries;
+}
+
+// One real block, drawn read-only, for the gallery's card.
+export function createPreview(container) {
+  defineBlocks();
+  const workspace = Blockly.inject(container, {
+    readOnly: true,
+    theme: currentTheme(),
+    renderer: "zelos",
+    media: "vendor/blockly/media/",
+    sounds: false,
+    move: { scrollbars: false, drag: false, wheel: false },
+    zoom: { controls: false, startScale: 0.9 },
+  });
+  return {
+    show(key) {
+      workspace.setTheme(currentTheme());
+      workspace.clear();
+      if (!PALETTE[key]) return;
+      Blockly.Events.disable();
+      try {
+        Blockly.serialization.blocks.append({ ...galleryState(key), x: 10, y: 10 }, workspace);
+      } finally {
+        Blockly.Events.enable();
+      }
+      // the box as tall as the block (a loop with its example is taller than `step`)
+      const block = workspace.getTopBlocks()[0];
+      const height = block ? block.getHeightWidth().height * workspace.scale : 60;
+      container.style.height = container.style.minHeight = `${Math.min(Math.max(height + 22, 64), 280)}px`;
+      Blockly.svgResize(workspace);
+    },
+    resize() {
+      Blockly.svgResize(workspace);
+    },
+  };
 }
 
 // What a block says when it is read aloud: "Step 3", "Repeat 4 times".

@@ -733,6 +733,50 @@ html[data-cub="true"] .modes { display: none; }
   max-height: calc(100vh - 32px);
 }
 .dialog.wide { width: min(54rem, calc(100vw - 32px)); }
+/* 📖 the block and command gallery (gallery.js): a list of groups beside one card */
+.dialog.block-gallery { width: min(60rem, calc(100vw - 32px)); height: min(40rem, calc(100vh - 32px)); padding: 0.9rem 1rem; }
+.dialog.block-gallery[open] { display: flex; flex-direction: column; }
+.gallery-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+.dialog .gallery-head h2 { margin: 0; font-size: 1.2rem; white-space: nowrap; }
+.dialog .gallery-search { flex: 0 1 16rem; min-width: 0; }
+.gallery-close { min-width: 2.4rem; margin-left: auto; } /* ✕ at the dialog's right edge */
+.gallery-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(14rem, 2fr) 3fr; gap: 0.9rem; }
+.gallery-list { overflow: auto; padding-right: 4px; }
+.gallery-list h3 { margin: 0.3rem 0; font-size: 0.95rem; }
+.gallery-section.later { opacity: 0.75; }
+.gallery-group h4 { margin: 0.6rem 0 0.25rem; font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 0.4em; }
+.gallery-group h4::before { content: ""; width: 0.8em; height: 0.8em; border-radius: 3px; background: var(--c); }
+.gallery-item {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%; text-align: left; margin: 2px 0;
+  padding: 3px 6px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text);
+}
+.gallery-item:hover { background: color-mix(in srgb, var(--c) 12%, transparent); }
+.gallery-item.selected { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.gallery-chip {
+  flex: 0 0 auto; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--c); color: #fff; font-weight: 600; font-size: 0.85em; padding: 2px 8px; border-radius: 6px 6px 6px 2px;
+}
+.gallery-code { font-family: var(--code-font); font-size: 0.85em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gallery-card { overflow: auto; border-left: 1px solid var(--border); padding-left: 0.9rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.gallery-card h3 { margin: 0; display: flex; align-items: center; gap: 0.4em; }
+.gallery-card h3::before { content: ""; width: 0.9em; height: 0.9em; border-radius: 3px; background: var(--c); }
+.gallery-card > * { flex-shrink: 0; } /* the card scrolls; its parts keep their size */
+.gallery-block { height: 8rem; min-height: 8rem; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; }
+.gallery-python {
+  margin: 0; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 0.6rem; background: var(--bg);
+  font: calc(1rem * var(--zoom, 1))/1.5 var(--code-font); white-space: pre; overflow: auto;
+}
+.gallery-meaning { margin: 0; }
+.gallery-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.gallery-why { color: var(--muted); font-size: 0.9em; }
+.gallery-wait { color: var(--muted); }
+@media (max-width: 640px) {
+  .dialog.block-gallery { height: calc(100dvh - 24px); max-height: none; padding: 0.7rem; }
+  .gallery-body { grid-template-columns: 1fr; grid-template-rows: minmax(8rem, 40%) 1fr; }
+  .gallery-card { border-left: 0; border-top: 1px solid var(--border); padding: 0.6rem 0 0; }
+  .dialog .gallery-head h2 { font-size: 1rem; }
+}
+html[data-cub="true"] .gallery-open { display: none; }
 .dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .dialog h2 { margin: 0 0 0.8rem; }
 .dialog h3 { margin: 1rem 0 0.5rem; font-size: 1.05rem; }

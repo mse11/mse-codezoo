@@ -11,6 +11,7 @@ import { createWorkspace, describeBlock } from "./blocks.js";
 import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
 import { setupDebugSwitches, Watch, WatchBar } from "./debug.js";
+import { Gallery } from "./gallery.js";
 import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
 import { lockLook, openLook, setupThemeButton } from "./look.js";
@@ -1447,6 +1448,44 @@ function setTyping(on) {
   code.setEditable(on);
 }
 $("edit-code").addEventListener("click", () => setTyping($("edit-code").getAttribute("aria-pressed") !== "true"));
+
+// 📖 the block and command gallery (gallery.js), from the Blocks pane or the Python pane
+const gallery = new Gallery($("block-gallery"), {
+  context: () => ({
+    names: state.level?.pack.actions || {},
+    unlocked: state.level?.unlockedBlocks || [],
+    typing: $("edit-code").getAttribute("aria-pressed") === "true",
+  }),
+  onUse(entry, typing) {
+    if (typing) {
+      // the code at the cursor, on a line of its own, indented like the line it goes into
+      const area = $("code");
+      const before = area.value.slice(0, area.selectionStart);
+      const lineStart = before.lastIndexOf("\n") + 1;
+      const indent = before.slice(lineStart).match(/^\s*/)[0];
+      const atLineStart = before.slice(lineStart).trim() === "";
+      const text = entry.code.split("\n").map((line, i) => (i ? indent + line : line)).join("\n");
+      area.focus();
+      area.setRangeText(atLineStart ? `${text}\n${indent}` : `\n${indent}${text}`, area.selectionStart, area.selectionEnd, "end");
+      area.dispatchEvent(new Event("input"));
+      return true;
+    }
+    return blocks.addEntry(entry.key);
+  },
+});
+for (const button of document.querySelectorAll(".gallery-open")) {
+  button.addEventListener("click", () => {
+    if (button.dataset.gallery === "blocks") {
+      gallery.open({ from: "blocks", key: blocks.selectedEntry() });
+    } else {
+      // the word at the cursor in the code, if it names a block
+      const area = $("code");
+      const at = area.selectionStart;
+      const word = (area.value.slice(0, at).match(/\w+$/)?.[0] || "") + (area.value.slice(at).match(/^\w*/)?.[0] || "");
+      gallery.open({ from: "code", word: /^[A-Za-z_]\w*$/.test(word) ? word : null });
+    }
+  });
+}
 renderWatch();
 $("level-select").addEventListener("change", (event) => loadLevel(event.target.value));
 $("player").addEventListener("click", () => players.choose());

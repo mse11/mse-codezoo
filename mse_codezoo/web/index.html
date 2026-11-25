@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CodeZoo</title>
+  <!-- the saved colours and text size, before the first paint (no light flash) -->
+  <script src="early-look.js"></script>
   <link rel="stylesheet" href="style.css">
   <!-- Blockly 13.3.0 and three.js r170, vendored for offline use (see vendor/*/README.md) -->
   <script src="vendor/blockly/blockly.min.js"></script>
@@ -84,6 +86,7 @@
     <section class="pane blocks-pane" data-pane="blocks" aria-label="Blocks" data-i18n-label="Blocks">
       <div class="pane-title">
         <span data-i18n>Blocks</span>
+        <button type="button" class="pane-switch gallery-open" data-gallery="blocks" data-i18n-title="Blocks and commands" aria-label="Blocks and commands" data-i18n-label="Blocks and commands">📖</button>
         <button type="button" class="pane-bug bug-button" data-debug="blocks" aria-pressed="false">🐞</button>
       </div>
       <div id="blockly" class="blockly"></div>
@@ -95,6 +98,7 @@
     <section class="pane code-pane" data-pane="code" aria-label="Code" data-i18n-label="Code">
       <div class="pane-title">
         <span>Python</span>
+        <button type="button" class="pane-switch gallery-open" data-gallery="code" data-i18n-title="Blocks and commands" aria-label="Blocks and commands" data-i18n-label="Blocks and commands">📖</button>
         <button type="button" class="pane-bug bug-button" data-debug="code" aria-pressed="false">🐞</button>
         <button type="button" id="edit-code" class="pane-switch" aria-pressed="false" data-i18n-title="let me type" aria-label="let me type" data-i18n-label="let me type">✏️</button>
       </div>
@@ -123,6 +127,8 @@
       <section id="watch" class="watch" aria-label="Variables" data-i18n-label="Variables" hidden></section>
     </section>
   </main>
+
+  <dialog id="block-gallery" class="dialog block-gallery"></dialog>
 
   <dialog id="player-dialog" class="dialog" aria-labelledby="player-title">
     <h2 id="player-title" data-i18n>Who's playing?</h2>
