@@ -215,11 +215,28 @@ def test_the_code_panes_colour_python_in_the_colours_of_the_blocks():
     colours = dict(re.findall(r"^  (\w+): \"(#[0-9A-Fa-f]{6})\",$", blocks, re.MULTILINE))
     css = (WEB / "style.css").read_text(encoding="utf-8")
     dark = css[css.index(':root[data-theme="dark"] {\n  --blk-motion') :]
-    for family in ("motion", "action", "say", "sensor", "loop", "logic", "variable", "math", "trick", "note"):
+    for family in (
+        "motion",
+        "action",
+        "say",
+        "sensor",
+        "loop",
+        "logic",
+        "variable",
+        "math",
+        "trick",
+        "note",
+    ):
         assert f".syn-{family} {{ color: var(--blk-{family});" in css, family
         # the dark theme uses the very colours of the blocks
         assert f"--blk-{family}: {colours[family]};" in dark, family
-    for word, family in (("step", "motion"), ("grab", "action"), ("for", "loop"), ("if", "logic"), ("print", "say")):
+    for word, family in (
+        ("step", "motion"),
+        ("grab", "action"),
+        ("for", "loop"),
+        ("if", "logic"),
+        ("print", "say"),
+    ):
         assert re.search(rf'{family}: \[[^\]]*"{word}"', syntax), word
     code = (WEB / "code.js").read_text(encoding="utf-8")
     assert "setCommandNames(actions)" in code  # the penguin's catch() is coloured like grab

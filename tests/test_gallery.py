@@ -72,3 +72,35 @@ def test_group_names_and_texts_have_slovak():
     assert len(names) >= 10
     for text in names:
         assert f'"{text}":' in I18N, text
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'for fruit in ["apple", "pear"]:\n    say(fruit)\n',
+        "def hop():\n    step(1)\n    grab()\n",
+        'class Dog:\n    def bark(self):\n        say("Woof!")\n',
+    ],
+)
+def test_more_example_code_is_what_the_printer_prints(source):
+    parsed = parse(source)
+    assert parsed.ok
+    assert print_program(parsed.program).text == source
+
+
+def test_examples_cover_the_blocks_with_room_inside():
+    body = BLOCKS[BLOCKS.index("const GALLERY_EXAMPLES = {") :]
+    body = body[: body.index("\n};")]
+    for key in ("for_range", "while", "if", "if_else", "for_each", "def", "try", "class"):
+        assert re.search(rf"^  {key}: \{{", body, re.M), key
+
+
+def test_each_block_knows_the_module_that_unlocks_it():
+    from mse_codezoo.game import block_modules, level_to_json
+    from mse_codezoo.levels import find_level
+
+    modules = block_modules()
+    assert modules["step"] == 1 and modules["for_range"] == 2 and modules["set"] == 3
+    assert modules["while"] == 6 and modules["def"] == 7 and modules["class"] == 11
+    assert level_to_json(find_level("m01-l01"))["blockModules"] == modules
+    assert "This one unlocks in module {n}." in GALLERY and '"Module {n}"' in I18N

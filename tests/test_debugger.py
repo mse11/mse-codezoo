@@ -130,3 +130,41 @@ def test_page_has_both_views():
     assert "setValues" in code and "step-arrow" in code and "trail" not in code
     blocks = (WEB / "blocks.js").read_text(encoding="utf-8")
     assert "stepMarks" in blocks and "highlightBlock" not in blocks
+
+
+# --- the first debugger level (module 1) ---------------------------------------------
+
+
+def test_module_one_has_a_level_about_the_debugger():
+    from mse_codezoo.game import level_to_json, run_level
+    from mse_codezoo.levels import find_level
+
+    level = find_level("m01-l07b")
+    assert level.debug is True and "debugging" in level.concepts
+    data = level_to_json(level)
+    assert data["debug"] is True
+    # the program counts its steps in `a`, but stops one square short: the debugger shows it
+    run = run_level(level, level.starter, watch=True)
+    assert not run.check.solved
+    seen = replay([step.scope for step in run.result.steps])
+    assert seen[-1][0] == {"a": "4"}
+    assert "a" in level.starter and "say(f" in level.starter
+
+
+def test_debug_must_be_true_or_false(tmp_path):
+    import json as json_module
+
+    from mse_codezoo.levels import validate_level
+
+    data = {
+        "id": "x-l01",
+        "module": "sequences",
+        "concepts": ["call"],
+        "world": {"tiles": ["..B"], "start": [0, 0, "east"]},
+        "goal": {"type": "collect_all", "item": "B"},
+        "debug": "yes",
+    }
+    path = tmp_path / "l01.json"
+    path.write_text(json_module.dumps(data), encoding="utf-8")
+    (tmp_path / "l01.solution.py").write_text("step(2)\ngrab()\n", encoding="utf-8")
+    assert "debug must be true or false" in validate_level(path).errors

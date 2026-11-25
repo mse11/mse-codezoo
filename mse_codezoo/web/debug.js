@@ -59,7 +59,14 @@ export function setupDebugSwitches(main, paneButtons, onChange) {
     button.addEventListener("click", () => set({ ...state, [button.dataset.debug]: !state[button.dataset.debug] }));
   }
   show();
-  return { get: () => state, relabel: show };
+  return {
+    get: () => state,
+    relabel: show,
+    // a level about the debugger opens with every pane's 🐞 on (the child can switch them off)
+    turnAllOn() {
+      if (PANES.some((pane) => !state[pane])) set(Object.fromEntries(PANES.map((pane) => [pane, true])));
+    },
+  };
 }
 
 const MAX_LINE_TEXT = 48;

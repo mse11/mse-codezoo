@@ -365,6 +365,33 @@ def world_to_json(spec: dict[str, Any], pack: Pack) -> dict[str, Any]:
     return {**world.to_dict(), "walls": sorted([x, y] for x, y in world.walls)}
 
 
+# "m03-l01" -> 3; cub and other levels have no module number
+_MODULE_NUMBER = re.compile(r"^m(\d+)-")
+_block_modules: dict[str, int] | None = None
+
+
+def block_modules() -> dict[str, int]:
+    """The module whose levels first unlock each block (palette name -> module number), for
+    the gallery's "unlocks in module N". Read once from the bundled levels."""
+    global _block_modules
+    if _block_modules is None:
+        from mse_codezoo.levels import LevelError, level_files, load_level
+
+        found: dict[str, int] = {}
+        for path in level_files():
+            try:
+                level = load_level(path)
+            except LevelError:
+                continue
+            match = _MODULE_NUMBER.match(level.id)
+            if not match or level.cub:
+                continue
+            for block in level.unlocked_blocks:
+                found[block] = min(found.get(block, 99), int(match[1]))
+        _block_modules = found
+    return _block_modules
+
+
 def level_to_json(
     level: Level, animal: str | None = None, python: tuple[int, int] | None = None
 ) -> dict[str, Any]:
@@ -399,6 +426,8 @@ def level_to_json(
         "unlockedBlocks": level.unlocked_blocks,
         "starter": reskin_source(level.starter, own, pack),
         "cub": level.cub,
+        "debug": level.debug,
+        "blockModules": block_modules(),  # the gallery's "unlocks in module N"
         "predict": reskin_source(predict_program(level), own, pack)
         if level.cub == "predict"
         else "",

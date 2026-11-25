@@ -1,0 +1,47 @@
+{
+  "id": "m01-l07b",
+  "title": "Watch it count",
+  "module": "sequences",
+  "concepts": [
+    "call",
+    "debugging"
+  ],
+  "animal": "monkey",
+  "debug": true,
+  "world": {
+    "tiles": [
+      ".....B"
+    ],
+    "start": [
+      0,
+      0,
+      "east"
+    ]
+  },
+  "goal": {
+    "type": "collect_all",
+    "item": "B"
+  },
+  "unlockedBlocks": [
+    "step",
+    "grab",
+    "say"
+  ],
+  "starter": "a = 0\nsay(f\"a equal {a}\")\nstep(1)\na = a + 1\nsay(f\"a equal {a}\")\nstep(1)\na = a + 1\nsay(f\"a equal {a}\")\nstep(1)\na = a + 1\nsay(f\"a equal {a}\")\nstep(1)\na = a + 1\nsay(f\"a equal {a}\")\ngrab()\n",
+  "hints": [
+    "The bug 🐞 is on: press Step (not Run) and watch the line with ▶ and the number a under the console.",
+    "a counts the steps the monkey takes. When it reaches the end, what does a say, and how many squares away is the {B}?",
+    "The {B} is 5 squares away, but the monkey counts only to 4. Add one more step(1) before grab()."
+  ],
+  "mode": "blocks_only",
+  "i18n": {
+    "sk": {
+      "title": "Sleduj, ako počíta",
+      "hints": [
+        "Chrobák 🐞 je zapnutý: stláčaj Krok (nie Spusti) a sleduj riadok so ▶ a číslo a pod konzolou.",
+        "a počíta kroky opičky. Keď dôjde na koniec, koľko hovorí a a koľko políčok je {B} ďaleko?",
+        "{B} je 5 políčok ďaleko, ale opička napočíta len do 4. Pridaj ešte jeden step(1) pred grab()."
+      ]
+    }
+  }
+}

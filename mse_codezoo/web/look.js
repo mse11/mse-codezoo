@@ -8,6 +8,7 @@ import { canSpeak, speak } from "./speech.js";
 import { resetAllZoom } from "./zoom.js";
 
 const KEY = "codezoo.look";
+const LOCK_KEY = "codezoo.look.locked"; // the teacher's colours (early-look.js)
 const DEFAULTS = {
   text: "normal", easy: false, contrast: false, motion: "system", targets: false, read: false, sounds: true,
   theme: "system", // colours: "system" (as the device), "light" or "dark"
@@ -35,6 +36,15 @@ export function look() {
 export function lockLook(next) {
   const merged = { ...locked, ...next };
   locked = Object.fromEntries(Object.entries(merged).filter(([, value]) => value !== null && value !== undefined));
+  // the teacher's colours are remembered on this device, so early-look.js can put them on
+  // the next page before it is drawn (no flash of the child's own colours first). Pages
+  // from the hub have the hub's own address, so this never reaches the child's own zoo.
+  try {
+    if (locked.theme) localStorage.setItem(LOCK_KEY, JSON.stringify({ theme: locked.theme }));
+    else localStorage.removeItem(LOCK_KEY);
+  } catch {
+    // storage blocked: the lock comes a moment after the page loads, as before
+  }
   applyLook();
 }
 

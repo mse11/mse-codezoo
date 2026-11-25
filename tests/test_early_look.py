@@ -30,3 +30,10 @@ def test_it_reads_what_look_js_saves():
             attribute
         )
     assert "import " not in early and "export " not in early  # a plain script
+
+
+def test_a_theme_locked_by_the_teacher_wins_before_the_first_paint():
+    early = (WEB / "early-look.js").read_text(encoding="utf-8")
+    look = (WEB / "look.js").read_text(encoding="utf-8")
+    assert 'const LOCK_KEY = "codezoo.look.locked"' in look and '"codezoo.look.locked"' in early
+    assert "localStorage.removeItem(LOCK_KEY)" in look  # unlocked: forgotten again

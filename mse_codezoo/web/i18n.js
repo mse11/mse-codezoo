@@ -224,6 +224,8 @@ const SK = {
   "Write it in my code": "Napíš to do môjho kódu",
   "Add it to my program": "Pridaj to do môjho programu",
   "This one unlocks in a later level.": "Tento sa odomkne v neskoršom leveli.",
+  "This one unlocks in module {n}.": "Tento sa odomkne v module {n}.",
+  "Module {n}": "Modul {n}",
   "This block goes into a socket of another block, so it can't stand on its own.": "Tento blok sa vkladá do otvoru iného bloku, sám stáť nemôže.",
   "Moving": "Pohyb",
   "Actions": "Akcie",

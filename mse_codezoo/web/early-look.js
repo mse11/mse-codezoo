@@ -5,11 +5,15 @@
 // keep the two in step (the same storage key and attribute values as applyLook()).
 (function () {
   var settings = {};
+  var locked = {};
   try {
     settings = JSON.parse(localStorage.getItem("codezoo.look") || "{}") || {};
+    // colours a classroom's teacher set for this device win (look.js lockLook keeps them)
+    locked = JSON.parse(localStorage.getItem("codezoo.look.locked") || "{}") || {};
   } catch (e) {
     // storage blocked: the device's own colours, as without a saved choice
   }
+  if (locked.theme) settings.theme = locked.theme;
   var root = document.documentElement;
   if (settings.theme === "light" || settings.theme === "dark") root.dataset.theme = settings.theme;
   root.dataset.text = settings.text || "normal";

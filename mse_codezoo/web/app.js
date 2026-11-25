@@ -743,6 +743,7 @@ async function showLevel(level) {
   showDiagnostics([]);
   const typing = level.mode === "both_editable" || level.mode === "code_first";
   setTyping(typing);
+  if (level.debug && !state.cub) debugSwitches.turnAllOn(); // a level about the debugger (m01-l07b)
   blocks.setPalette(level.unlockedBlocks);
   await loadProgram(level.cub === "predict" ? level.predict : level.starter);
   blocks.resize();
@@ -1454,6 +1455,7 @@ const gallery = new Gallery($("block-gallery"), {
   context: () => ({
     names: state.level?.pack.actions || {},
     unlocked: state.level?.unlockedBlocks || [],
+    modules: state.level?.blockModules || {},
     typing: $("edit-code").getAttribute("aria-pressed") === "true",
   }),
   onUse(entry, typing) {

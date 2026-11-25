@@ -68,7 +68,8 @@ async function printEntries(entries) {
 }
 
 export class Gallery {
-  // context(): {names, unlocked: [palette keys], typing: bool}; onUse(entry, typing) adds it
+  // context(): {names, unlocked: [palette keys], modules: {key: module number}, typing: bool};
+  // onUse(entry, typing) adds it
   constructor(dialog, { context, onUse }) {
     this.dialog = dialog;
     this.context = context;
@@ -98,10 +99,13 @@ export class Gallery {
 
   async open({ from = "blocks", key = null, word = null } = {}) {
     this.from = from;
-    const { names, unlocked } = this.context();
+    const { names, unlocked, modules = {} } = this.context();
     const open = new Set(unlocked || []);
     const everything = galleryEntries(names);
-    for (const entry of everything) entry.unlocked = !open.size || open.has(entry.key);
+    for (const entry of everything) {
+      entry.unlocked = !open.size || open.has(entry.key);
+      entry.module = modules[entry.key] || null; // the module that unlocks it
+    }
     // other animals' tricks are not this level's business
     this.entries = everything.filter((e) => e.unlocked || !TRICKS.has(e.key));
     this.title.textContent = `📖 ${t("Blocks and commands")}`;
@@ -156,9 +160,12 @@ export class Gallery {
       );
     };
     const shown = this.entries.filter((e) => this.matches(e, query));
+    // later ones by the module that unlocks them ("Module 6"), in order; unknown ones last
+    const later = shown.filter((e) => !e.unlocked);
+    const modules = [...new Set(later.map((e) => e.module))].sort((a, b) => (a ?? 99) - (b ?? 99));
     const parts = [
       section(t("In this level"), shown.filter((e) => e.unlocked), false),
-      section(`🔒 ${t("Later")}`, shown.filter((e) => !e.unlocked), true),
+      ...modules.map((n) => section(`🔒 ${n ? t("Module {n}", { n }) : t("Later")}`, later.filter((e) => e.module === n), true)),
     ].filter(Boolean);
     this.list.replaceChildren(...(parts.length ? parts : [make("p", { class: "gallery-wait" }, t("Nothing found."))]));
   }
@@ -171,6 +178,7 @@ export class Gallery {
       make("span", { class: "gallery-chip" }, entry.words || entry.key),
       make("code", { class: "gallery-code" }, first),
     );
+    if (!entry.unlocked) button.title = entry.module ? t("This one unlocks in module {n}.", { n: entry.module }) : t("This one unlocks in a later level.");
     button.addEventListener("click", () => this.select(entry.key));
     return button;
   }
@@ -191,7 +199,9 @@ export class Gallery {
       if (this.onUse(entry, typing)) this.dialog.close();
     });
     const why = !entry.unlocked
-      ? t("This one unlocks in a later level.")
+      ? entry.module
+        ? t("This one unlocks in module {n}.", { n: entry.module })
+        : t("This one unlocks in a later level.")
       : !canUse
         ? t("This block goes into a socket of another block, so it can't stand on its own.")
         : "";

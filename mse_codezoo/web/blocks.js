@@ -908,6 +908,36 @@ const GALLERY_EXAMPLES = {
   while: { type: "cz_while", inputs: { COND: { block: { type: "cz_not", inputs: { A: sensor("is_blocked") } } }, DO: stepOne } },
   if: { type: "cz_if", inputs: { COND: sensor("item_here"), DO: { block: { type: "cz_grab" } } } },
   if_else: { type: "cz_if_else", inputs: { COND: sensor("is_blocked"), DO: { block: { type: "cz_turn_left" } }, ELSE: stepOne } },
+  for_each: {
+    type: "cz_for_each",
+    fields: { VAR: "fruit" },
+    inputs: {
+      LIST: { block: { type: "cz_list", inputs: { A: txt("apple"), B: txt("pear") } } },
+      DO: { block: { type: "cz_say", inputs: { TEXT: { block: { type: "cz_var", fields: { NAME: "fruit" } } } } } },
+    },
+  },
+  def: {
+    type: "cz_def",
+    fields: { NAME: "hop", PARAMS: "" },
+    inputs: { DO: { block: { type: "cz_step", inputs: { N: num(1) }, next: { block: { type: "cz_grab" } } } } },
+  },
+  try: {
+    type: "cz_try",
+    inputs: { DO: stepOne, EXCEPT: { block: { type: "cz_say", inputs: { TEXT: txt("Oops!") } } } },
+  },
+  class: {
+    type: "cz_class",
+    fields: { NAME: "Dog", BASES: "" },
+    inputs: {
+      DO: {
+        block: {
+          type: "cz_def",
+          fields: { NAME: "bark", PARAMS: "self" },
+          inputs: { DO: { block: { type: "cz_say", inputs: { TEXT: txt("Woof!") } } } },
+        },
+      },
+    },
+  },
 };
 const galleryState = (key) => structuredClone(GALLERY_EXAMPLES[key] || PALETTE[key]);
 

@@ -79,6 +79,8 @@ class Level:
     i18n: dict[str, dict[str, Any]] = field(default_factory=dict)  # lang -> title, hints
     min_python: tuple[int, int] | None = None  # a release island: "minPython": "3.12"
     cub: str | None = None  # Cub mode step: "predict", "fix" or "make" (CUB_STEPS)
+    # a level about the debugger: the page turns the 🐞 switches on when it opens
+    debug: bool = False
     path: Path | None = None
 
     def _text(self, key: str, default: Any) -> Any:
@@ -132,6 +134,7 @@ class Level:
             i18n=dict(data.get("i18n", {})),
             min_python=parse_version(data.get("minPython")),
             cub=data.get("cub"),
+            debug=data.get("debug") is True,
             path=path,
         )
 
@@ -286,6 +289,8 @@ def validate_level_data(
     elif starter and not parse(starter).ok:
         report.errors.append("starter is not valid Python")
     report.errors += _cub_errors(data)
+    if "debug" in data and not isinstance(data["debug"], bool):
+        report.errors.append("debug must be true or false")
 
     animal = data.get("animal", DEFAULT_ANIMAL)
     if not (ANIMALS_DIR / animal / "pack.json").is_file():
