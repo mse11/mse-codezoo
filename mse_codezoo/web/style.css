@@ -227,6 +227,54 @@ select {
 .console-empty { margin: 0; padding: 8px 10px; color: var(--muted); font-size: calc(0.9rem * var(--zoom, 1)); }
 .console .fresh { background: var(--mark-run); border-radius: 3px; transition: background 1.2s ease; }
 html[data-motion="reduce"] .console .fresh { transition: none; }
+/* the Variables bar under the console (debug.js) */
+.watch {
+  flex: 0 1 auto;
+  max-height: 60%;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  padding: 6px 10px 10px;
+  font-size: calc(0.9rem * var(--zoom, 1));
+}
+.watch-head { display: flex; align-items: center; gap: 6px; }
+.watch-title { font-weight: 700; margin-right: auto; white-space: nowrap; }
+.watch-head { flex-wrap: wrap; }
+.watch-count { color: var(--muted); font-size: 0.9em; white-space: nowrap; }
+.watch-head button { min-width: 2.2em; padding: 2px 6px; }
+.watch-note { margin: 6px 0; font-family: var(--code-font); overflow-wrap: anywhere; }
+.watch-note.error { color: var(--err); }
+.watch-note.hint { font-family: inherit; color: var(--muted); }
+.watch-next-line { display: block; color: var(--accent); }
+.watch h3 { margin: 8px 0 2px; font-size: 0.85em; color: var(--muted); font-weight: 600; }
+.watch-calls { font-family: var(--code-font); font-size: 0.9em; color: var(--muted); }
+.watch-none { margin: 0; color: var(--muted); font-style: italic; }
+.watch-table { border-collapse: collapse; width: 100%; font-family: var(--code-font); }
+.watch-table th, .watch-table td { text-align: left; padding: 1px 6px; vertical-align: top; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.watch-table th { color: var(--blk-variable); font-weight: 600; width: 1%; white-space: nowrap; }
+.watch-table td { overflow-wrap: anywhere; }
+.watch-table tr.changed td, .watch-table tr.changed th { background: var(--mark-run); }
+html[data-motion="reduce"] .watch-table tr { transition: none; }
+/* 🐞 switches (debug.js): in the top bar and each pane's title */
+/* ✏️ "let me type" in the Python title works the same way */
+.pane-bug, .pane-switch { padding: 0 0.35em; min-width: 1.8em; min-height: 1.8em; height: 1.8em; font-size: 1em; line-height: 1; border-radius: 6px; }
+/* like 🎵 / 🔇: on, the icon in its own colours; off, faded and crossed out */
+.bug-button, .pane-switch { position: relative; }
+.bug-button[aria-pressed="false"], .pane-switch[aria-pressed="false"] { opacity: 0.75; }
+.bug-button[aria-pressed="false"]::after, .pane-switch[aria-pressed="false"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.25em;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--err);
+  box-shadow: 0 0 0 1px var(--panel);
+  transform: translate(-50%, -50%) rotate(45deg); /* "\": across the pencil too, not along it */
+  pointer-events: none;
+}
+html[data-cub="true"] .bug-button { display: none; }
+html:not([data-debug-blocks="true"]) .block-line { display: none; }
 /* Cub mode doesn't print: two panes, as before */
 html[data-cub="true"] .console-pane, html[data-cub="true"] #split-console { display: none; }
 html[data-cub="true"] .panes {
@@ -263,9 +311,6 @@ html[data-cub="true"] .panes {
   font-weight: 600;
   line-height: 1;
 }
-/* "let me type": as big as the title bar it sits in, so it grows with the pane's zoom */
-.edit-toggle { font-weight: 500; font-size: 1em; color: var(--text); display: flex; gap: 0.4em; align-items: center; cursor: pointer; white-space: nowrap; }
-.edit-toggle input { width: 1.15em; height: 1.15em; margin: 0; accent-color: var(--accent); cursor: pointer; }
 
 /* the goal on the left, how the last run went on the right: the stage keeps its height */
 .stage-head {
@@ -435,7 +480,25 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 .result ul { margin: 0.2rem 0; padding-left: 1.2rem; color: var(--muted); }
 .result .printed { font-family: var(--code-font); white-space: pre-wrap; margin: 0.3rem 0 0; }
 
-.blockly { flex: 1; min-height: 280px; }
+.blockly { flex: 1; min-height: 280px; position: relative; }
+/* beside each block: its code line and the step arrows (blocks.js stepMarks) */
+.block-marks { position: absolute; top: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.block-tag {
+  position: absolute;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font: 600 calc(0.72rem * var(--zoom, 1))/1 var(--code-font);
+  white-space: nowrap;
+}
+.block-line { color: var(--muted); background: var(--panel); border-radius: 4px; padding: 1px 3px; }
+.block-line:empty { display: none; }
+.block-arrow { color: var(--accent); font-size: 0.95em; }
+.block-tag.next .block-line { color: var(--text); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.block-tag.next.error .block-arrow { color: var(--err); }
+.block-tag.next.error .block-line { box-shadow: inset 0 0 0 1.5px var(--err); }
+html[data-cub="true"] .block-line { display: none; }
 /* Editing a number or text on a block: the editor sits over the block's white field, so it
    stays light in dark mode too (color-scheme: dark would paint it black, and the selected
    text would hardly show). */
@@ -462,6 +525,7 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
   overflow: hidden;
   user-select: none;
   min-width: 2.6rem;
+  padding-left: 1.1rem; /* room for the step arrows */
   font: inherit;
 }
 
@@ -557,6 +621,22 @@ html[data-contrast="true"] {
 }
 
 .line-mark.error { background: var(--mark-err); }
+/* the debugger (debug.js): the line that ran just before, and values beside the code */
+/* the step arrow left of the line numbers: ▶ on the line that runs next, as in an IDE */
+.code { position: relative; }
+.step-arrow { position: absolute; left: 3px; font-size: 0.7em; pointer-events: none; color: var(--accent); }
+.step-arrow.error { color: var(--err); }
+.code-values { position: absolute; inset: 0; overflow: hidden; pointer-events: none; font: inherit; }
+.code-value {
+  position: absolute;
+  white-space: pre;
+  padding: 0 0.45em;
+  border-radius: 6px;
+  font-size: 0.85em;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--blk-variable) 10%, transparent);
+}
+.code-value.now { color: var(--text); background: color-mix(in srgb, var(--blk-variable) 22%, transparent); font-weight: 600; }
 
 .diagnostics { margin: 0; padding: 0.4rem 0.8rem 0.6rem 1.8rem; font-size: 0.9rem; border-top: 1px solid var(--border); }
 .diagnostics:empty { display: none; }
@@ -939,7 +1019,7 @@ html[data-cub="true"] .cub-levels {
 .cub-level[aria-current="true"] .cub-stars { color: var(--accent-text); }
 /* what a cub doesn't need: the level list to read, Python releases, typing, the editor */
 html[data-cub="true"] #level-select, html[data-cub="true"] #python-select,
-html[data-cub="true"] .edit-toggle, html[data-cub="true"] .editor-link { display: none; }
+html[data-cub="true"] #edit-code, html[data-cub="true"] .editor-link { display: none; }
 html[data-cub="true"] .goal h2 { font-size: 1.5em; }
 .cub-goal { font-size: 1.25rem; }
 html[data-cub="true"] button, html[data-cub="true"] select { min-height: 3rem; min-width: 3rem; }

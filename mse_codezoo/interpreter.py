@@ -238,6 +238,9 @@ class Step:
     error: str | None = None
     lane: str | None = None
     time: float | None = None
+    # what the variables look like after this step (only when the runner watches; see
+    # ``Runner._watch``): changes since the step before, so a long run stays small
+    scope: dict[str, Any] | None = None
 
 
 @dataclass
@@ -516,6 +519,42 @@ def _short(value: Any) -> str:
     return text if len(text) <= MAX_NOTE else text[: MAX_NOTE - 3] + "..."
 
 
+MAX_WATCHED = 30  # variables shown per scope in the debugger
+MAX_WATCH_TEXT = 60
+
+
+def _watched(names: dict[str, Any]) -> dict[str, str]:
+    """The learner's own variables and their values as short text, for the debugger:
+    commands, functions, classes and modules are left out (they are not values a child
+    tracks), and so are names starting with ``_``."""
+    shown: dict[str, str] = {}
+    for name, value in names.items():
+        if name.startswith("_") or isinstance(value, type | types.ModuleType | module):
+            continue
+        if callable(value) and not getattr(type(value), "__codezoo__", False):
+            continue
+        text = watch_repr(value)
+        shown[name] = text if len(text) <= MAX_WATCH_TEXT else text[: MAX_WATCH_TEXT - 3] + "..."
+        if len(shown) >= MAX_WATCHED:
+            break
+    return shown
+
+
+def watch_repr(value: Any) -> str:
+    """Like ``safe_repr``, but an object of the learner's own class shows its attributes
+    (``Dog(name='Rex', age=3)``), read straight from the object, so none of its code runs."""
+    if getattr(type(value), "__codezoo__", False) and not isinstance(value, type):
+        attrs = getattr(value, "__dict__", None)
+        if isinstance(attrs, dict):
+            inner = ", ".join(
+                f"{k}={safe_repr(v, 2)}"
+                for k, v in list(attrs.items())[:6]
+                if not k.startswith("_")
+            )
+            return f"{type(value).__name__}({inner})"
+    return safe_repr(value)
+
+
 def safe_repr(value: Any, depth: int = 0) -> str:
     """``repr`` for notes and events, without running any of the learner's own code (a
     class's ``__repr__`` could call itself, or move the animal)."""
@@ -753,6 +792,7 @@ class Runner:
         inputs: list[str] | None = None,
         files: dict[str, str] | None = None,
         gil: bool = True,
+        watch: bool = False,
     ) -> None:
         import random
 
@@ -774,6 +814,10 @@ class Runner:
         self.env: dict[str, Any] = {}
         self.globals = self.env  # the module whose code is running now
         self.frames: list[Frame] = []
+        self.watch = watch  # the debugger: each step carries the variables' values
+        self._seen_globals: dict[str, str] = {}
+        self._seen_locals: dict[str, str] = {}
+        self._seen_frame: tuple[int, ...] = ()
         self.top_current: str | None = None
         self.handling: list[LearnerError] = []  # errors being handled by `except`
         self.events: list[dict[str, Any]] = []  # the interpreter's own: call, return
@@ -894,9 +938,42 @@ class Runner:
         if self.lanes:
             step.lane = self.lane or "main"
             step.time = self.clock
+        if self.watch:
+            step.scope = self._watch()
         self.steps.append(step)
         if self.on_step is not None:
             self.on_step(step)
+
+    def _watch(self) -> dict[str, Any] | None:
+        """The variables for the debugger, as changes since the last step: ``g`` new or
+        changed values in the program's own file scope, ``g-`` names that are gone; ``f``
+        the calls running now (outermost first) whenever they change, then ``l`` holds all
+        of the newest call's variables, otherwise only the changed ones (``l-`` gone)."""
+        scope: dict[str, Any] = {}
+        shown = _watched(self.env)
+        changed = {k: v for k, v in shown.items() if self._seen_globals.get(k) != v}
+        gone = [k for k in self._seen_globals if k not in shown]
+        if changed:
+            scope["g"] = changed
+        if gone:
+            scope["g-"] = gone
+        self._seen_globals = shown
+        calls = [f for f in self.frames if not f.comprehension and not f.is_class]
+        key = tuple(id(f) for f in calls)
+        local = _watched(calls[-1].locals) if calls else {}
+        if key != self._seen_frame:
+            scope["f"] = [f.name for f in calls]
+            if local:
+                scope["l"] = local
+        else:
+            changed = {k: v for k, v in local.items() if self._seen_locals.get(k) != v}
+            gone = [k for k in self._seen_locals if k not in local]
+            if changed:
+                scope["l"] = changed
+            if gone:
+                scope["l-"] = gone
+        self._seen_frame, self._seen_locals = key, local
+        return scope or None
 
     def count_iteration(self) -> None:
         """One more item from a lazy iterator; an endless one stops at the zoo's limit."""
@@ -3246,8 +3323,9 @@ def run(
     inputs: list[str] | None = None,
     files: dict[str, str] | None = None,
     gil: bool = True,
+    watch: bool = False,
 ) -> RunResult:
-    """Run to the end and collect every step.
+    """Run to the end and collect every step (``watch``: with the variables' values).
 
     ``world`` (if given) supplies the actions, the event drain, the answers for
     ``input()``, the files and the GIL setting, and is told about the runner, so tricks
@@ -3271,6 +3349,7 @@ def run(
         inputs=inputs,
         files=files,
         gil=gil,
+        watch=watch,
     )
     if world is not None:
         world.runner = runner

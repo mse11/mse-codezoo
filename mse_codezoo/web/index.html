@@ -29,6 +29,7 @@
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
       <button id="theme" type="button" class="look-button theme-button">🌙</button>
       <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
+      <button id="debug" type="button" class="look-button bug-button" aria-pressed="false">🐞</button>
       <button id="look" type="button" class="look-button" data-i18n-title="Look and feel" aria-label="Look and feel" data-i18n-label="Look and feel">Aa</button>
       <button id="reset-view" type="button" class="look-button" data-i18n-title="Everything back to normal size" aria-label="Everything back to normal size" data-i18n-label="Everything back to normal size"><span aria-hidden="true">⤢</span> 100%</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
@@ -81,7 +82,10 @@
          aria-label="Resize the stage" data-i18n-label="Resize the stage" tabindex="0"></div>
 
     <section class="pane blocks-pane" data-pane="blocks" aria-label="Blocks" data-i18n-label="Blocks">
-      <div class="pane-title"><span data-i18n>Blocks</span></div>
+      <div class="pane-title">
+        <span data-i18n>Blocks</span>
+        <button type="button" class="pane-bug bug-button" data-debug="blocks" aria-pressed="false">🐞</button>
+      </div>
       <div id="blockly" class="blockly"></div>
     </section>
 
@@ -91,7 +95,8 @@
     <section class="pane code-pane" data-pane="code" aria-label="Code" data-i18n-label="Code">
       <div class="pane-title">
         <span>Python</span>
-        <label class="edit-toggle"><input type="checkbox" id="edit-code"> <span data-i18n>let me type</span></label>
+        <button type="button" class="pane-bug bug-button" data-debug="code" aria-pressed="false">🐞</button>
+        <button type="button" id="edit-code" class="pane-switch" aria-pressed="false" data-i18n-title="let me type" aria-label="let me type" data-i18n-label="let me type">✏️</button>
       </div>
       <div class="code">
         <pre id="gutter" class="gutter" aria-hidden="true">1</pre>
@@ -109,9 +114,13 @@
          aria-label="Resize code and console" data-i18n-label="Resize code and console" tabindex="0"></div>
 
     <section class="pane console-pane" data-pane="console" aria-label="Console" data-i18n-label="Console">
-      <div class="pane-title"><span data-i18n>Console</span></div>
+      <div class="pane-title">
+        <span data-i18n>Console</span>
+        <button type="button" class="pane-bug bug-button" data-debug="console" aria-pressed="false">🐞</button>
+      </div>
       <pre id="console" class="console" aria-live="polite"></pre>
       <p id="console-empty" class="console-empty" data-i18n>What print() writes shows up here while the program runs.</p>
+      <section id="watch" class="watch" aria-label="Variables" data-i18n-label="Variables" hidden></section>
     </section>
   </main>
 

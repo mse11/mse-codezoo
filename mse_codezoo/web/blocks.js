@@ -674,6 +674,79 @@ function bigTargets(workspace) {
   });
 }
 
+// Step marks beside the blocks, like the code pane's gutter: a tag left of each block with
+// its code line number, and ▶ (with the number framed) on the block that runs next, like
+// the code pane. An
+// HTML layer over the workspace (the block itself keeps its colour), moved along when the
+// workspace scrolls, zooms or changes, and hidden while a block is dragged.
+function stepMarks(workspace, container) {
+  const layer = document.createElement("div");
+  layer.className = "block-marks";
+  layer.setAttribute("aria-hidden", "true");
+  container.append(layer);
+  let lines = new Map(); // block id -> code line
+  let next = null; // the block that runs next (or, after an error, the one that broke)
+  let kind = "run";
+  let queued = false;
+
+  function draw() {
+    queued = false;
+    const ids = new Set([...lines.keys(), next].filter(Boolean));
+    const box = container.getBoundingClientRect();
+    // the workspace starts right of the palette: marks never cover the palette
+    const left = workspace.getMetricsManager?.().getAbsoluteMetrics?.().left || 0;
+    layer.style.left = `${left}px`;
+    const tags = [];
+    for (const id of ids) {
+      const block = workspace.getBlockById(id);
+      const svg = block?.getSvgRoot?.();
+      // only statement blocks: a value block (a number, `a + 1`) shares its statement's line
+      if (!svg || block.isInFlyout || block.outputConnection) continue;
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) continue;
+      // the block's own first row (its group also holds the blocks under and inside it)
+      const row = Math.min(rect.height, 48 * workspace.scale);
+      const tag = document.createElement("span");
+      tag.className = `block-tag${id === next ? ` next ${kind}` : ""}`;
+      const arrow = document.createElement("span");
+      arrow.className = "block-arrow";
+      arrow.textContent = id === next ? "▶" : "";
+      const number = document.createElement("span");
+      number.className = "block-line";
+      number.textContent = lines.get(id) ?? "";
+      tag.append(arrow, number);
+      tag.style.top = `${rect.top - box.top + row / 2}px`;
+      tag.style.right = `${box.right - rect.left + 2}px`;
+      tags.push(tag);
+    }
+    layer.replaceChildren(...tags);
+  }
+
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(draw);
+  }
+
+  workspace.addChangeListener((event) => {
+    if (event.type === Blockly.Events.BLOCK_DRAG) layer.hidden = Boolean(event.isStart);
+    schedule();
+  });
+  window.addEventListener("resize", schedule);
+  return {
+    schedule,
+    setLines(map) {
+      lines = new Map(Object.entries(map));
+      schedule();
+    },
+    step(id, how = "run") {
+      next = id;
+      kind = how;
+      schedule();
+    },
+  };
+}
+
 export function createWorkspace(container, onChange) {
   defineBlocks();
   const workspace = Blockly.inject(container, {
@@ -706,6 +779,7 @@ export function createWorkspace(container, onChange) {
     if (workspace.getTheme() !== currentTheme()) workspace.setTheme(currentTheme());
   });
   bigTargets(workspace);
+  const marks = stepMarks(workspace, container);
   const api = {
     workspace,
     setPalette(names) {
@@ -723,11 +797,13 @@ export function createWorkspace(container, onChange) {
         workspace.clear();
         const context = { names, sourceText, positions };
         const first = chainState(program.body, context);
-        if (first) Blockly.serialization.blocks.append({ ...first, x: 24, y: 24 }, workspace);
+        // x: room on the left for the line numbers and step arrows (stepMarks)
+        if (first) Blockly.serialization.blocks.append({ ...first, x: 56, y: 24 }, workspace);
       } finally {
         Blockly.Events.enable();
         loading = false;
       }
+      marks.schedule();
     },
     // Rebuild the block definitions in the current language; load() the program again after.
     redefine() {
@@ -765,8 +841,19 @@ export function createWorkspace(container, onChange) {
     toProgram(names) {
       return workspaceToProgram(workspace, names);
     },
-    highlight(blockId) {
-      workspace.highlightBlock(blockId && workspace.getBlockById(blockId) ? blockId : null);
+    // ▶ on the block that runs next (kind "error": in red, on the block that broke)
+    highlight(blockId, kind = "run") {
+      // a value block (a number, `a + 1`) stands for the statement block it sits in
+      const known = (id) => {
+        let block = id ? workspace.getBlockById(id) : null;
+        while (block?.outputConnection && block.getParent()) block = block.getParent();
+        return block && !block.outputConnection ? block.id : null;
+      };
+      marks.step(known(blockId), kind);
+    },
+    // {block id: code line}: the line number shown beside each block
+    setLines(map) {
+      marks.setLines(map);
     },
     resize() {
       Blockly.svgResize(workspace);

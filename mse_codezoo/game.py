@@ -192,7 +192,9 @@ def run_level(
     seed: int = 0,
     modules: Modules | None = None,
     python: tuple[int, int] | None = None,
+    watch: bool = False,
 ) -> LevelRun:
+    """``watch``: every step also carries the variables' values, for the debugger."""
     worlds = level.worlds()
     variant = variant if 0 <= variant < len(worlds) else 0
     version = level_version(level, python)
@@ -223,6 +225,7 @@ def run_level(
         world=world,
         version=version,
         seed=seed,
+        watch=watch,
     )
     world.printed = result.output
     also = None

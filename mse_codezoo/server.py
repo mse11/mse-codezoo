@@ -280,6 +280,7 @@ def api_run(
             variant=variant,
             modules=_modules(body),
             python=_python(body.get("python")),
+            watch=True,
         )
     except LevelError as exc:
         raise ApiError(HTTPStatus.NOT_FOUND, str(exc)) from None

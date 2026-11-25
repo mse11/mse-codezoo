@@ -146,6 +146,7 @@ The main screen has three synchronized panes — Stage, Blocks, Code — over on
 | Stage (top or left) | Watches the animal act out the program | three.js low-poly 3D grid world; play, pause, step, speed slider, reset; concurrency lanes in module 14 |
 | Blocks (bottom-left) | Drags Scratch-like blocks from a palette | Palette shows only blocks unlocked so far; C-shaped blocks for loops, `if`, `def`, `class` |
 | Code (bottom-right) | Reads or edits real Python | Syntax highlighting, line numbers, errors in kid-friendly words; read-only in early modules |
+| Console (right) | Reads what `print()` writes and what the variables hold | Printed lines as the run plays; the Variables bar (the debugger, see "Debugger" under the phase steps) shows the file's variables, the running call's own, what the last step did, and step back / step on |
 
 **Synchronization rules**
 
@@ -760,6 +761,22 @@ Decisions (Nov 21, 2026): Cub mode is set **per player** (siblings on one device
 - [ ] Not built: a teacher's view of all rooms, joining a game that has started
 - [ ] Not checked: school Wi-Fi with 30 devices and their event streams, the cheapest tablet
 - [ ] Gate: 4 children play one world without desyncs for 10 minutes
+
+**Debugger (built Nov 25, 2026, after G3)**
+
+Children see what their variables hold, step by step, two ways that can be used together. Both are hidden in Cub mode (the console pane is too).
+
+- [x] 🐞 switches (`setupDebugSwitches` in `web/debug.js`, all off by default, kept in this browser as `codezoo.debug`): one beside 🎵 in the top bar turns debugging on or off in all panes at once (anything on → all off, otherwise all on; it looks pressed while any pane is on), and one in each pane's title turns on just that pane: **Blocks** line numbers on the blocks, **Python** values beside the code, **Console** the Variables bar. They replace the first version's "show values" and "variables" checkboxes. The Python pane's "let me type" checkbox became a ✏️ switch of the same kind (its words are the tooltip). Like 🎵 / 🔇, a switch that is on shows its icon in full colour and one that is off is faded with a red slash across it. The step arrow ▶ is always there, debugging or not (it replaced Blockly's highlight). Hidden in Cub mode
+
+- [x] Engine: `Runner(watch=True)` (and `run_level(..., watch=True)`, which the web server's `/api/run` uses) gives every step a `scope` with only what changed since the step before: `g` new or changed values in the program's file scope, `g-` names that are gone, `f` the calls running now whenever they change (then `l` is all of the newest call's variables), otherwise `l` / `l-` its changes. A long run stays small. Values are Python text (`'Rex'`, `[1, 2, ...]`) cut at 60 characters, at most 30 names a scope; functions, classes, modules and `_names` are left out; an object of the learner's own class shows its attributes (`Dog(name='Rex', age=3)`) without running any of its code. Off by default, so `levels validate`, the CLI and game mode pay nothing
+- [x] Option 1, the Variables bar (`web/debug.js`, under the console; the Console's 🐞): "step 9 of 12", ◀ step back (replays to the step before, with the stage, console and call stack) and ▶ step on, what the last step did ("line 3: total = 7", an error marked ⚠), the calls running now (`main → add()`), a table for the newest call's variables and one for the file's; rows that just changed are highlighted
+- [x] Better view of a step, as in an IDE's debugger: one arrow ▶ beside the line number, on the filled line, which is the line that **runs next**; the stage, the console and the values show what the lines before it did (on `a = a + 1`, `a` still holds the old value). The bar says it in words ("line 4 ran: a = 2", "▶ next: line 5"). After an error the fill and ▶ turn red and stay on the line that broke; when the run ends they go away. *Changed Nov 25, 2026: the first version filled the line that had just run (with a faint mark on the one before, then a second arrow for the next line); `a = 2` on `a = a + 1` read as "not run yet", and two arrows were confusing*
+- [x] Blocks: each statement block shows its code line number on its left (the Blocks pane's 🐞), and always the same ▶ (its number framed) on the block that runs next, in an HTML layer over the workspace that follows scrolling, zooming and changes and hides while a block is dragged. The block keeps its colour (Blockly's own highlight, which made it pale, is no longer used). A value block (a number, `a + 1`) counts as the statement it sits in. Programs now start a little further right to leave room for the numbers; in Cub mode only the arrow shows
+- [x] Option 2, values beside the code (the Python pane's 🐞): after each line that ran, the newest values it set (`fish = 2`, `i = 1`) or what a test or `return` gave (`→ True`); the line that just ran is drawn stronger. They move with scrolling and zoom
+- [x] English and Slovak; tests in `tests/test_debugger.py` (changes only, deleted names, calls and recursion, what is left out, objects, long values, error steps, the server, the page). Checked in the browser: stepping, step back twice in a row, a whole run, an error
+- [ ] Not built: the debugger on the game page (game mode has "Which handler fired?"), watching an expression of the child's own, breakpoints (run to this line), values per lane for threads and tasks, read aloud of the bar, a debugger level type ("what does `x` hold after line 4?")
+- [ ] Not checked: phone layout (the console is its own tab), a tablet, a real child using it
+- [ ] Gate: in a pilot, children on debugging levels open the Variables bar or "show values" without being told and fix the bug faster than without it
 
 ## Not yet covered
 

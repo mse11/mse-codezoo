@@ -10,6 +10,7 @@ import { api, setPython } from "./api.js";
 import { createWorkspace, describeBlock } from "./blocks.js";
 import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
+import { setupDebugSwitches, Watch, WatchBar } from "./debug.js";
 import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupSplitters } from "./layout.js";
 import { lockLook, openLook, setupThemeButton } from "./look.js";
@@ -64,6 +65,24 @@ const code = new CodeView({
   onInput: (text) => debounce("parse", 350, () => codeChanged(text)),
   onLineTap: (line) => lineTapped(line),
 });
+// the debugger (debug.js): the variables after each step, in a bar and beside the code
+const watch = new Watch();
+const watchBar = new WatchBar($("watch"), {
+  onBack: () => seek(Math.max(0, state.stepIndex - 1)),
+  onNext: () => {
+    stopPlayback();
+    play({ single: true });
+  },
+});
+
+function renderWatch() {
+  const total = state.run?.steps?.length || 0;
+  const on = debugSwitches.get();
+  $("watch").hidden = !on.console;
+  if (!$("watch").hidden) watchBar.render(watch, total, state.over);
+  code.setValues(on.code ? watch.lines : new Map(), watch.step?.line || 0);
+}
+
 const blocks = createWorkspace($("blockly"), () => debounce("print", 150, blocksChanged));
 blocks.onTap((block) => speak(describeBlock(block)));
 // −, + and reset for each part of the page, and Ctrl + wheel over it (zoom.js)
@@ -125,6 +144,7 @@ let inClass = false;
 // sounds, confetti, combos and a pokeable animal (the fun pass); only reacts to runs
 const fun = new Fun({ getStage: () => stage, stageBox: $("stage") });
 setupSoundButton($("sounds"));
+const debugSwitches = setupDebugSwitches($("debug"), [...document.querySelectorAll(".pane-bug")], () => renderWatch());
 setupThemeButton($("theme"));
 $("stage").addEventListener("click", (event) => {
   if (state.playing || !stage.hitAnimal?.(event)) return;
@@ -245,6 +265,8 @@ async function loadProgram(text) {
 
 // Each block's lines in its colour, so a child sees the code grow as they build.
 function renderTints() {
+  // every block shows its code line, for finding one in the other (blocks.js stepMarks)
+  blocks.setLines(Object.fromEntries(Object.entries(state.sourceMap).filter(([, span]) => span?.line).map(([id, span]) => [id, span.line])));
   if (!state.cub) {
     code.setTints([]);
     return;
@@ -719,8 +741,7 @@ async function showLevel(level) {
   stage.setOutfit?.(state.outfit);
   showDiagnostics([]);
   const typing = level.mode === "both_editable" || level.mode === "code_first";
-  $("edit-code").checked = typing;
-  code.setEditable(typing);
+  setTyping(typing);
   blocks.setPalette(level.unlockedBlocks);
   await loadProgram(level.cub === "predict" ? level.predict : level.starter);
   blocks.resize();
@@ -827,6 +848,8 @@ async function changeLanguage(code, { save = true } = {}) {
   translatePage();
   players.relabel();
   updateButtons();
+  debugSwitches.relabel();
+  renderWatch();
   state.levels = await api.levels(state.animal);
   state.animals = await api.animals();
   renderLevelOptions();
@@ -911,6 +934,8 @@ function invalidateRun() {
   renderStack();
   code.highlight(0);
   blocks.highlight(null);
+  watch.reset();
+  renderWatch();
 }
 
 // The call stack as nested burrows: one box for every function that is still running.
@@ -1010,16 +1035,23 @@ async function seek(index) {
   if (!run?.steps) return;
   stopPlayback();
   const token = state.token;
+  state.stepIndex = index; // now, so a second "step back" while this replays goes one further
   stage.reset();
   clearConsole();
   state.stack = [];
   renderStack();
+  watch.reset();
+  code.highlight(0);
+  blocks.highlight(null);
   const saved = stage.duration;
   stage.duration = 0;
-  for (let i = 0; i < index && token === state.token; i++) await playStep(run.steps[i]);
+  state.seeking = true;
+  for (let i = 0; i < index && token === state.token; i++) await playStep(run.steps[i], i + 1);
+  state.seeking = false;
   stage.duration = saved;
   state.stepIndex = index;
   markLanes(index);
+  renderWatch();
 }
 
 async function ensureRun() {
@@ -1039,9 +1071,17 @@ async function ensureRun() {
   return result;
 }
 
-async function playStep(step) {
-  code.highlight(step.line, step.error ? "error" : "run");
-  blocks.highlight(blockAtLine(step.line));
+async function playStep(step, index) {
+  // as in an IDE, the mark (and ▶) is on the line that runs next; the stage and the values
+  // show what the line before did. After an error the mark stays on the line that broke.
+  const kind = step.error ? "error" : "run";
+  const next = step.error ? 0 : state.run?.steps?.[index]?.line || 0;
+  const marked = step.error ? step.line : next;
+  code.highlight(marked, kind);
+  blocks.highlight(marked ? blockAtLine(marked) : null, kind);
+  watch.apply(step, index);
+  watch.next = next;
+  if (!state.seeking) renderWatch();
   for (const event of step.events) {
     if (event.type === "call") {
       state.stack.push(event);
@@ -1088,8 +1128,9 @@ async function play({ single = false } = {}) {
     ) {
       batch.push(run.steps[state.stepIndex + batch.length]);
     }
+    const start = state.stepIndex;
     state.stepIndex += batch.length;
-    await Promise.all(batch.map((step) => playStep(step)));
+    await Promise.all(batch.map((step, i) => playStep(step, start + i + 1)));
     markLanes(state.stepIndex);
     if (token !== state.token) return;
     if (single) break;
@@ -1400,7 +1441,13 @@ $("python-select").addEventListener("change", async (event) => {
   renderLevelOptions();
   if (state.level) loadLevel(state.level.id);
 });
-$("edit-code").addEventListener("change", (event) => code.setEditable(event.target.checked));
+// ✏️ "let me type": a pressed button, like the 🐞 switches beside it
+function setTyping(on) {
+  $("edit-code").setAttribute("aria-pressed", String(on));
+  code.setEditable(on);
+}
+$("edit-code").addEventListener("click", () => setTyping($("edit-code").getAttribute("aria-pressed") !== "true"));
+renderWatch();
 $("level-select").addEventListener("change", (event) => loadLevel(event.target.value));
 $("player").addEventListener("click", () => players.choose());
 $("view-3d").addEventListener("change", (event) => useView(event.target.checked));
