@@ -7,7 +7,7 @@
 
 import { t } from "./i18n.js";
 
-// The 🐞 switches: one beside 🎵 in the top bar for all panes, and one in each pane's title
+// The 🐞 switches: one just before Run for all panes, and one in each pane's title
 // (Blocks: line numbers on the blocks; Python: values beside the code; Console: the
 // Variables bar). All off by default; kept in this browser.
 const DEBUG_KEY = "codezoo.debug";
@@ -18,7 +18,9 @@ const PANE_LABELS = {
   console: "Debug: the Variables bar",
 };
 
+// `main`: the switch for all panes (just before Run), or a list of such switches
 export function setupDebugSwitches(main, paneButtons, onChange) {
+  const mains = Array.isArray(main) ? main : [main];
   let state = Object.fromEntries(PANES.map((pane) => [pane, false]));
   try {
     const saved = JSON.parse(localStorage.getItem(DEBUG_KEY) || "{}");
@@ -28,10 +30,12 @@ export function setupDebugSwitches(main, paneButtons, onChange) {
   }
   const show = () => {
     const any = PANES.some((pane) => state[pane]);
-    main.setAttribute("aria-pressed", String(any));
+    for (const button of mains) button.setAttribute("aria-pressed", String(any));
     const label = any ? t("Debugging on") : t("Debugging off");
-    main.title = label;
-    main.setAttribute("aria-label", label);
+    for (const button of mains) {
+      button.title = label;
+      button.setAttribute("aria-label", label);
+    }
     for (const button of paneButtons) {
       const pane = button.dataset.debug;
       button.setAttribute("aria-pressed", String(state[pane]));
@@ -51,7 +55,7 @@ export function setupDebugSwitches(main, paneButtons, onChange) {
     onChange(state);
   };
   // the main switch: anything on turns everything off, otherwise everything on
-  main.addEventListener("click", () => {
+  for (const button of mains) button.addEventListener("click", () => {
     const on = !PANES.some((pane) => state[pane]);
     set(Object.fromEntries(PANES.map((pane) => [pane, on])));
   });

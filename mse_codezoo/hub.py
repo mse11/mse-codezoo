@@ -161,6 +161,7 @@ class Hub:
             "views": info.public()["views"],
             "sounds": info.public()["sounds"],
             "themes": info.public()["themes"],
+            "panes": info.public()["panes"],
             "locked": bool(info.settings["locked"]),
             "assigned": list(info.settings["assigned"]),
             "shares": len(self.classes.shares(self.class_id, "approved")),
@@ -372,6 +373,7 @@ class Hub:
                     "views",
                     "sounds",
                     "themes",
+                    "panes",
                 )  # fmt: skip
             }
             self.classes.update(self.class_id, **changes)

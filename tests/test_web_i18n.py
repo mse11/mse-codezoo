@@ -35,3 +35,14 @@ def used_texts() -> set[str]:
 def test_every_web_text_has_a_slovak_translation():
     missing = sorted(used_texts() - sk_keys() - {"3D", "2D"})
     assert not missing, f"add these to SK in mse_codezoo/web/i18n.js: {missing}"
+
+
+def test_the_pane_toggles_are_beside_the_modes():
+    page = (WEB / "index.html").read_text(encoding="utf-8")
+    modes_end = page.index("</nav>", page.index('class="modes"'))
+    group = page.index('class="pane-toggles"')
+    assert modes_end < group < page.index('id="class-name"')
+    for pane in ("blocks", "code", "console"):
+        assert f'data-show="{pane}"' in page
+    layout = (WEB / "layout.js").read_text(encoding="utf-8")
+    assert "export function setupPaneToggles" in layout and "setAllowed" in layout

@@ -64,8 +64,10 @@ export function setupSplitters({ panes, stageSplit, paneSplit, headSplit, consol
   const sizes = load();
   // the console pane (and its gap) to the right of the code takes room from the blocks
   const consoleWidth = () => {
+    // only when it has its own column beside the code (not when it fills the blocks' place)
     const pane = panes.querySelector(".console-pane");
-    return pane && pane.offsetWidth ? pane.offsetWidth + 12 : 0;
+    const code = panes.querySelector(".code-pane");
+    return pane && pane.offsetWidth && code?.offsetWidth ? pane.offsetWidth + 12 : 0;
   };
   const apply = () => {
     // a width saved in a wider window must not make the page wider than this one
@@ -203,4 +205,103 @@ export function setupSplitters({ panes, stageSplit, paneSplit, headSplit, consol
     apply();
   });
   apply();
+}
+
+// --- which panes are shown (the Blocks / Python / Console toggles in the top bar) ----------
+
+const PANES_KEY = "codezoo.panes";
+const ORDER = ["blocks", "code", "console"];
+
+// The bottom row is built from the panes that are shown, left to right, with a bar between
+// two neighbours: the blocks' bar (its width, --left) or, between the code and the console,
+// the console's bar (--console-w). With every pane hidden the stage takes the whole page.
+// Cub mode always shows its two panes (blocks and code) and no toggles.
+export function setupPaneToggles({ panes, buttons, stageSplit, paneSplit, consoleSplit, tabs }) {
+  let shown = Object.fromEntries(ORDER.map((pane) => [pane, true]));
+  // the panes a classroom's teacher allows (classroom.js); the rest are hidden, with their toggles
+  let allowed = [...ORDER];
+  try {
+    const saved = JSON.parse(localStorage.getItem(PANES_KEY) || "{}");
+    for (const pane of ORDER) if (saved[pane] === false) shown[pane] = false;
+  } catch {
+    // storage blocked: every pane shown
+  }
+  const cub = () => document.documentElement.dataset.cub === "true";
+  // a single allowed pane is always shown (a child can't hide everything the class uses)
+  const visible = () =>
+    cub()
+      ? ["blocks", "code"].filter((pane) => allowed.includes(pane) || allowed.length === ORDER.length)
+      : ORDER.filter((pane) => allowed.includes(pane) && (shown[pane] || allowed.length === 1));
+
+  const width = (pane, list) => {
+    if (list.length === 1) return "minmax(0, 1fr)";
+    if (pane === "blocks") return "minmax(220px, var(--left, 1fr))";
+    if (pane === "code") return "minmax(220px, 1fr)";
+    return list.includes("code") ? "var(--console-w, minmax(170px, 0.45fr))" : "minmax(170px, 1fr)";
+  };
+
+  const apply = () => {
+    const list = visible();
+    const columns = [];
+    const row = [];
+    list.forEach((pane, i) => {
+      if (i) {
+        columns.push("12px");
+        row.push(list[i - 1] === "code" && pane === "console" ? "csplit" : "vsplit");
+      }
+      columns.push(width(pane, list));
+      row.push(pane);
+    });
+    const count = Math.max(1, columns.length);
+    const across = (name) => `"${Array(count).fill(name).join(" ")}"`;
+    if (list.length) {
+      panes.style.gridTemplateColumns = columns.join(" ");
+      panes.style.gridTemplateAreas = `${across("stage")} ${across("hsplit")} "${row.join(" ")}"`;
+      panes.style.removeProperty("grid-template-rows");
+    } else {
+      panes.style.gridTemplateColumns = "minmax(0, 1fr)";
+      panes.style.gridTemplateAreas = '"stage"';
+      panes.style.gridTemplateRows = "minmax(0, 1fr)";
+    }
+    stageSplit.classList.toggle("pane-off", !list.length);
+    paneSplit.classList.toggle("pane-off", !row.includes("vsplit"));
+    consoleSplit?.classList.toggle("pane-off", !row.includes("csplit"));
+    for (const pane of ORDER) {
+      const off = !list.includes(pane);
+      panes.querySelector(`[data-pane="${pane}"]`)?.classList.toggle("pane-off", off);
+      tabs?.querySelector(`[data-tab="${pane}"]`)?.classList.toggle("pane-off", off);
+    }
+    // a phone showing a pane that was just hidden goes back to the stage
+    const active = tabs?.querySelector("button.active");
+    if (active?.classList.contains("pane-off")) tabs.querySelector('[data-tab="stage"]')?.click();
+    for (const button of buttons) {
+      button.setAttribute("aria-pressed", String(list.includes(button.dataset.show)));
+      button.classList.toggle("pane-off", !allowed.includes(button.dataset.show) || allowed.length === 1);
+    }
+    buttons[0]?.parentElement?.classList.toggle("pane-off", allowed.length === 1);
+    // the splitters, the stage's drawing and the blocks measure again
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  for (const button of buttons) {
+    button.addEventListener("click", () => {
+      shown = { ...shown, [button.dataset.show]: !shown[button.dataset.show] };
+      try {
+        localStorage.setItem(PANES_KEY, JSON.stringify(shown));
+      } catch {
+        // storage blocked: the choice lasts until the page is closed
+      }
+      apply();
+    });
+  }
+  // Cub mode switches on and off with the player: its own two panes
+  new MutationObserver(apply).observe(document.documentElement, { attributes: true, attributeFilter: ["data-cub"] });
+  apply();
+  return {
+    setAllowed(list) {
+      const next = ORDER.filter((pane) => list?.includes(pane));
+      allowed = next.length ? next : [...ORDER];
+      apply();
+    },
+  };
 }

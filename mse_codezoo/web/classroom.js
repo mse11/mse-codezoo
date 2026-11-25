@@ -31,10 +31,11 @@ function download(name, text) {
 }
 
 export class Classroom {
-  constructor({ players, onLevelsChanged, onPause, onPlayProgram, onPlayLevel, onViews, onSounds, onThemes, onLang }) {
+  constructor({ players, onLevelsChanged, onPause, onPlayProgram, onPlayLevel, onViews, onSounds, onThemes, onPanes, onLang }) {
     this.players = players;
     this.onLang = onLang; // the language the teacher set for the class or this child changed
     this.onThemes = onThemes; // colours the teacher allows: ["light", "dark"], or just one
+    this.onPanes = onPanes; // the panes the teacher allows: ["blocks", "code", "console"] or fewer
     this.onSounds = onSounds; // sounds the teacher allows: ["on", "off"], or just one
     this.onViews = onViews; // the stage views the teacher allows: ["2d", "3d"], or just one
     this.onLevelsChanged = onLevelsChanged;
@@ -235,6 +236,7 @@ export class Classroom {
     if (state.views && state.views.join() !== before?.views?.join()) this.onViews?.(state.views);
     if (state.sounds && state.sounds.join() !== before?.sounds?.join()) this.onSounds?.(state.sounds);
     if (state.themes && state.themes.join() !== before?.themes?.join()) this.onThemes?.(state.themes);
+    if (state.panes && state.panes.join() !== before?.panes?.join()) this.onPanes?.(state.panes);
     // when the player is picked, or the teacher changes it; a child who switched language
     // in between keeps their choice
     if ("lang" in state) {

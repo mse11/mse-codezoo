@@ -20,6 +20,12 @@
       <a class="mode" href="editor.html"><span aria-hidden="true">🛠️</span> <span data-i18n>Levels</span></a>
       <a class="mode" href="game.html"><span aria-hidden="true">🎮</span> <span data-i18n>Game</span></a>
     </nav>
+    <!-- which panes are shown under the stage (layout.js setupPaneToggles) -->
+    <div class="pane-toggles" role="group" aria-label="Show or hide panes" data-i18n-label="Show or hide panes">
+      <button type="button" data-show="blocks" aria-pressed="true"><span aria-hidden="true">🧩</span> <span data-i18n>Blocks</span></button>
+      <button type="button" data-show="code" aria-pressed="true"><span aria-hidden="true">🐍</span> Python</button>
+      <button type="button" data-show="console" aria-pressed="true"><span aria-hidden="true">🖥️</span> <span data-i18n>Console</span></button>
+    </div>
     <span id="class-name" class="class-name" hidden></span>
     <!-- first row: the player and their choices, with the grown-ups' area at the end of the group -->
     <div class="who bar-group user-group" role="group" aria-label="You" data-i18n-label="You">
@@ -31,7 +37,6 @@
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
       <button id="theme" type="button" class="look-button theme-button">🌙</button>
       <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
-      <button id="debug" type="button" class="look-button bug-button" aria-pressed="false">🐞</button>
       <button id="look" type="button" class="look-button" data-i18n-title="Look and feel" aria-label="Look and feel" data-i18n-label="Look and feel">Aa</button>
       <button id="reset-view" type="button" class="look-button" data-i18n-title="Everything back to normal size" aria-label="Everything back to normal size" data-i18n-label="Everything back to normal size"><span aria-hidden="true">⤢</span> 100%</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
@@ -42,6 +47,8 @@
     <!-- second row: the level and what runs it, together in one group -->
     <div class="controls bar-group run-group" role="group" aria-label="Run" data-i18n-label="Run">
       <select id="level-select" data-i18n-label="Choose a level"></select>
+      <!-- debugging on or off for every pane, just before Run (each pane has its own 🐞 too) -->
+      <button id="debug-run" type="button" class="bug-button run-bug" aria-pressed="false">🐞</button>
       <button id="run" class="primary" type="button">▶ Run</button>
       <button id="step" type="button"><span class="icon" aria-hidden="true">⏭</span> <span data-i18n>Step</span></button>
       <button id="reset" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Reset</span></button>
@@ -50,14 +57,14 @@
   </header>
 
   <nav class="tabs" aria-label="Panes">
-    <button type="button" data-tab="stage" class="active" data-i18n>Stage</button>
+    <button type="button" data-tab="stage" class="active" data-i18n>Playground</button>
     <button type="button" data-tab="blocks" data-i18n>Blocks</button>
     <button type="button" data-tab="code" data-i18n>Code</button>
     <button type="button" data-tab="console" data-i18n>Console</button>
   </nav>
 
   <main class="panes" id="panes">
-    <section class="pane stage-pane active" data-pane="stage" aria-label="Stage" data-i18n-label="Stage">
+    <section class="pane stage-pane active" data-pane="stage" aria-label="Playground" data-i18n-label="Playground">
       <nav id="cub-levels" class="cub-levels" aria-label="Levels" data-i18n-label="Levels"></nav>
       <div class="stage-head">
         <div id="goal" class="goal"></div>
@@ -69,6 +76,8 @@
       <div class="splitter vertical" id="split-head" role="separator" aria-orientation="vertical"
            aria-label="Resize the stage and the goal" data-i18n-label="Resize the stage and the goal" tabindex="0"></div>
       <div class="stage-tools">
+        <!-- the pane's name, like Blocks, Python and Console have theirs -->
+        <span class="stage-title" data-i18n>Playground</span>
         <div id="worlds" class="worlds" role="group"></div>
         <label class="view-toggle" data-i18n-title="Show the stage in 3D"><input type="checkbox" id="view-3d"> 3D</label>
       </div>

@@ -461,6 +461,7 @@
   "Tick 2D, 3D or both.": "Zaškrtnite 2D, 3D alebo obe.",
   "Tick On, Off or both.": "Zaškrtnite Zapnuté, Vypnuté alebo obe.",
   "Tick Light, Dark or both.": "Zaškrtnite Svetlé, Tmavé alebo obe.",
+  "Tick at least one of Blocks, Python and Console.": "Zaškrtnite aspoň jedno z: Bloky, Python, Konzola.",
   "A critter can't start at ({x}, {y}): that square isn't open.": "Potvorka nemôže začať na ({x}, {y}): to políčko nie je voľné.",
   "A critter caught the {animal}!": "Potvorka chytila zvieratko {animal}!",
   "A critter's `{name}` must be a whole number.": "Súradnica `{name}` potvorky musí byť celé číslo.",

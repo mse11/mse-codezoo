@@ -13,7 +13,7 @@ import { CodeView } from "./code.js";
 import { setupDebugSwitches, Watch, WatchBar } from "./debug.js";
 import { Gallery } from "./gallery.js";
 import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
-import { setupSplitters } from "./layout.js";
+import { setupPaneToggles, setupSplitters } from "./layout.js";
 import { lockLook, openLook, setupThemeButton } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
@@ -133,6 +133,11 @@ const classroom = new Classroom({
   onSounds: (sounds) => lockLook({ sounds: sounds.length === 1 ? sounds[0] === "on" : null }),
   // colours the teacher allows: both lets the child switch, one is set for everyone
   onThemes: (themes) => lockLook({ theme: themes.length === 1 ? themes[0] : null }),
+  // the panes the teacher allows for the class (the others are hidden and can't be shown)
+  onPanes: (panes) => {
+    classPanes = panes;
+    paneToggles?.setAllowed(panes);
+  },
   // the teacher picked a language for the class or for this child (null: the device's own)
   onLang: (code) => {
     const next = code || deviceLang();
@@ -145,7 +150,9 @@ let inClass = false;
 // sounds, confetti, combos and a pokeable animal (the fun pass); only reacts to runs
 const fun = new Fun({ getStage: () => stage, stageBox: $("stage") });
 setupSoundButton($("sounds"));
-const debugSwitches = setupDebugSwitches($("debug"), [...document.querySelectorAll(".pane-bug")], () => renderWatch());
+let paneToggles = null; // set up with the splitters, at the end; the class may narrow it
+let classPanes = null; // the teacher's choice, if it came before the toggles were set up
+const debugSwitches = setupDebugSwitches($("debug-run"), [...document.querySelectorAll(".pane-bug")], () => renderWatch());
 setupThemeButton($("theme"));
 $("stage").addEventListener("click", (event) => {
   if (state.playing || !stage.hitAnimal?.(event)) return;
@@ -1529,6 +1536,16 @@ setupSplitters({
   consoleSplit: $("split-console"),
   onResize: () => blocks.resize(),
 });
+// the Blocks / Python / Console toggles beside the modes: which panes are shown
+paneToggles = setupPaneToggles({
+  panes: $("panes"),
+  buttons: [...document.querySelectorAll(".pane-toggles button")],
+  stageSplit: $("split-stage"),
+  paneSplit: $("split-panes"),
+  consoleSplit: $("split-console"),
+  tabs: document.querySelector(".tabs"),
+});
+if (classPanes) paneToggles.setAllowed(classPanes);
 
 async function start() {
   translatePage();

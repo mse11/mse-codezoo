@@ -123,7 +123,8 @@ def test_the_web_server_sends_the_values(base_url):
 
 def test_page_has_both_views():
     page = (WEB / "index.html").read_text(encoding="utf-8")
-    assert 'id="debug"' in page and page.count('class="pane-bug') == 3 and 'id="watch"' in page
+    assert page.count('class="pane-bug') == 3 and 'id="watch"' in page
+    assert 'id="debug-run"' in page and 'id="debug"' not in page  # before Run, not in the top bar
     app = (WEB / "app.js").read_text(encoding="utf-8")
     assert 'from "./debug.js"' in app
     code = (WEB / "code.js").read_text(encoding="utf-8")

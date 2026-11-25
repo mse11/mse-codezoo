@@ -509,6 +509,30 @@ def test_the_teacher_picks_the_colours(tmp_path):
             hub.handle("POST", "/api/teacher/settings", {}, {"themes": wrong}, head, "t")
 
 
+def test_the_teacher_picks_the_panes(tmp_path):
+    from mse_codezoo.hub import Hub
+
+    classes = ClassStore(tmp_path)
+    hub = Hub(classes, classes.create("1.A", "workshop").id)
+    code, head = {"X-Class-Code": hub.code}, {"X-Teacher-Token": hub.teacher_token}
+    everything = ["blocks", "code", "console"]
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["panes"] == everything
+    # small children: only the blocks
+    overview = hub.handle("POST", "/api/teacher/settings", {}, {"panes": ["blocks"]}, head, "t")
+    assert overview["class"]["panes"] == ["blocks"]
+    assert overview["class"]["themes"] == ["light", "dark"]  # the colours are left alone
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["panes"] == ["blocks"]
+    # kept in the pane order whatever order they come in
+    hub.handle("POST", "/api/teacher/settings", {}, {"panes": ["console", "blocks"]}, head, "t")
+    assert hub.handle("GET", "/api/class/state", {}, {}, code, "c")["panes"] == [
+        "blocks",
+        "console",
+    ]
+    for wrong in ([], ["stage"], "blocks"):
+        with pytest.raises(ClassError):
+            hub.handle("POST", "/api/teacher/settings", {}, {"panes": wrong}, head, "t")
+
+
 def test_a_child_can_have_their_own_stage_and_language(tmp_path):
     from mse_codezoo.hub import Hub
 

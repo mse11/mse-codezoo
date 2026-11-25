@@ -44,6 +44,8 @@ VIEWS = ("2d", "3d")  # the stage: the 2D drawing (any device) and the 3D scene 
 SOUNDS = ("on", "off")
 # colours on the children's devices: both (each child switches), or only "light" or "dark"
 THEMES = ("light", "dark")
+# the panes under the stage children may use; small children may need only the blocks
+PANES = ("blocks", "code", "console")
 CLASS_ID = re.compile(r"^c[0-9a-f]{8}$")
 LEVEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
 MAX_CLASS_NAME = 40
@@ -96,6 +98,8 @@ class ClassInfo:
             # colours: both (each child switches them), or only "light" or "dark"
             "themes": [v for v in THEMES if v in self.settings.get("themes", THEMES)]
             or list(THEMES),
+            # the panes children may use (each child can still hide those); the others are hidden
+            "panes": [v for v in PANES if v in self.settings.get("panes", PANES)] or list(PANES),
         }
 
 
@@ -207,7 +211,8 @@ class ClassStore:
     def update(self, ref: str, **changes: Any) -> ClassInfo:
         """Change settings: roster, names, deleteAtEnd, locked, cub (bools), assigned (ids)
         lang ("en", "sk", or "" for each device's own language), views (["2d", "3d"])
-        sounds (["on", "off"]) and themes (["light", "dark"]): both lets each child switch."""
+        sounds (["on", "off"]) and themes (["light", "dark"]): both lets each child switch;
+        panes (["blocks", "code", "console"]): the panes children may use."""
         info = self.find(ref)
         data = self._read(info.id)
         if changes.get("views") is not None:
@@ -225,6 +230,11 @@ class ClassStore:
             if not isinstance(themes, list) or not themes or not set(themes) <= set(THEMES):
                 raise ClassError(t("Tick Light, Dark or both."))
             data["settings"]["themes"] = [v for v in THEMES if v in themes]
+        if changes.get("panes") is not None:
+            panes = changes["panes"]
+            if not isinstance(panes, list) or not panes or not set(panes) <= set(PANES):
+                raise ClassError(t("Tick at least one of Blocks, Python and Console."))
+            data["settings"]["panes"] = [v for v in PANES if v in panes]
         if changes.get("lang") is not None:
             lang = changes["lang"] or None
             if lang is not None and lang not in LANGS:

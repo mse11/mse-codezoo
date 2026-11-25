@@ -462,6 +462,7 @@ function renderSettings() {
   $("t-sound-off").checked = data.class.sounds.includes("off");
   $("t-theme-light").checked = data.class.themes.includes("light");
   $("t-theme-dark").checked = data.class.themes.includes("dark");
+  for (const pane of ["blocks", "code", "console"]) $(`t-pane-${pane}`).checked = (data.class.panes || ["blocks", "code", "console"]).includes(pane);
   $("t-pilot").checked = data.pilot;
   $("t-pilot-box").hidden = !data.pilot;
 }
@@ -678,6 +679,7 @@ $("t-save-settings").addEventListener("click", async () => {
     views: ["2d", "3d"].filter((view) => $(`t-view-${view}`).checked),
     sounds: ["on", "off"].filter((sound) => $(`t-sound-${sound}`).checked),
     themes: ["light", "dark"].filter((theme) => $(`t-theme-${theme}`).checked),
+    panes: ["blocks", "code", "console"].filter((pane) => $(`t-pane-${pane}`).checked),
     pilot: $("t-pilot").checked,
   });
   if (result) {
