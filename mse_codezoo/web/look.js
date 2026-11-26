@@ -13,6 +13,7 @@ const DEFAULTS = {
   text: "normal", easy: false, contrast: false, motion: "system", targets: false, read: false, sounds: true,
   theme: "system", // colours: "system" (as the device), "light" or "dark"
   layout: "auto", // goal and result: "above" the stage, "side" (beside it) or "auto" (by window width)
+  graphics: "auto", // 3D detail: "high", "medium", "low" or "auto" (guessed, lowered when it runs slowly)
 };
 
 function read() {
@@ -68,6 +69,30 @@ export function reducedMotion() {
   return settings.motion === "reduce" || (settings.motion === "system" && systemReduce.matches);
 }
 
+// 3D detail. "auto" starts from what the device reports (cores, memory) and the 3D stage
+// lowers it by a step when frames come slowly (lowerGraphics), for the rest of the visit.
+const GRAPHICS = ["low", "medium", "high"];
+let slowSteps = 0;
+function guessGraphics() {
+  const cores = navigator.hardwareConcurrency || 4;
+  const memory = navigator.deviceMemory || 4; // gigabytes, only some browsers say
+  if (cores <= 2 || memory <= 2) return "low";
+  if (cores <= 4 || memory <= 4) return "medium";
+  return "high";
+}
+export function graphics() {
+  const chosen = look().graphics;
+  if (GRAPHICS.includes(chosen)) return chosen;
+  return GRAPHICS[Math.max(0, GRAPHICS.indexOf(guessGraphics()) - slowSteps)];
+}
+// true when it went down a step (only in "auto", and not below "low")
+export function lowerGraphics() {
+  if (GRAPHICS.includes(look().graphics) || graphics() === "low") return false;
+  slowSteps += 1;
+  applyLook();
+  return true;
+}
+
 export function applyLook() {
   const root = document.documentElement;
   root.dataset.text = settings.text;
@@ -77,6 +102,7 @@ export function applyLook() {
   root.dataset.targets = String(settings.targets);
   root.dataset.read = String(settings.read); // read aloud (speech.js, phase 7)
   root.dataset.layout = layout(); // style.css places the goal and result
+  root.dataset.graphics = graphics(); // stage3d.js picks its detail
   // colours: style.css and the blocks follow data-theme; without it, the device's own
   const theme = look().theme;
   if (theme === "light" || theme === "dark") root.dataset.theme = theme;
@@ -168,6 +194,12 @@ export function openLook() {
       ["reduce", t("less motion")],
       ["full", t("all animations")],
     ]),
+    select("graphics", t("3D detail"), [
+      ["auto", t("automatic: lower when the computer is slow")],
+      ["high", t("high: smooth and shiny")],
+      ["medium", t("medium")],
+      ["low", t("low: for older computers")],
+    ]),
     checkbox("targets", t("Big targets: bigger blocks and buttons; tap a block to add it")),
     checkbox("read", t("Read aloud: goals, hints, results and tapped blocks")),
     checkbox("sounds", t("Sounds: steps, pops and a little tune when you solve a level")),
@@ -213,6 +245,51 @@ export function setupThemeButton(button) {
   });
   window.addEventListener("codezoo-look", show);
   systemDark.addEventListener("change", show);
+  show();
+}
+
+// the small "3D detail" switch in a page's top bar (the same setting as in Look and feel):
+// Auto, then low, medium and high drawn as signal bars, with a sliding knob like the modes
+const DETAIL_LEVELS = { low: 1, medium: 2, high: 3 };
+function detailLabel(level) {
+  if (level === "low") return t("3D detail: low, for older computers");
+  if (level === "medium") return t("3D detail: medium");
+  if (level === "high") return t("3D detail: high, smooth and shiny");
+  return t("3D detail: automatic, lower when the computer is slow");
+}
+
+export function setupGraphicsSwitch(holder) {
+  if (!holder) return;
+  holder.className = "detail-switch";
+  holder.setAttribute("role", "radiogroup");
+  const buttons = ["auto", "low", "medium", "high"].map((value) => {
+    const button = el("button", { type: "button", role: "radio", "data-level": value });
+    if (value === "auto") button.textContent = "Auto";
+    else {
+      const bars = el("span", { class: "bars", "data-n": String(DETAIL_LEVELS[value]), "aria-hidden": "true" });
+      bars.append(el("i"), el("i"), el("i"));
+      button.append(bars);
+    }
+    button.addEventListener("click", () => save({ graphics: value }));
+    return button;
+  });
+  holder.replaceChildren(el("span", { class: "detail-name", "aria-hidden": "true" }, "3D"), ...buttons);
+  const show = () => {
+    const chosen = look().graphics;
+    holder.setAttribute("aria-label", t("3D detail"));
+    for (const button of buttons) {
+      const value = button.dataset.level;
+      const on = value === chosen || (value === "auto" && !(chosen in DETAIL_LEVELS));
+      button.setAttribute("aria-checked", String(on));
+      // while Auto is on, it says which detail it picked for this computer
+      const picked = detailLabel(graphics()).split(": ")[1] ?? graphics();
+      const label = value === "auto" && on ? `${detailLabel("auto")} (${t("now")}: ${picked})` : detailLabel(value);
+      button.title = label;
+      button.setAttribute("aria-label", label);
+    }
+  };
+  window.addEventListener("codezoo-look", show);
+  new MutationObserver(show).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
   show();
 }
 

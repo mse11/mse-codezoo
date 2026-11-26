@@ -14,7 +14,7 @@ import { setupDebugSwitches, Watch, WatchBar } from "./debug.js";
 import { Gallery } from "./gallery.js";
 import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupPaneToggles, setupSplitters } from "./layout.js";
-import { lockLook, openLook, reducedMotion, setupThemeButton } from "./look.js";
+import { lockLook, openLook, reducedMotion, setupGraphicsSwitch, setupThemeButton } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
@@ -164,6 +164,7 @@ let paneToggles = null; // set up with the splitters, at the end; the class may 
 let classPanes = null; // the teacher's choice, if it came before the toggles were set up
 const debugSwitches = setupDebugSwitches($("debug-run"), [...document.querySelectorAll(".pane-bug")], () => renderWatch());
 setupThemeButton($("theme"));
+setupGraphicsSwitch($("detail-switch"));
 $("stage").addEventListener("click", (event) => {
   if (state.playing || !stage.hitAnimal?.(event)) return;
   fun.poke();

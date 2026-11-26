@@ -15,7 +15,7 @@
 import { api } from "./api.js";
 import { GAME_PALETTE, createWorkspace } from "./blocks.js";
 import "./look.js"; // the "Look and feel" settings apply here too
-import { reducedMotion } from "./look.js";
+import { reducedMotion, setupGraphicsSwitch } from "./look.js";
 import { fillLangSelect, initialLang, setLang, t, translatePage } from "./i18n.js";
 import { music, sfx, setupSoundButton } from "./fun.js";
 import { decodeShare, encodeShare } from "./share.js";
@@ -1370,6 +1370,7 @@ async function start() {
 
 function wire() {
   setupSoundButton($("sounds"));
+  setupGraphicsSwitch($("detail-switch"));
   setupMusicButton();
   $("lanes-box").addEventListener("toggle", () => $("lanes-box").open && drawLanes());
   $("play").addEventListener("click", play);

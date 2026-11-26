@@ -251,23 +251,31 @@ export function banner(text, near) {
 
 const COLORS = ["#ffcf33", "#ff6b6b", "#4dabf7", "#69db7c", "#b197fc", "#ff922b", "#f783ac"];
 
-// confetti from a point on the screen; some pieces are the level's own emoji
-export function confetti(origin, { count = 90, emoji = [] } = {}) {
+// confetti from a point on the screen; some pieces are the level's own emoji. With `within`
+// (an element, the stage) it stays inside that element's box, and the burst is sized to it,
+// so it celebrates on the playground instead of flying over the blocks and the code.
+export function confetti(origin, { count = 90, emoji = [], within = null } = {}) {
   if (reducedMotion()) return;
+  const area = within?.getBoundingClientRect();
+  const box = area?.width && area?.height ? area : { left: 0, top: 0, width: innerWidth, height: innerHeight };
   const canvas = document.createElement("canvas");
   canvas.className = "fun-confetti";
+  Object.assign(canvas.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
   const scale = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = innerWidth * scale;
-  canvas.height = innerHeight * scale;
+  canvas.width = box.width * scale;
+  canvas.height = box.height * scale;
   funLayer().append(canvas);
   const g = canvas.getContext("2d");
   if (!g) return canvas.remove();
   g.scale(scale, scale);
+  // the full burst suits a box about 700px tall; a smaller stage gets a gentler one
+  const reach = Math.min(1, Math.max(0.45, box.height / 700));
+  const gravity = 0.28 * reach;
   const pieces = Array.from({ length: count }, (_, i) => {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2;
-    const speed = 6 + Math.random() * 9;
+    const speed = (6 + Math.random() * 9) * reach;
     return {
-      x: origin.x, y: origin.y,
+      x: origin.x - box.left, y: origin.y - box.top,
       vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
       spin: Math.random() * Math.PI, vs: (Math.random() - 0.5) * 0.4,
       size: 6 + Math.random() * 7,
@@ -282,10 +290,10 @@ export function confetti(origin, { count = 90, emoji = [] } = {}) {
     // move by the time that passed (in 60 fps ticks), so slow tablets see the same burst
     const ticks = Math.min(Math.round((now - last) / 16.7), 40);
     last = now;
-    g.clearRect(0, 0, innerWidth, innerHeight);
+    g.clearRect(0, 0, box.width, box.height);
     for (const p of pieces) {
       for (let k = 0; k < ticks; k++) {
-        p.vy += 0.28;
+        p.vy += gravity;
         p.vx *= 0.985;
         p.x += p.vx;
         p.y += p.vy;
@@ -436,9 +444,10 @@ export class Fun {
     const emoji = [
       ...new Set([pack?.emoji || EMOJI[pack?.animal], ...Object.values(pack?.items || {}).map((n) => EMOJI[n]), "⭐"].filter(Boolean)),
     ];
-    confetti(origin, { count: big ? 140 : 70, emoji: big ? emoji : ["⭐"] });
-    if (big) setTimeout(() => confetti({ x: box.left + box.width * 0.15, y: box.bottom }, { count: 50, emoji }), 350);
-    if (big) setTimeout(() => confetti({ x: box.left + box.width * 0.85, y: box.bottom }, { count: 50, emoji }), 600);
+    const within = this.stageBox; // the confetti stays on the playground
+    confetti(origin, { count: big ? 140 : 70, emoji: big ? emoji : ["⭐"], within });
+    if (big) setTimeout(() => confetti({ x: box.left + box.width * 0.15, y: box.bottom }, { count: 50, emoji, within }), 350);
+    if (big) setTimeout(() => confetti({ x: box.left + box.width * 0.85, y: box.bottom }, { count: 50, emoji, within }), 600);
 
     const level = run.level || this.getStage()?.level?.id;
     const fresh = level && !this.solvedToday.has(level);
@@ -479,7 +488,7 @@ export class Fun {
       sfx.secret();
       stage.poke(t("🎉 You found my secret dance!"), { dance: true });
       const point = this.where();
-      if (point) confetti(point, { count: 40, emoji: ["🎉", "💃", "🕺", "⭐"] });
+      if (point) confetti(point, { count: 40, emoji: ["🎉", "💃", "🕺", "⭐"], within: this.stageBox });
       return;
     }
     let line;

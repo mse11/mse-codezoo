@@ -767,6 +767,50 @@ html[data-motion="reduce"] .modes::before { transition: none; }
 .modes .mode:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 /* Cub mode is learning only */
 html[data-cub="true"] .modes { display: none; }
+
+/* 3D detail in the top bar (look.js setupGraphicsSwitch): a small pill like the modes, with
+   "3D", then Auto and three signal-bar buttons; the chosen one is green */
+.detail-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 0.75rem;
+}
+.detail-switch .detail-name { padding: 0 0.3rem 0 0.4rem; color: var(--muted); font-weight: 700; }
+.detail-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  min-height: 0; /* small, unlike other buttons (Big targets makes it bigger again, below) */
+  height: 1.6rem;
+  padding: 0 0.35rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.detail-switch button:hover { color: var(--text); }
+.detail-switch button[aria-checked="true"] { background: var(--accent); color: var(--accent-text); }
+.detail-switch button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+/* signal bars: three rising bars, as many filled as the level (1 low, 2 medium, 3 high) */
+.detail-switch .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 0.8rem; }
+.detail-switch .bars i { width: 3px; border-radius: 1px; background: currentColor; opacity: 0.3; }
+.detail-switch .bars i:nth-child(1) { height: 40%; }
+.detail-switch .bars i:nth-child(2) { height: 70%; }
+.detail-switch .bars i:nth-child(3) { height: 100%; }
+.detail-switch .bars[data-n="1"] i:nth-child(-n + 1),
+.detail-switch .bars[data-n="2"] i:nth-child(-n + 2),
+.detail-switch .bars[data-n="3"] i { opacity: 1; }
+html[data-targets="true"] .detail-switch button { height: 2.4rem; min-width: 2.4rem; }
+html[data-cub="true"] .detail-switch { display: none; }
 /* which panes are shown under the stage (layout.js setupPaneToggles): one pill per pane, lit when shown */
 .pane-toggles { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); }
 .pane-toggles button {
@@ -1214,7 +1258,7 @@ html[data-cub="true"] .result > ul { display: none; }
 
 /* --- the fun pass (fun.js): confetti, "+1" texts, banners, popping stars, poking ---------- */
 .fun-layer { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
-.fun-confetti { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fun-confetti { position: absolute; inset: 0; width: 100%; height: 100%; } /* fun.js sets its box when it stays on the stage */
 .fun-float {
   position: absolute; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 800;
   color: var(--star); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 0 8px rgba(255, 255, 255, 0.6);

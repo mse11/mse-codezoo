@@ -290,7 +290,8 @@ export class Gallery {
     const { typing } = this.context();
     const code = make("pre", { class: "gallery-python", html: highlightPython(entry.code || entry.python || "").replace(/\n $/, "") });
     const parts = this.from === "code" ? [code, this.blockBox] : [this.blockBox, code];
-    const canUse = entry.unlocked && (typing || entry.statement);
+    // a block of a later module can be added too: to try it out, or for a teacher to show it
+    const canUse = typing || entry.statement;
     const say = make("button", { type: "button", class: "gallery-say", title: t("Read it aloud"), "aria-label": t("Read it aloud") }, "🔊");
     say.addEventListener("click", () => speak(this.spoken(entry), { force: true }));
     const use = make("button", { type: "button", class: "gallery-use primary" }, typing ? `✏️ ${t("Write it in my code")}` : `➕ ${t("Add it to my program")}`);
@@ -298,12 +299,11 @@ export class Gallery {
     use.addEventListener("click", () => {
       if (this.onUse(entry, typing)) this.dialog.close();
     });
-    const why = !entry.unlocked
-      ? entry.module
-        ? t("This one unlocks in module {n}.", { n: entry.module })
-        : t("This one unlocks in a later level.")
-      : !canUse
-        ? t("This block goes into a socket of another block, so it can't stand on its own.")
+    const later = entry.module ? t("This one unlocks in module {n}.", { n: entry.module }) : t("This one unlocks in a later level.");
+    const why = !canUse
+      ? t("This block goes into a socket of another block, so it can't stand on its own.")
+      : !entry.unlocked
+        ? `${later} ${t("You can still try it out now.")}`
         : "";
     // a block that can stand on its own can show what it does
     const play = make("button", { type: "button", class: "gallery-play" }, `▶ ${t("Play the example")}`);

@@ -8,6 +8,7 @@ import * as THREE from "./vendor/three/three.module.min.js";
 const ANGLE = { north: Math.PI, east: Math.PI / 2, south: 0, west: -Math.PI / 2 };
 const STEP = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] };
 import { EMOJI as ITEM_EMOJI, missBubble } from "./stage.js";
+import { graphics, lowerGraphics } from "./look.js";
 
 // ground colours per world: [tile, other tile, edge]
 const GROUND = {
@@ -35,7 +36,15 @@ export function webglAvailable() {
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
 
+// 3D detail from "Look and feel" (look.js): high, medium or low. Models read it when they
+// are built (at each reset); the renderer's settings follow it at once (applyQuality).
+const quality = () => document.documentElement.dataset.graphics || graphics();
+// how finely round shapes are cut: fewer triangles on slower computers
+const SEGMENTS = { high: 1, medium: 0.5, low: 0.34 };
+const seg = (n, least = 3) => Math.max(least, Math.round(n * (SEGMENTS[quality()] ?? 1)));
+
 function material(color, options = {}) {
+  if (quality() === "low") return new THREE.MeshLambertMaterial({ color, flatShading: true, ...options });
   return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, ...options });
 }
 
@@ -48,43 +57,170 @@ function mesh(geometry, color, options) {
 
 // --- models -----------------------------------------------------------------------
 
+// --- cartoon style: smooth, soft shapes and big shiny eyes ---------------------------------
+
+// fur-like: matte with a soft sheen at the edges; `gloss` for noses and shiny bits
+// (high only: medium is plain smooth plastic, low the cheapest lighting there is)
+function soft(color, { gloss = false, ...options } = {}) {
+  const level = quality();
+  if (level !== "high") {
+    // options only the high detail's material has (sheen, clearcoat, a pearl's shimmer)
+    const { sheen, sheenColor, sheenRoughness, clearcoat, iridescence, roughness, ...plain } = options;
+    if (level === "low") return new THREE.MeshLambertMaterial({ color, ...plain });
+    return new THREE.MeshStandardMaterial({ color, roughness: roughness ?? (gloss ? 0.3 : 0.75), ...plain });
+  }
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: gloss ? 0.25 : 0.7,
+    sheen: gloss ? 0 : 0.8,
+    sheenRoughness: 0.5,
+    sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.5),
+    clearcoat: gloss ? 1 : 0,
+    ...options,
+  });
+}
+
+function blob(radius, color, options, [across, down] = [32, 24]) {
+  const result = new THREE.Mesh(new THREE.SphereGeometry(radius, seg(across, 8), seg(down, 6)), soft(color, options));
+  result.castShadow = quality() === "high" || radius >= 0.06; // tiny parts' shadows are hardly seen
+  result.receiveShadow = true;
+  return result;
+}
+
+// white eyeball, coloured iris, pupil and a white glint; scaled flat in y to blink
+function cuteEye(radius, iris = 0x5d3a1a) {
+  const eye = new THREE.Group();
+  const ball = blob(radius, 0xffffff, { gloss: true });
+  const ring = blob(radius * 0.68, iris, { gloss: true }, [24, 16]);
+  ring.position.z = radius * 0.42;
+  const pupil = blob(radius * 0.4, 0x111111, { gloss: true }, [16, 12]);
+  pupil.position.z = radius * 0.72;
+  const glint = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.2, seg(12, 6), seg(8, 4)), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  glint.position.set(radius * 0.3, radius * 0.32, radius * 0.92);
+  const small = glint.clone();
+  small.scale.setScalar(0.5);
+  small.position.set(-radius * 0.28, -radius * 0.3, radius * 0.95);
+  eye.add(ball, ring, pupil, glint, small);
+  return eye;
+}
+
+function cheek(x, y, z) {
+  const spot = new THREE.Mesh(
+    new THREE.SphereGeometry(0.045, seg(16, 6), seg(12, 4)),
+    new THREE.MeshBasicMaterial({ color: 0xff8a9a, transparent: true, opacity: 0.55, depthWrite: false }),
+  );
+  spot.scale.set(1.3, 0.8, 0.3);
+  spot.position.set(x, y, z);
+  spot.lookAt(x * 3, y, z * 3);
+  return spot;
+}
+
+// a chubby cartoon monkey: big head, big eyes, short limbs, a curly tail
 function makeMonkey() {
   const monkey = new THREE.Group();
-  const fur = 0x8b5a2b;
-  const face = 0xe8c39e;
-  const body = mesh(new THREE.IcosahedronGeometry(0.26, 1), fur);
-  body.scale.set(1, 1.1, 0.9);
-  body.position.y = 0.32;
-  const head = mesh(new THREE.IcosahedronGeometry(0.2, 1), fur);
-  head.position.set(0, 0.08, 0.02);
-  const muzzle = mesh(new THREE.IcosahedronGeometry(0.12, 1), face);
-  muzzle.scale.set(1.2, 0.85, 0.8);
-  muzzle.position.set(0, 0.04, 0.17);
-  const eyes = [-0.07, 0.07].map((x) => {
-    const eye = mesh(new THREE.SphereGeometry(0.03, 8, 6), 0x1a1a1a);
-    eye.position.set(x, 0.13, 0.18);
-    return eye;
+  const fur = 0x9a6234;
+  const face = 0xf2d3b0;
+
+  const body = blob(0.19, fur);
+  body.scale.set(1, 1.12, 0.92);
+  body.position.y = 0.25;
+  const belly = blob(0.14, face);
+  belly.scale.set(1, 1.15, 0.6);
+  belly.position.set(0, 0.23, 0.1);
+  const arms = [-1, 1].map((side) => {
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.14, seg(8, 2), seg(16, 6)), soft(fur));
+    arm.castShadow = true;
+    arm.position.set(side * 0.19, 0.24, 0.04);
+    arm.rotation.z = side * 0.35;
+    arm.rotation.x = -0.25;
+    const hand = blob(0.05, face);
+    hand.position.y = -0.11;
+    arm.add(hand);
+    return arm;
   });
-  const ears = [-0.2, 0.2].map((x) => {
-    const ear = mesh(new THREE.IcosahedronGeometry(0.07, 0), face);
-    ear.position.set(x, 0.1, 0);
-    return ear;
-  });
-  const tail = mesh(new THREE.TorusGeometry(0.18, 0.035, 6, 12, Math.PI * 1.3), fur);
-  tail.position.set(0, 0.35, -0.25);
-  tail.rotation.y = Math.PI / 2;
-  const feet = [-0.12, 0.12].map((x) => {
-    const foot = mesh(new THREE.IcosahedronGeometry(0.08, 0), fur);
-    foot.position.set(x, 0.06, 0.06);
+  const feet = [-0.09, 0.09].map((x) => {
+    const foot = blob(0.065, face);
+    foot.scale.set(1, 0.6, 1.4);
+    foot.position.set(x, 0.04, 0.07);
     return foot;
   });
+  const curl = new THREE.CatmullRomCurve3([
+    [0, 0.18, -0.15], [0, 0.2, -0.3], [0, 0.35, -0.4], [0, 0.5, -0.34], [0, 0.52, -0.24], [0, 0.44, -0.2], [0, 0.4, -0.27],
+  ].map((point) => new THREE.Vector3(...point)));
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(curl, seg(40, 12), 0.028, seg(10, 5)), soft(fur));
+  tail.castShadow = true;
+
+  // the head is about as big as the body, which is what makes it read as "cute"
+  const head = blob(0.24, fur);
+  head.scale.set(1.05, 0.95, 0.95);
+  const mask = blob(0.19, face); // heart-ish face: two cheeks around the eyes, plus the muzzle
+  mask.scale.set(1.15, 0.8, 0.55);
+  mask.position.set(0, 0.01, 0.13);
+  const muzzle = blob(0.12, face);
+  muzzle.scale.set(1.2, 0.8, 0.75);
+  muzzle.position.set(0, -0.08, 0.17);
+  const nose = blob(0.028, 0x4a2c17, { gloss: true }, [16, 12]);
+  nose.scale.set(1.5, 0.8, 0.8);
+  nose.position.set(0, -0.04, 0.26);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.009, seg(8, 3), seg(20, 6), Math.PI * 0.8), soft(0x4a2c17));
+  smile.rotation.z = Math.PI + Math.PI * 0.1;
+  smile.position.set(0, -0.08, 0.255);
+  const eyes = [-0.09, 0.09].map((x) => {
+    const eye = cuteEye(0.072);
+    eye.position.set(x, 0.045, 0.185);
+    eye.rotation.y = x * 1.6; // look slightly outward, following the curve of the face
+    return eye;
+  });
+  const brows = [-1, 1].map((side) => {
+    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.04, seg(4, 1), seg(8, 4)), soft(0x5d3a1a));
+    brow.rotation.z = Math.PI / 2 + side * 0.25;
+    brow.position.set(side * 0.085, 0.13, 0.205);
+    return brow;
+  });
+  const ears = [-1, 1].map((side) => {
+    const ear = blob(0.085, fur);
+    ear.scale.set(0.5, 1, 1);
+    ear.position.set(side * 0.25, 0.03, 0);
+    const inner = blob(0.06, 0xf5b8a0);
+    inner.scale.set(0.5, 1, 1);
+    inner.position.x = side * 0.02;
+    ear.add(inner);
+    return ear;
+  });
+  const tuft = blob(0.05, fur);
+  tuft.scale.set(0.6, 1.2, 0.6);
+  tuft.position.set(0.02, 0.24, 0.02);
+  tuft.rotation.z = -0.4;
+
   const headGroup = new THREE.Group(); // pivots at the neck, for nods and head tilts
   headGroup.position.y = 0.6;
-  headGroup.add(head, muzzle, ...eyes, ...ears);
-  monkey.add(body, headGroup, tail, ...feet);
+  headGroup.add(head, mask, muzzle, nose, smile, ...eyes, ...brows, ...ears, tuft, cheek(-0.15, -0.06, 0.2), cheek(0.15, -0.06, 0.2));
+  monkey.add(body, belly, ...arms, ...feet, tail, headGroup);
   monkey.userData.head = headGroup;
+  monkey.userData.eyes = eyes;
+  monkey.userData.body = body;
   monkey.rotation.order = "YXZ"; // turn first, so bending forward follows the facing
   return monkey;
+}
+
+// idle life for cartoon animals: blink every few seconds, breathe a little, and the
+// animal's own touch (a bee's wings flap, an octopus's arms wiggle, a fox's tail sways)
+function idleLife(animal, t) {
+  const { eyes, body, wings, wiggle, tail, float } = animal.userData;
+  if (eyes) {
+    const phase = (t + (animal.id % 7) * 0.37) % 3.6;
+    const shut = phase < 0.14 ? Math.sin((phase / 0.14) * Math.PI) : 0;
+    for (const eye of eyes) eye.scale.y = 1 - shut * 0.9;
+  }
+  if (body) {
+    const base = (body.userData.base ??= body.scale.clone());
+    const breath = Math.sin(t * 2.2) * 0.02;
+    body.scale.set(base.x * (1 - breath * 0.5), base.y * (1 + breath), base.z * (1 - breath * 0.5));
+  }
+  for (const wing of wings || []) wing.rotation.z = wing.userData.side * Math.sin(t * 28) * 0.45;
+  (wiggle || []).forEach((arm, i) => (arm.rotation.z = Math.sin(t * 2.5 + i) * 0.08));
+  if (tail) tail.rotation.y = Math.sin(t * 1.8) * 0.25;
+  if (float) float.position.y = 0.08 + Math.sin(t * 2 + animal.id) * 0.04; // a ghost hovers
 }
 
 // The other animals share the monkey's shape idea: a body, a head group that can nod, feet.
@@ -97,47 +233,6 @@ function makeAnimal(kind) {
   return makeMonkey();
 }
 
-function makeOctopus() {
-  const octopus = new THREE.Group();
-  const skin = 0xd81b60;
-  const legs = ARMS.map(([dx, dz]) => {
-    const leg = mesh(new THREE.CylinderGeometry(0.035, 0.06, 0.32, 6), skin);
-    leg.rotation.z = Math.PI / 2;
-    leg.rotation.y = -Math.atan2(dz, dx);
-    leg.position.set(dx * 0.17, 0.06, dz * 0.17);
-    return leg;
-  });
-  const head = new THREE.Group();
-  head.position.y = 0.32;
-  const dome = mesh(new THREE.IcosahedronGeometry(0.25, 1), skin);
-  dome.scale.set(1, 1.15, 1);
-  head.add(dome, ...eyesAt(0.02, 0.22, 0.09));
-  return finish(octopus, legs, head);
-}
-
-function makeBee() {
-  const bee = new THREE.Group();
-  const body = new THREE.Group();
-  body.position.y = 0.45;
-  [0, 1, 2].forEach((i) => {
-    const band = mesh(new THREE.CylinderGeometry(0.17 - i * 0.02, 0.17 - i * 0.02, 0.12, 8), i % 2 ? 0x212121 : 0xffca28);
-    band.rotation.x = Math.PI / 2;
-    band.position.z = -0.1 - i * 0.11;
-    body.add(band);
-  });
-  const wings = [-0.16, 0.16].map((x) => {
-    const wing = mesh(new THREE.SphereGeometry(0.14, 8, 6), 0xe3f2fd, { transparent: true, opacity: 0.7 });
-    wing.scale.set(0.4, 0.15, 1);
-    wing.position.set(x, 0.65, -0.12);
-    return wing;
-  });
-  const head = new THREE.Group();
-  head.position.set(0, 0.47, 0.1);
-  const skull = mesh(new THREE.IcosahedronGeometry(0.13, 1), 0x212121);
-  head.add(skull, ...eyesAt(0.03, 0.11, 0.06));
-  return finish(bee, [body, ...wings], head);
-}
-
 function finish(animal, parts, head) {
   animal.add(...parts, head);
   animal.userData.head = head;
@@ -145,242 +240,834 @@ function finish(animal, parts, head) {
   return animal;
 }
 
-function eyesAt(y, z, spread = 0.07) {
-  return [-spread, spread].map((x) => {
-    const eye = mesh(new THREE.SphereGeometry(0.028, 8, 6), 0x1a1a1a);
+// --- the other zoo animals, in the monkey's cartoon style -------------------------------
+
+// a smooth capsule (arms, legs, antennae)
+function limb(radius, length, color) {
+  const result = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, seg(6, 2), seg(14, 6)), soft(color));
+  result.castShadow = quality() === "high" || radius >= 0.04;
+  return result;
+}
+
+// big eyes, cheeks and a small smile on a head group; returns the eyes (for blinking)
+function cuteFace(head, { r, y, z, spread, iris, turn = 1.4, smile = null, cheeks = true }) {
+  const eyes = [-spread, spread].map((x) => {
+    const eye = cuteEye(r, iris);
     eye.position.set(x, y, z);
+    eye.rotation.y = x * turn;
     return eye;
   });
+  head.add(...eyes);
+  if (cheeks) head.add(cheek(-(spread + 0.06), y - 0.08, z - 0.01), cheek(spread + 0.06, y - 0.08, z - 0.01));
+  if (smile) {
+    const mouth = new THREE.Mesh(
+      new THREE.TorusGeometry(smile.size ?? 0.04, 0.008, seg(8, 3), seg(20, 6), Math.PI * 0.8),
+      soft(smile.color ?? 0x3a2418),
+    );
+    mouth.rotation.z = Math.PI * 1.1;
+    mouth.position.set(0, smile.y, smile.z);
+    head.add(mouth);
+  }
+  return eyes;
 }
 
+function cartoon(animal, parts, head, extra = {}) {
+  finish(animal, parts, head);
+  Object.assign(animal.userData, extra);
+  return animal;
+}
+
+// a round penguin in a little red scarf
 function makePenguin() {
   const penguin = new THREE.Group();
-  const body = mesh(new THREE.IcosahedronGeometry(0.27, 1), 0x263238);
-  body.scale.set(0.9, 1.3, 0.85);
-  body.position.y = 0.36;
-  const belly = mesh(new THREE.IcosahedronGeometry(0.2, 1), 0xfafafa);
-  belly.scale.set(0.8, 1.2, 0.5);
-  belly.position.set(0, 0.33, 0.13);
-  const feet = [-0.09, 0.09].map((x) => {
-    const foot = mesh(new THREE.BoxGeometry(0.1, 0.03, 0.14), 0xffa000);
-    foot.position.set(x, 0.02, 0.08);
-    return foot;
-  });
-  const wings = [-0.25, 0.25].map((x) => {
-    const wing = mesh(new THREE.BoxGeometry(0.04, 0.3, 0.14), 0x263238);
-    wing.position.set(x, 0.38, 0);
-    wing.rotation.z = x > 0 ? -0.25 : 0.25;
+  const coat = 0x2f3e52;
+  const orange = 0xff9f1c;
+  const body = blob(0.22, coat);
+  body.scale.set(1, 1.2, 0.95);
+  body.position.y = 0.28;
+  const belly = blob(0.17, 0xfdfdfd);
+  belly.scale.set(0.95, 1.15, 0.6);
+  belly.position.set(0, 0.25, 0.11);
+  const wings = [-1, 1].map((side) => {
+    const wing = blob(0.1, coat);
+    wing.scale.set(0.35, 1.05, 0.7);
+    wing.position.set(side * 0.21, 0.3, 0);
+    wing.rotation.z = side * 0.35;
     return wing;
   });
-  const head = new THREE.Group();
-  head.position.y = 0.72;
-  const skull = mesh(new THREE.IcosahedronGeometry(0.16, 1), 0x263238);
-  const beak = mesh(new THREE.ConeGeometry(0.05, 0.14, 5), 0xffa000);
-  beak.rotation.x = Math.PI / 2;
-  beak.position.set(0, -0.02, 0.17);
-  head.add(skull, beak, ...eyesAt(0.04, 0.13, 0.06));
-  return finish(penguin, [body, belly, ...feet, ...wings], head);
-}
-
-function makeBeaver() {
-  const beaver = new THREE.Group();
-  const fur = 0x795548;
-  const body = mesh(new THREE.IcosahedronGeometry(0.28, 1), fur);
-  body.scale.set(1, 0.95, 1.1);
-  body.position.y = 0.3;
-  const tail = mesh(new THREE.BoxGeometry(0.22, 0.05, 0.36), 0x4e342e);
-  tail.position.set(0, 0.08, -0.38);
-  const feet = [-0.13, 0.13].map((x) => {
-    const foot = mesh(new THREE.IcosahedronGeometry(0.07, 0), 0x4e342e);
-    foot.position.set(x, 0.05, 0.1);
+  const feet = [-0.08, 0.08].map((x) => {
+    const foot = blob(0.06, orange, { gloss: true });
+    foot.scale.set(1, 0.4, 1.5);
+    foot.position.set(x, 0.025, 0.09);
     return foot;
   });
+  const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, seg(10, 4), seg(28, 8)), soft(0xe63946));
+  scarf.rotation.x = Math.PI / 2;
+  scarf.position.y = 0.49;
+  scarf.castShadow = true;
+  const scarfEnd = limb(0.035, 0.1, 0xe63946);
+  scarfEnd.position.set(0.09, 0.4, 0.12);
+  scarfEnd.rotation.z = 0.3;
+
   const head = new THREE.Group();
-  head.position.y = 0.58;
-  const skull = mesh(new THREE.IcosahedronGeometry(0.17, 1), fur);
-  const nose = mesh(new THREE.SphereGeometry(0.04, 8, 6), 0x212121);
-  nose.position.set(0, 0, 0.17);
-  const teeth = mesh(new THREE.BoxGeometry(0.07, 0.06, 0.02), 0xfff8e1);
-  teeth.position.set(0, -0.08, 0.15);
-  const ears = [-0.12, 0.12].map((x) => {
-    const ear = mesh(new THREE.SphereGeometry(0.04, 6, 4), 0x5d4037);
-    ear.position.set(x, 0.13, -0.02);
-    return ear;
-  });
-  head.add(skull, nose, teeth, ...ears, ...eyesAt(0.06, 0.13));
-  return finish(beaver, [body, tail, ...feet], head);
+  head.position.y = 0.64;
+  const skull = blob(0.21, coat);
+  skull.scale.set(1.05, 0.95, 0.95);
+  const mask = blob(0.16, 0xfdfdfd); // white face
+  mask.scale.set(1.2, 0.85, 0.6);
+  mask.position.set(0, -0.02, 0.1);
+  const beak = blob(0.045, orange, { gloss: true });
+  beak.scale.set(1.4, 0.7, 1.2);
+  beak.position.set(0, -0.06, 0.2);
+  head.add(skull, mask, beak);
+  const eyes = cuteFace(head, { r: 0.062, y: 0.02, z: 0.155, spread: 0.08, iris: 0x2a6fb5 });
+  return cartoon(penguin, [body, belly, ...wings, ...feet, scarf, scarfEnd], head, { eyes, body });
 }
 
+// a chubby beaver with two big front teeth and a flat paddle tail
+function makeBeaver() {
+  const beaver = new THREE.Group();
+  const fur = 0x8d5a3b;
+  const light = 0xe0bd96;
+  const dark = 0x5a3a28;
+  const body = blob(0.21, fur);
+  body.scale.set(1.05, 1.05, 1);
+  body.position.y = 0.25;
+  const belly = blob(0.15, light);
+  belly.scale.set(1, 1.1, 0.6);
+  belly.position.set(0, 0.23, 0.11);
+  const tail = blob(0.13, dark);
+  tail.scale.set(0.85, 0.22, 1.5);
+  tail.position.set(0, 0.06, -0.3);
+  tail.rotation.x = 0.25;
+  const arms = [-1, 1].map((side) => {
+    const arm = limb(0.04, 0.09, fur);
+    arm.position.set(side * 0.17, 0.27, 0.1);
+    arm.rotation.set(-0.6, 0, side * 0.3);
+    return arm;
+  });
+  const feet = [-0.09, 0.09].map((x) => {
+    const foot = blob(0.065, dark);
+    foot.scale.set(1, 0.5, 1.4);
+    foot.position.set(x, 0.035, 0.08);
+    return foot;
+  });
+
+  const head = new THREE.Group();
+  head.position.y = 0.56;
+  const skull = blob(0.21, fur);
+  skull.scale.set(1.05, 0.95, 0.95);
+  const muzzle = blob(0.1, light);
+  muzzle.scale.set(1.35, 0.85, 0.85);
+  muzzle.position.set(0, -0.07, 0.16);
+  const nose = blob(0.035, 0x2b1a12, { gloss: true });
+  nose.scale.set(1.4, 0.9, 1);
+  nose.position.set(0, -0.025, 0.245);
+  const teeth = [-0.017, 0.017].map((x) => {
+    const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.015), soft(0xfffaf0, { gloss: true }));
+    tooth.position.set(x, -0.13, 0.225);
+    return tooth;
+  });
+  const ears = [-1, 1].map((side) => {
+    const ear = blob(0.05, fur);
+    ear.scale.set(1, 1, 0.6);
+    ear.position.set(side * 0.15, 0.15, -0.02);
+    const inner = blob(0.03, 0xc99a7a);
+    inner.position.z = 0.02;
+    ear.add(inner);
+    return ear;
+  });
+  head.add(skull, muzzle, nose, ...teeth, ...ears);
+  const eyes = cuteFace(head, { r: 0.06, y: 0.05, z: 0.165, spread: 0.08, iris: 0x4a2c17 });
+  return cartoon(beaver, [body, belly, tail, ...arms, ...feet], head, { eyes, body });
+}
+
+// an orange fox: pointy ears, white cheeks, a big fluffy tail with a white tip
 function makeFox() {
   const fox = new THREE.Group();
-  const fur = 0xef6c00;
-  const body = mesh(new THREE.IcosahedronGeometry(0.24, 1), fur);
-  body.scale.set(0.9, 0.9, 1.3);
-  body.position.y = 0.32;
-  const tail = mesh(new THREE.ConeGeometry(0.1, 0.45, 6), fur);
-  tail.rotation.x = -Math.PI / 2.6;
-  tail.position.set(0, 0.36, -0.42);
-  const tip = mesh(new THREE.ConeGeometry(0.06, 0.14, 6), 0xfafafa);
-  tip.rotation.x = -Math.PI / 2.6;
-  tip.position.set(0, 0.47, -0.6);
-  const legs = [-0.1, 0.1].map((x) => {
-    const leg = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 5), 0x3e2723);
-    leg.position.set(x, 0.09, 0.08);
+  const fur = 0xf07a26;
+  const white = 0xfff3e6;
+  const dark = 0x3e2a20;
+  const body = blob(0.19, fur);
+  body.scale.set(0.95, 1.05, 1.1);
+  body.position.y = 0.25;
+  const chest = blob(0.13, white);
+  chest.scale.set(1, 1.15, 0.6);
+  chest.position.set(0, 0.26, 0.11);
+  const legs = [-0.08, 0.08].map((x) => {
+    const leg = limb(0.04, 0.08, dark);
+    leg.position.set(x, 0.07, 0.07);
     return leg;
   });
+  const tailBase = new THREE.Group(); // sways from where the tail meets the body
+  tailBase.position.set(0, 0.2, -0.17);
+  tailBase.rotation.x = 0.55; // up and back, like a happy fox's
+  const tail = blob(0.11, fur);
+  tail.scale.set(0.85, 0.85, 1.9);
+  tail.position.z = -0.16;
+  const tip = blob(0.08, white);
+  tip.position.z = -0.34;
+  tailBase.add(tail, tip);
+
   const head = new THREE.Group();
-  head.position.set(0, 0.56, 0.18);
-  const skull = mesh(new THREE.IcosahedronGeometry(0.15, 1), fur);
-  const snout = mesh(new THREE.ConeGeometry(0.07, 0.18, 5), 0xfafafa);
-  snout.rotation.x = Math.PI / 2;
-  snout.position.set(0, -0.03, 0.16);
-  const ears = [-0.08, 0.08].map((x) => {
-    const ear = mesh(new THREE.ConeGeometry(0.05, 0.13, 4), fur);
-    ear.position.set(x, 0.16, 0);
+  head.position.y = 0.56;
+  const skull = blob(0.21, fur);
+  skull.scale.set(1.1, 0.95, 1);
+  const cheeks = [-1, 1].map((side) => {
+    const patch = blob(0.11, white);
+    patch.scale.set(1, 0.75, 0.75);
+    patch.position.set(side * 0.08, -0.07, 0.11);
+    return patch;
+  });
+  const snout = blob(0.07, white);
+  snout.scale.set(1, 0.8, 1.3);
+  snout.position.set(0, -0.06, 0.2);
+  const nose = blob(0.026, 0x1a1a1a, { gloss: true });
+  nose.position.set(0, -0.035, 0.29);
+  const ears = [-1, 1].map((side) => {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.17, seg(16, 4)), soft(fur));
+    ear.castShadow = true;
+    ear.position.set(side * 0.12, 0.2, -0.01);
+    ear.rotation.z = -side * 0.3;
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.11, seg(12, 4)), soft(dark));
+    inner.position.set(0, -0.02, 0.03);
+    ear.add(inner);
     return ear;
   });
-  head.add(skull, snout, ...ears, ...eyesAt(0.04, 0.12, 0.06));
-  return finish(fox, [body, tail, tip, ...legs], head);
+  head.add(skull, ...cheeks, snout, nose, ...ears);
+  const eyes = cuteFace(head, { r: 0.058, y: 0.035, z: 0.17, spread: 0.085, iris: 0x8a4b12, cheeks: false });
+  return cartoon(fox, [body, chest, ...legs, tailBase], head, { eyes, body, tail: tailBase });
 }
 
-function makeTree() {
-  const tree = new THREE.Group();
-  const trunk = mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.9, 6), 0x795548);
-  trunk.position.y = 0.45;
-  const crown = mesh(new THREE.IcosahedronGeometry(0.42, 0), 0x2e7d32);
-  crown.position.y = 1.05;
-  tree.add(trunk, crown);
-  return tree;
+// a pink octopus: a round head-body and eight curly arms that wiggle
+function makeOctopus() {
+  const octopus = new THREE.Group();
+  const skin = 0xff6f91;
+  const arms = ARMS.map(([dx, dz]) => {
+    const arm = new THREE.Group();
+    arm.rotation.y = -Math.atan2(dz, dx);
+    const path = new THREE.CatmullRomCurve3(
+      [[0.05, 0.16, 0], [0.16, 0.06, 0], [0.28, 0.035, 0], [0.37, 0.08, 0], [0.35, 0.14, 0], [0.3, 0.12, 0]]
+        .map((point) => new THREE.Vector3(...point)),
+    );
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(path, seg(24, 8), 0.04, seg(10, 5)), soft(skin));
+    tube.castShadow = true;
+    arm.add(tube);
+    return arm;
+  });
+  const head = new THREE.Group();
+  head.position.y = 0.36;
+  const dome = blob(0.26, skin);
+  dome.scale.set(1, 1.1, 1);
+  const spots = [[-0.12, 0.17, -0.12], [0.1, 0.21, -0.06], [0.16, 0.08, -0.17], [-0.05, 0.25, 0.05]].map(([x, y, z], i) => {
+    const spot = blob(0.03 + (i % 2) * 0.012, 0xffa3b8);
+    spot.scale.set(1, 1, 0.4);
+    spot.position.set(x, y, z);
+    spot.lookAt(x * 3, y * 3, z * 3);
+    return spot;
+  });
+  head.add(dome, ...spots);
+  const eyes = cuteFace(head, {
+    r: 0.075, y: 0.01, z: 0.215, spread: 0.1, iris: 0x3b2a6e,
+    smile: { y: -0.1, z: 0.25, size: 0.045, color: 0x7a1f3d },
+  });
+  return cartoon(octopus, arms, head, { eyes, body: dome, wiggle: arms });
 }
 
-function makeLog(color) {
-  const log = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 8), color);
-  log.rotation.z = Math.PI / 2;
-  log.position.y = 0.1;
-  const group = new THREE.Group();
-  group.add(log);
-  return group;
+// a fluffy striped bee with see-through wings that flap
+function makeBee() {
+  const bee = new THREE.Group();
+  const yellow = 0xffc93c;
+  const dark = 0x2b2b2b;
+  const body = new THREE.Group();
+  body.position.y = 0.4;
+  const fuzz = blob(0.2, yellow);
+  fuzz.scale.set(1, 0.95, 1.2);
+  // stripes sized to the body's oval at their place along it
+  const stripes = [0.0, -0.13].map((z) => {
+    const across = 0.2 * Math.sqrt(1 - (z / 0.24) ** 2);
+    const stripe = new THREE.Mesh(new THREE.TorusGeometry(across - 0.005, 0.045, seg(10, 4), seg(32, 8)), soft(dark));
+    stripe.scale.y = 0.95;
+    stripe.position.z = z;
+    return stripe;
+  });
+  const sting = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.08, seg(12, 4)), soft(dark, { gloss: true }));
+  sting.rotation.x = -Math.PI / 2;
+  sting.position.z = -0.3;
+  body.add(fuzz, ...stripes, sting);
+  const wings = [-1, 1].map((side) => {
+    const pivot = new THREE.Group(); // flaps around where the wing meets the body
+    pivot.position.set(side * 0.06, 0.58, -0.04);
+    const wing = blob(0.15, 0xe8f4ff, { transparent: true, opacity: 0.6, depthWrite: false });
+    wing.castShadow = false;
+    wing.scale.set(0.9, 0.12, 0.55);
+    wing.position.x = side * 0.13;
+    wing.rotation.z = side * 0.45;
+    pivot.add(wing);
+    pivot.userData.side = side;
+    return pivot;
+  });
+  const feet = [-0.06, 0.06].map((x) => {
+    const foot = limb(0.022, 0.06, dark);
+    foot.position.set(x, 0.2, 0.03);
+    return foot;
+  });
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.47, 0.29);
+  const skull = blob(0.15, 0xffdb70);
+  const antennae = [-1, 1].map((side) => {
+    const stalk = limb(0.01, 0.1, dark);
+    stalk.position.set(side * 0.06, 0.17, 0);
+    stalk.rotation.z = -side * 0.35;
+    const ball = blob(0.025, dark, { gloss: true }, [16, 12]);
+    ball.position.y = 0.07;
+    stalk.add(ball);
+    return stalk;
+  });
+  head.add(skull, ...antennae);
+  const eyes = cuteFace(head, {
+    r: 0.055, y: 0.02, z: 0.115, spread: 0.065, iris: 0x4a2c17,
+    smile: { y: -0.065, z: 0.14, size: 0.03 },
+  });
+  return cartoon(bee, [body, ...wings, ...feet], head, { eyes, body: fuzz, wings });
 }
 
-function makeBanana(color = 0xf4d03f) {
-  const banana = new THREE.Group();
-  const curve = mesh(new THREE.TorusGeometry(0.18, 0.06, 6, 10, Math.PI * 0.75), color);
-  curve.rotation.set(Math.PI / 2, 0, Math.PI * 0.6);
-  curve.position.y = 0.12;
-  const tip = mesh(new THREE.ConeGeometry(0.03, 0.06, 5), 0x5d4037);
-  tip.position.set(0.17, 0.12, 0.05);
-  banana.add(curve, tip);
+// --- things to collect, in the animals' cartoon style --------------------------------------
+// Each is a group standing on the ground at its origin (the stage moves, spins and scales it).
+
+function group(...parts) {
+  const result = new THREE.Group();
+  if (parts.length) result.add(...parts);
+  return result;
+}
+
+function at(object, x, y, z) {
+  object.position.set(x, y, z);
+  return object;
+}
+
+// the top half of a ball: jellyfish, shells, mushroom caps
+function dome(radius, color, options) {
+  const result = new THREE.Mesh(
+    new THREE.SphereGeometry(radius, seg(32, 8), seg(12, 4), 0, Math.PI * 2, 0, Math.PI / 2),
+    soft(color, { side: THREE.DoubleSide, ...options }),
+  );
+  result.castShadow = true;
+  return result;
+}
+
+function tube(points, radius, color, options) {
+  const path = new THREE.CatmullRomCurve3(points.map((point) => new THREE.Vector3(...point)));
+  const result = new THREE.Mesh(new THREE.TubeGeometry(path, seg(24, 6), radius, seg(10, 4)), soft(color, options));
+  result.castShadow = quality() === "high" || radius >= 0.03;
+  return result;
+}
+
+// two small eyes and a smile, for the creatures among the things (fish, crab, jellyfish)
+function tinyFace(x, y, z, spread = 0.04) {
+  const face = new THREE.Group();
+  face.position.set(x, y, z);
+  cuteFace(face, { r: 0.03, y: 0, z: 0, spread, iris: 0x222222, turn: 0, cheeks: false, smile: { y: -0.04, z: 0.01, size: 0.018 } });
+  return face;
+}
+
+function makeBanana(color = 0xffd23f, spots = false) {
+  const fruit = tube([[-0.17, 0.2, 0], [-0.1, 0.1, 0], [0, 0.07, 0], [0.1, 0.1, 0], [0.17, 0.2, 0]], 0.052, color, { gloss: true });
+  const stem = at(limb(0.016, 0.04, 0x6b4a2a), 0.185, 0.24, 0);
+  stem.rotation.z = -0.5;
+  const tip = at(blob(0.022, 0x4a3420, {}, [12, 8]), -0.18, 0.215, 0);
+  const banana = group(fruit, stem, tip);
+  if (spots) {
+    for (const [x, y] of [[-0.08, 0.1], [0.03, 0.08], [0.11, 0.12]]) {
+      const spot = at(blob(0.018, 0x3b2c14, {}, [10, 8]), x, y, 0.045);
+      spot.scale.z = 0.4;
+      banana.add(spot);
+    }
+  }
   return banana;
 }
 
 function makeCoconut() {
-  const coconut = mesh(new THREE.IcosahedronGeometry(0.17, 1), 0x6d4c41);
-  coconut.position.y = 0.17;
+  const nut = at(blob(0.16, 0x7a4b2a), 0, 0.15, 0);
+  nut.scale.set(1, 0.95, 1);
+  const coconut = group(nut);
+  for (const [x, z] of [[-0.035, 0.03], [0.035, 0.03], [0, -0.03]]) {
+    coconut.add(at(blob(0.018, 0x2b1a10, {}, [10, 8]), x, 0.3, z)); // the three "eyes" on top
+  }
   return coconut;
 }
 
-function makeRock() {
-  const rock = new THREE.Group();
-  const big = mesh(new THREE.DodecahedronGeometry(0.38, 0), 0x8d8d86);
-  big.scale.set(1, 0.85, 1);
-  big.position.y = 0.3;
-  const small = mesh(new THREE.DodecahedronGeometry(0.16, 0), 0x77776f);
-  small.position.set(0.28, 0.12, 0.2);
-  rock.add(big, small);
+function makeFish() {
+  const body = at(blob(0.13, 0x4fc3f7, { gloss: true }), 0, 0.2, 0);
+  body.scale.set(1.5, 0.9, 0.62);
+  const belly = at(blob(0.1, 0xe1f5fe), 0.03, 0.16, 0);
+  belly.scale.set(1.5, 0.6, 0.6);
+  const tail = at(new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.15, seg(16, 4)), soft(0x0288d1)), -0.25, 0.2, 0);
+  tail.rotation.z = -Math.PI / 2; // the point joins the body
+  tail.scale.z = 0.3;
+  tail.castShadow = true;
+  const fin = at(blob(0.06, 0x0288d1), -0.02, 0.31, 0);
+  fin.scale.set(1.2, 0.8, 0.25);
+  const fish = group(body, belly, tail, fin);
+  for (const side of [-1, 1]) {
+    const eye = at(cuteEye(0.042, 0x222222), 0.12, 0.23, side * 0.065); // one on each side
+    eye.rotation.y = side > 0 ? 0.6 : Math.PI - 0.6; // looking out and a little forward
+    fish.add(eye);
+  }
+  return fish;
+}
+
+function makePebble() {
+  const big = at(blob(0.13, 0x9e9e9e, { roughness: 0.9 }), 0, 0.075, 0);
+  big.scale.set(1.25, 0.6, 1);
+  const small = at(blob(0.07, 0xbdbdbd, { roughness: 0.9 }), 0.13, 0.04, 0.09);
+  small.scale.set(1.2, 0.6, 1);
+  return group(big, small);
+}
+
+// a scallop: ridged halves fanning out from the hinge, in two shades
+function makeShell(color = 0xffb4a2) {
+  const shell = group();
+  for (let i = -3; i <= 3; i++) {
+    const angle = i * 0.32;
+    const ridge = blob(0.065, i % 2 ? 0xff9e8a : color, { gloss: true });
+    ridge.scale.set(0.5, 0.45, 1.5);
+    ridge.position.set(Math.sin(angle) * 0.08, 0.035 + (3 - Math.abs(i)) * 0.006, Math.cos(angle) * 0.08 - 0.08);
+    ridge.rotation.y = angle;
+    shell.add(ridge);
+  }
+  const hinge = at(blob(0.035, 0xff8a75), 0, 0.03, -0.1);
+  hinge.scale.set(1.5, 0.7, 0.8);
+  shell.add(hinge);
+  return shell;
+}
+
+function makePearl() {
+  const cup = at(dome(0.14, 0xb39ddb, { gloss: true }), 0, 0.075, 0);
+  cup.rotation.x = Math.PI; // an open shell, as a little bowl
+  cup.scale.set(1, 0.5, 1);
+  const pearl = at(blob(0.075, 0xffffff, { gloss: true, clearcoat: 1, sheen: 0, iridescence: 1 }), 0, 0.12, 0);
+  return group(cup, pearl);
+}
+
+function makeJellyfish() {
+  const bell = at(dome(0.16, 0xce93d8, { transparent: true, opacity: 0.85, gloss: true }), 0, 0.3, 0);
+  bell.scale.set(1, 0.85, 1);
+  const jelly = group(bell, tinyFace(0, 0.36, 0.14, 0.045));
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2;
+    const [x, z] = [Math.cos(angle) * 0.08, Math.sin(angle) * 0.08];
+    jelly.add(tube([[x, 0.3, z], [x * 1.2 + 0.02, 0.2, z * 1.2], [x * 0.9 - 0.02, 0.1, z * 0.9], [x * 1.1, 0.03, z * 1.1]], 0.014, 0xe1bee7));
+  }
+  return jelly;
+}
+
+function makeFlower() {
+  const stem = tube([[0, 0, 0], [0.02, 0.12, 0], [0, 0.25, 0]], 0.016, 0x43a047);
+  const leaf = at(blob(0.06, 0x66bb6a), 0.06, 0.09, 0);
+  leaf.scale.set(1, 0.2, 0.5);
+  leaf.rotation.z = 0.5;
+  const head = at(new THREE.Group(), 0, 0.28, 0);
+  head.rotation.x = -1.0; // the bloom looks up, a little forward
+  head.add(blob(0.045, 0xffca28, { gloss: true }));
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const petal = at(blob(0.05, 0xff8fb1), Math.cos(angle) * 0.07, Math.sin(angle) * 0.07, -0.01);
+    petal.scale.set(1, 1, 0.35);
+    head.add(petal);
+  }
+  return group(stem, leaf, head);
+}
+
+function makeClover() {
+  const stem = tube([[0, 0, 0], [0.015, 0.1, 0], [0, 0.2, 0]], 0.014, 0x388e3c);
+  const clover = group(stem);
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI * 2 + Math.PI / 2;
+    // a heart: two small round halves side by side
+    const leaf = at(new THREE.Group(), Math.cos(angle) * 0.065, 0.21, Math.sin(angle) * 0.065);
+    leaf.rotation.y = -angle + Math.PI / 2;
+    for (const side of [-1, 1]) {
+      const half = at(blob(0.045, 0x43a047), side * 0.03, 0, 0);
+      half.scale.set(1, 0.3, 1.1);
+      leaf.add(half);
+    }
+    clover.add(leaf);
+  }
+  return clover;
+}
+
+function makeNettle() {
+  const stalk = tube([[0, 0, 0], [0, 0.18, 0], [0.01, 0.36, 0]], 0.018, 0x2e7d32);
+  const nettle = group(stalk);
+  for (let i = 0; i < 4; i++) {
+    const holder = at(new THREE.Group(), 0, 0.1 + i * 0.07, 0);
+    holder.rotation.y = i * 1.9;
+    const leaf = at(blob(0.07, i % 2 ? 0x2e7d32 : 0x388e3c), 0.07, 0, 0);
+    leaf.scale.set(1, 0.15, 0.45);
+    leaf.rotation.z = 0.4;
+    holder.add(leaf);
+    nettle.add(holder);
+  }
+  return nettle;
+}
+
+function makeCrab() {
+  const red = 0xef5350;
+  const body = at(blob(0.13, red, { gloss: true }), 0, 0.12, 0);
+  body.scale.set(1.35, 0.6, 1);
+  const crab = group(body);
+  for (const side of [-1, 1]) {
+    const stalk = at(limb(0.012, 0.06, red), side * 0.045, 0.21, 0.07);
+    const eye = at(cuteEye(0.032, 0x222222), side * 0.045, 0.27, 0.075); // eyes on stalks
+    crab.add(stalk, eye);
+    const arm = at(limb(0.02, 0.08, red), side * 0.17, 0.13, 0.08);
+    arm.rotation.set(-0.9, 0, side * 0.9);
+    const claw = at(blob(0.05, red, { gloss: true }), side * 0.22, 0.17, 0.14);
+    claw.scale.set(1, 0.8, 1.2);
+    crab.add(arm, claw);
+    for (let i = 0; i < 3; i++) {
+      const leg = at(limb(0.012, 0.08, 0xc62828), side * 0.17, 0.06, -0.06 + i * 0.06);
+      leg.rotation.z = side * 1.1;
+      crab.add(leg);
+    }
+  }
+  const smile = at(new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.006, seg(6, 3), seg(12, 6), Math.PI * 0.8), soft(0x5d1a1a)), 0, 0.11, 0.13);
+  smile.rotation.z = Math.PI * 1.1;
+  crab.add(smile);
+  return crab;
+}
+
+function makeEgg() {
+  const nest = at(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.05, seg(10, 4), seg(28, 8)), soft(0xa1887f)), 0, 0.04, 0);
+  nest.rotation.x = Math.PI / 2;
+  nest.castShadow = true;
+  const egg = at(blob(0.1, 0xfffbea, { gloss: true }), 0, 0.15, 0);
+  egg.scale.set(0.85, 1.15, 0.85);
+  const result = group(nest, egg);
+  for (const [x, y, z] of [[0.05, 0.2, 0.06], [-0.06, 0.15, 0.06], [0.02, 0.1, -0.08], [-0.03, 0.23, -0.05]]) {
+    const speck = at(blob(0.012, 0xc8a27a, {}, [8, 6]), x, y, z);
+    result.add(speck);
+  }
+  return result;
+}
+
+function makeBerry() {
+  const berries = group();
+  for (const [x, y, z] of [[-0.05, 0.07, 0.02], [0.05, 0.07, 0.03], [0, 0.07, -0.06], [0, 0.15, 0]]) {
+    berries.add(at(blob(0.065, 0x5e35b1, { gloss: true }), x, y, z));
+  }
+  const leaf = at(blob(0.05, 0x43a047), 0.02, 0.21, 0);
+  leaf.scale.set(1, 0.2, 0.5);
+  leaf.rotation.z = -0.4;
+  berries.add(leaf);
+  return berries;
+}
+
+// a snapping trap, drawn as a toy: a grey ring of rounded teeth around a red button
+function makeTrap() {
+  const base = at(blob(0.17, 0x757575, { gloss: true }), 0, 0.03, 0);
+  base.scale.set(1, 0.2, 1);
+  const trap = group(base, at(blob(0.05, 0xe53935, { gloss: true }), 0, 0.06, 0));
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const tooth = at(new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, seg(10, 4)), soft(0xbdbdbd, { gloss: true })), Math.cos(angle) * 0.13, 0.08, Math.sin(angle) * 0.13);
+    tooth.castShadow = true;
+    trap.add(tooth);
+  }
+  return trap;
+}
+
+// a cut log: bark, light wood at the ends with a growth ring
+function makeLog(bark, { inside = 0xe8c592, stripes = false, length = 0.42, radius = 0.085 } = {}) {
+  const log = at(new THREE.Group(), 0, radius + 0.005, 0);
+  log.rotation.z = Math.PI / 2;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, seg(24, 6), 1, true), soft(bark));
+  trunk.castShadow = true;
+  log.add(trunk);
+  for (const end of [-1, 1]) {
+    const cut = at(new THREE.Mesh(new THREE.CircleGeometry(radius, seg(24, 6)), soft(inside)), 0, (end * length) / 2, 0);
+    cut.rotation.x = end * -Math.PI / 2;
+    const ring = at(new THREE.Mesh(new THREE.RingGeometry(radius * 0.45, radius * 0.55, seg(24, 6)), soft(0xc49a64)), 0, end * (length / 2 + 0.001), 0);
+    ring.rotation.x = end * -Math.PI / 2;
+    log.add(cut, ring);
+  }
+  if (stripes) {
+    const marks = [[-0.15, 0.3], [-0.1, 2.6], [-0.03, 1.4], [0.02, 4.4], [0.08, 0.9], [0.12, 3.3], [0.16, 5.4], [-0.06, 5.2]];
+    for (const [y, angle] of marks) {
+      const mark = at(blob(0.03, 0x37332f, {}, [10, 6]), Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+      mark.scale.set(1.6, 0.45, 0.3); // a short dark dash across the bark
+      mark.lookAt(Math.cos(angle) * 2, y, Math.sin(angle) * 2);
+      log.add(mark);
+    }
+  }
+  const sprout = at(blob(0.035, 0x66bb6a), 0.08, radius * 2 + 0.01, 0); // a little leaf growing from it
+  sprout.scale.set(1, 0.3, 0.55);
+  return group(log, sprout);
+}
+
+function makeStick() {
+  const stick = group(tube([[-0.2, 0.03, 0], [-0.05, 0.04, 0.02], [0.08, 0.035, -0.01], [0.2, 0.05, 0]], 0.02, 0x6d4c41));
+  stick.add(tube([[0.02, 0.04, 0], [0.08, 0.08, 0.04], [0.12, 0.12, 0.05]], 0.012, 0x6d4c41));
+  const leaf = at(blob(0.04, 0x66bb6a), 0.14, 0.13, 0.05);
+  leaf.scale.set(1, 0.25, 0.5);
+  stick.add(leaf);
+  return stick;
+}
+
+function makeLeaf() {
+  const blade = at(blob(0.15, 0x66bb6a), 0, 0.05, 0);
+  blade.scale.set(1, 0.12, 0.55);
+  const vein = at(limb(0.008, 0.26, 0x388e3c), 0, 0.07, 0);
+  vein.rotation.z = Math.PI / 2;
+  const stalk = at(limb(0.01, 0.06, 0x388e3c), -0.18, 0.05, 0);
+  stalk.rotation.z = Math.PI / 2;
+  const leaf = group(blade, vein, stalk);
+  leaf.rotation.z = 0.15;
+  return leaf;
+}
+
+function makeThorn() {
+  const stalk = tube([[0, 0, 0], [0.03, 0.15, 0], [-0.02, 0.3, 0]], 0.025, 0x558b2f);
+  const thorn = group(stalk);
+  for (let i = 0; i < 6; i++) {
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.07, seg(8, 4)), soft(0x9ccc65, { gloss: true }));
+    const angle = i * 2.2;
+    spike.position.set(Math.cos(angle) * 0.03, 0.06 + i * 0.04, Math.sin(angle) * 0.03);
+    spike.rotation.set(Math.sin(angle) * 1.3, 0, -Math.cos(angle) * 1.3);
+    thorn.add(spike);
+  }
+  return thorn;
+}
+
+function makeMushroom() {
+  const stem = at(limb(0.045, 0.08, 0xfff8e1), 0, 0.085, 0);
+  const cap = at(dome(0.15, 0xe53935, { gloss: true }), 0, 0.15, 0);
+  cap.scale.set(1, 0.75, 1);
+  const mushroom = group(stem, cap);
+  for (const [x, z, size] of [[0, 0, 0.03], [0.08, 0.04, 0.022], [-0.07, 0.05, 0.02], [0.02, -0.09, 0.024], [-0.06, -0.05, 0.018]]) {
+    const y = 0.15 + 0.11 * Math.sqrt(Math.max(0, 1 - (x * x + z * z) / 0.0225));
+    const dot = at(blob(size, 0xffffff, {}, [10, 8]), x, y, z);
+    dot.scale.y = 0.4;
+    mushroom.add(dot);
+  }
+  return mushroom;
+}
+
+function makeGem() {
+  const gem = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0), soft(0x4fc3f7, { gloss: true, flatShading: true })), 0, 0.2, 0);
+  gem.scale.y = 1.3;
+  gem.castShadow = true;
+  return group(gem);
+}
+
+const ITEM_MODELS = {
+  banana: () => makeBanana(),
+  rotten: () => makeBanana(0x8d7a3a, true),
+  coconut: makeCoconut,
+  fish: makeFish,
+  pebble: makePebble,
+  shell: () => makeShell(),
+  pearl: makePearl,
+  jellyfish: makeJellyfish,
+  flower: makeFlower,
+  clover: makeClover,
+  nettle: makeNettle,
+  crab: makeCrab,
+  egg: makeEgg,
+  berry: makeBerry,
+  trap: makeTrap,
+  oak: () => makeLog(0x6d4c41),
+  pine: () => makeLog(0xa1887f, { inside: 0xf3d9a4 }),
+  birch: () => makeLog(0xf5f5f5, { stripes: true }),
+  stick: makeStick,
+  leaf: makeLeaf,
+  thorn: makeThorn,
+  mushroom: makeMushroom,
+};
+
+function makeItem(noun) {
+  return (ITEM_MODELS[noun] || makeGem)();
+}
+
+// --- scenery: ground, tiles, trees, rocks, plants, the goal flag -----------------------------
+
+// a box with soft, rounded edges (tiles, the ground, planks). Shapes are shared between
+// boxes of the same size; each box keeps its own material, so one tile can flash alone.
+const roundedShapes = new Map();
+function roundedGeometry(width, height, depth, bevel) {
+  const key = [width, height, depth, bevel, quality()].join();
+  if (roundedShapes.has(key)) return roundedShapes.get(key);
+  const [w, d] = [width / 2 - bevel, depth / 2 - bevel];
+  const corner = Math.min(bevel * 1.5, w, d);
+  const shape = new THREE.Shape();
+  shape.moveTo(-w + corner, -d);
+  shape.lineTo(w - corner, -d);
+  shape.quadraticCurveTo(w, -d, w, -d + corner);
+  shape.lineTo(w, d - corner);
+  shape.quadraticCurveTo(w, d, w - corner, d);
+  shape.lineTo(-w + corner, d);
+  shape.quadraticCurveTo(-w, d, -w, d - corner);
+  shape.lineTo(-w, -d + corner);
+  shape.quadraticCurveTo(-w, -d, -w + corner, -d);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: Math.max(0.001, height - bevel * 2),
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: seg(4, 1),
+    curveSegments: seg(6, 1),
+  });
+  geometry.rotateX(-Math.PI / 2); // extruded upwards
+  geometry.center();
+  roundedShapes.set(key, geometry);
+  return geometry;
+}
+
+// ground and tiles: plain and matte (they cover most of the picture, so no sheen)
+function groundMaterial(color, options = {}) {
+  if (quality() === "low") return new THREE.MeshLambertMaterial({ color, ...options });
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.9, ...options });
+}
+
+function roundedBox(width, height, depth, bevel, color, options) {
+  const result = new THREE.Mesh(roundedGeometry(width, height, depth, bevel), groundMaterial(color, options));
+  result.castShadow = true;
+  result.receiveShadow = true;
+  return result;
+}
+
+// a lumpy ball: a sphere pushed in and out a little, the same way for the same seed
+function lumpy(radius, color, seed = 1, options) {
+  const geometry = new THREE.SphereGeometry(radius, seg(28, 8), seg(20, 6));
+  const point = new THREE.Vector3();
+  const position = geometry.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    point.fromBufferAttribute(position, i);
+    const bump = 1 + 0.07 * Math.sin(point.x * 17 + seed) * Math.cos(point.z * 13 - seed) + 0.05 * Math.sin(point.y * 21 + seed * 2);
+    point.multiplyScalar(bump);
+    position.setXYZ(i, point.x, point.y, point.z);
+  }
+  geometry.computeVertexNormals();
+  const result = new THREE.Mesh(geometry, soft(color, { roughness: 0.85, sheen: 0, ...options }));
+  result.castShadow = true;
+  result.receiveShadow = true;
+  return result;
+}
+
+// a round cartoon tree: a gently bent trunk and a crown of three or four soft balls. The
+// crown's top is at about 1.3, where fruit on a tree square sits.
+function makeTree(seed = 0) {
+  const trunk = tube([[0, 0, 0], [0.03, 0.35, 0], [-0.02, 0.7, 0], [0, 0.9, 0]], 0.08, 0x8d5a3b);
+  const root = at(blob(0.12, 0x7a4b2e), 0, 0.03, 0);
+  root.scale.set(1.2, 0.35, 1.2);
+  const tree = group(trunk, root);
+  const greens = [0x4caf50, 0x43a047, 0x66bb6a];
+  const crown = [[0, 1.0, 0, 0.33], [-0.22, 0.88, 0.08, 0.24], [0.22, 0.9, -0.05, 0.25], [0.05, 0.85, 0.22, 0.22]];
+  crown.forEach(([x, y, z, r], i) => tree.add(at(lumpy(r, greens[(i + seed) % 3], seed + i, { roughness: 0.75 }), x, y, z)));
+  return tree;
+}
+
+// a wall: a big smooth boulder and a small one leaning on it, with a cap that suits the
+// world: moss on land, snow on the ice, nothing on the reef
+const ROCK_CAPS = { penguin: 0xfafdff, octopus: null };
+function makeRock(seed = 0, world = "monkey") {
+  const big = at(lumpy(0.36, 0x9e9a93, seed), 0, 0.27, 0);
+  big.scale.set(1, 0.8, 0.95);
+  const small = at(lumpy(0.16, 0x8a867f, seed + 3), 0.27, 0.1, 0.2);
+  const rock = group(big, small);
+  const cap = world in ROCK_CAPS ? ROCK_CAPS[world] : 0x7cb342;
+  if (cap !== null) {
+    const top = at(lumpy(0.2, cap, seed + 5, { roughness: 0.95 }), -0.05, 0.49, -0.04);
+    top.scale.set(1.2, 0.3, 1.1);
+    rock.add(top);
+  }
   return rock;
 }
 
-function makeBlob(color, scale = [1, 1, 1], size = 0.15) {
-  const group = new THREE.Group();
-  const blob = mesh(new THREE.IcosahedronGeometry(size, 1), color);
-  blob.scale.set(...scale);
-  blob.position.y = size * scale[1] + 0.02;
-  group.add(blob);
-  return group;
+// edge decoration: a bush, a tuft of grass or a few flowers (coral and seaweed on the reef)
+function makePlant(seed, world) {
+  if (world === "octopus") return seed % 2 ? makeCoral(seed) : makeSeaweed(seed);
+  const kind = seed % 3;
+  if (kind === 0) {
+    const bush = group();
+    [[0, 0.14, 0, 0.17], [-0.15, 0.1, 0.05, 0.12], [0.14, 0.1, -0.03, 0.13]].forEach(([x, y, z, r], i) => {
+      bush.add(at(lumpy(r, i % 2 ? 0x388e3c : 0x43a047, seed + i), x, y, z));
+    });
+    if (seed % 2) bush.add(at(blob(0.03, 0xff8fb1, {}, [12, 8]), 0.05, 0.3, 0.06)); // a little flower
+    return bush;
+  }
+  if (kind === 1) {
+    const grass = group();
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + seed;
+      const [dx, dz] = [Math.cos(angle) * 0.06, Math.sin(angle) * 0.06];
+      grass.add(tube([[dx * 0.3, 0, dz * 0.3], [dx, 0.12, dz], [dx * 2.2, 0.24 + (i % 3) * 0.04, dz * 2.2]], 0.012, i % 2 ? 0x558b2f : 0x7cb342));
+    }
+    return grass;
+  }
+  const flowers = group();
+  for (let i = 0; i < 3; i++) {
+    const [x, z] = [Math.cos(i * 2.1 + seed) * 0.1, Math.sin(i * 2.1 + seed) * 0.1];
+    const height = 0.14 + i * 0.04;
+    flowers.add(tube([[x, 0, z], [x, height, z]], 0.01, 0x43a047));
+    flowers.add(at(blob(0.035, [0xffeb3b, 0xff8fb1, 0xffffff][(i + seed) % 3], {}, [12, 8]), x, height + 0.02, z));
+  }
+  return flowers;
 }
 
-function makeItem(noun) {
-  if (noun === "banana") return makeBanana();
-  if (noun === "rotten") return makeBanana(0x6b5b2a);
-  if (noun === "coconut") return makeCoconut();
-  if (noun === "fish") {
-    const fish = makeBlob(0x4fc3f7, [1.5, 0.7, 0.6]);
-    const tail = mesh(new THREE.ConeGeometry(0.08, 0.14, 4), 0x0288d1);
-    tail.rotation.z = Math.PI / 2;
-    tail.position.set(-0.28, 0.12, 0);
-    fish.add(tail);
-    return fish;
+function makeCoral(seed) {
+  const colour = [0xff7a8a, 0xffa94d, 0xb388ff][seed % 3];
+  const coral = group();
+  for (let i = 0; i < 4; i++) {
+    const angle = i * 1.7 + seed;
+    const [x, z] = [Math.cos(angle) * 0.08, Math.sin(angle) * 0.08];
+    const top = 0.2 + (i % 2) * 0.08;
+    coral.add(tube([[0, 0, 0], [x * 0.6, top * 0.5, z * 0.6], [x * 1.4, top, z * 1.4]], 0.025, colour));
+    coral.add(at(blob(0.032, colour, {}, [12, 8]), x * 1.4, top, z * 1.4));
   }
-  if (noun === "pebble") return makeBlob(0x9e9e9e, [1.2, 0.6, 1]);
-  if (noun === "shell") return makeBlob(0xffccbc, [1.2, 0.5, 1]);
-  if (noun === "pearl") return makeBlob(0xfafafa, [1, 1, 1], 0.1);
-  if (noun === "jellyfish") return makeBlob(0xce93d8, [1, 0.8, 1], 0.17);
-  if (noun === "flower" || noun === "clover") {
-    const group = new THREE.Group();
-    const stem = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 5), 0x388e3c);
-    stem.position.y = 0.12;
-    const bloom = mesh(new THREE.IcosahedronGeometry(0.1, 0), noun === "flower" ? 0xffeb3b : 0x43a047);
-    bloom.position.y = 0.28;
-    group.add(stem, bloom);
-    return group;
-  }
-  if (noun === "nettle") return makeBlob(0x2e7d32, [0.8, 1.4, 0.8]);
-  if (noun === "crab") return makeBlob(0xe53935, [1.4, 0.6, 1]);
-  if (noun === "egg") return makeBlob(0xfffde7, [0.8, 1.1, 0.8]);
-  if (noun === "berry") return makeBlob(0x5e35b1, [1, 1, 1], 0.12);
-  if (noun === "trap") return makeBlob(0x616161, [1.4, 0.3, 1.4]);
-  if (noun === "oak") return makeLog(0x8d6e63);
-  if (noun === "pine") return makeLog(0xbcaaa4);
-  if (noun === "birch") return makeLog(0xeeeeee);
-  if (noun === "stick") return makeLog(0x6d4c41);
-  if (noun === "leaf") return makeBlob(0x66bb6a, [1.3, 0.2, 0.8]);
-  if (noun === "thorn") {
-    const thorn = mesh(new THREE.ConeGeometry(0.08, 0.3, 5), 0x558b2f);
-    thorn.position.y = 0.15;
-    return thorn;
-  }
-  if (noun === "mushroom") {
-    const group = new THREE.Group();
-    const stem = mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.16, 6), 0xfff8e1);
-    stem.position.y = 0.08;
-    const cap = mesh(new THREE.ConeGeometry(0.16, 0.12, 8), 0xc62828);
-    cap.position.y = 0.2;
-    group.add(stem, cap);
-    return group;
-  }
-  const gem = mesh(new THREE.OctahedronGeometry(0.15, 0), 0x4fc3f7);
-  gem.position.y = 0.2;
-  return gem;
+  return coral;
 }
 
-function makePlant(seed) {
-  const plant = new THREE.Group();
-  const leaves = 3 + (seed % 3);
-  for (let i = 0; i < leaves; i++) {
-    const leaf = mesh(new THREE.ConeGeometry(0.08, 0.5, 4), i % 2 ? 0x2e7d32 : 0x388e3c);
-    leaf.rotation.z = 0.5;
-    leaf.rotation.y = (i / leaves) * Math.PI * 2;
-    leaf.position.y = 0.2;
-    const holder = new THREE.Group();
-    holder.add(leaf);
-    holder.rotation.y = (i / leaves) * Math.PI * 2;
-    plant.add(holder);
+function makeSeaweed(seed) {
+  const weed = group();
+  for (let i = 0; i < 3; i++) {
+    const x = (i - 1) * 0.07;
+    const sway = (i % 2 ? 1 : -1) * 0.05;
+    weed.add(tube([[x, 0, 0], [x + sway, 0.12, 0], [x - sway, 0.24, 0.02], [x + sway, 0.34 + (seed % 2) * 0.06, 0]], 0.018, i % 2 ? 0x2e7d32 : 0x26a69a));
   }
-  return plant;
+  return weed;
 }
 
+// the goal: a glowing ring on the square and a little flag that waves
 function makeFlag() {
-  const flag = new THREE.Group();
-  const ring = mesh(new THREE.TorusGeometry(0.36, 0.035, 6, 24), 0xffd54f);
+  const ring = at(new THREE.Mesh(
+    new THREE.TorusGeometry(0.36, 0.035, seg(12, 4), seg(48, 12)),
+    soft(0xffd54f, { gloss: true, emissive: 0xffb300, emissiveIntensity: 0.35 }),
+  ), 0, 0.02, 0);
   ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.02;
-  const pole = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6), 0xeeeeee);
-  pole.position.set(0.3, 0.4, -0.3);
-  const cloth = mesh(new THREE.ConeGeometry(0.14, 0.3, 3), 0xe53935);
-  cloth.rotation.z = -Math.PI / 2;
-  cloth.position.set(0.44, 0.68, -0.3);
-  flag.add(ring, pole, cloth);
-  return flag;
+  const pole = at(limb(0.022, 0.72, 0xfafafa), 0.3, 0.4, -0.3);
+  const knob = at(blob(0.04, 0xffd54f, { gloss: true }, [16, 12]), 0.3, 0.8, -0.3);
+  const clothShape = new THREE.PlaneGeometry(0.3, 0.2, seg(10, 3), 1);
+  const position = clothShape.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i);
+    position.setZ(i, Math.sin((x + 0.15) * 14) * 0.025 * (x + 0.15) * 4); // ripples, more at the free end
+  }
+  clothShape.computeVertexNormals();
+  const cloth = at(new THREE.Mesh(clothShape, soft(0xe53935, { side: THREE.DoubleSide, sheen: 0 })), 0.45, 0.67, -0.3);
+  cloth.castShadow = true;
+  return group(ring, pole, knob, cloth);
+}
+
+// a lamp post on its pink square (terrain "o")
+function makeLamp() {
+  const post = at(limb(0.04, 0.42, 0xc62828), 0, 0.25, 0);
+  const lamp = at(blob(0.09, 0xfff176, { gloss: true, emissive: 0xffc107, emissiveIntensity: 0.7 }), 0, 0.55, 0);
+  const cap = at(dome(0.08, 0xc62828), 0, 0.6, 0);
+  cap.scale.y = 0.6;
+  return group(post, lamp, cap);
 }
 
 // --- game mode objects: doors, switches, power-ups, and the rings of playing together ---
@@ -389,16 +1076,14 @@ function makeFlag() {
 function makeDoor() {
   const door = new THREE.Group();
   for (const side of [-0.4, 0.4]) {
-    const post = mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), 0x6d4c41);
-    post.position.set(side, 0.45, 0);
-    door.add(post);
+    door.add(at(roundedBox(0.13, 0.9, 0.13, 0.03, 0x6d4c41), side, 0.45, 0));
+    door.add(at(blob(0.07, 0x8d6e63, { gloss: true }), side, 0.92, 0));
   }
-  const plank = mesh(new THREE.BoxGeometry(0.68, 0.7, 0.1), 0xa1887f);
-  plank.position.y = 0.4;
-  const band = mesh(new THREE.BoxGeometry(0.7, 0.08, 0.12), 0x5d4037);
-  band.position.y = 0.55;
+  const plank = at(roundedBox(0.68, 0.7, 0.1, 0.03, 0xbc8f6a), 0, 0.4, 0);
+  const band = at(roundedBox(0.7, 0.08, 0.12, 0.02, 0x5d4037), 0, 0.55, 0);
+  const low = at(roundedBox(0.7, 0.08, 0.12, 0.02, 0x5d4037), 0, 0.2, 0);
   const gate = new THREE.Group();
-  gate.add(plank, band);
+  gate.add(plank, band, low);
   door.add(gate);
   door.userData.gate = gate;
   return door;
@@ -406,30 +1091,38 @@ function makeDoor() {
 
 // a round plate on the ground with a lever that flips over
 function makeSwitch() {
-  const group = new THREE.Group();
-  const plate = mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.06, 16), 0x90a4ae);
-  plate.position.y = 0.03;
+  const result = new THREE.Group();
+  const plate = at(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.06, seg(32, 10)), soft(0x90a4ae, { gloss: true })), 0, 0.03, 0);
+  plate.castShadow = plate.receiveShadow = true;
   const lever = new THREE.Group();
-  const stick = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.38, 6), 0x546e7a);
-  stick.position.y = 0.19;
-  const knob = mesh(new THREE.SphereGeometry(0.08, 10, 8), 0xe53935);
-  knob.position.y = 0.4;
+  const stick = at(limb(0.035, 0.32, 0x546e7a), 0, 0.19, 0);
+  const knob = at(blob(0.08, 0xe53935, { gloss: true }), 0, 0.4, 0);
   lever.add(stick, knob);
   lever.position.y = 0.05;
   lever.rotation.z = -0.5;
-  group.add(plate, lever);
-  group.userData.lever = lever;
-  group.userData.knob = knob;
-  return group;
+  result.add(plate, lever);
+  result.userData.lever = lever;
+  result.userData.knob = knob;
+  return result;
 }
 
-// a glowing star that spins above its square
+// a glowing five-pointed star that spins above its square
 function makePower() {
-  const group = new THREE.Group();
-  const star = mesh(new THREE.OctahedronGeometry(0.2, 0), 0xffd600, { emissive: 0xffab00, emissiveIntensity: 0.7 });
-  star.position.y = 0.4;
-  group.add(star);
-  return group;
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const radius = i % 2 ? 0.09 : 0.2;
+    const angle = (i / 10) * Math.PI * 2 + Math.PI / 2;
+    const [x, y] = [Math.cos(angle) * radius, Math.sin(angle) * radius];
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.04, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: seg(3, 1),
+  });
+  geometry.center();
+  const star = at(new THREE.Mesh(geometry, soft(0xffd600, { gloss: true, emissive: 0xffab00, emissiveIntensity: 0.6 })), 0, 0.4, 0);
+  star.castShadow = true;
+  return group(star);
 }
 
 // the coloured ring under each animal when children play together (numbers 1-4)
@@ -460,62 +1153,135 @@ function makeCritter(kind) {
   return makeBeetle(CRITTER_COLOURS[hash % CRITTER_COLOURS.length]);
 }
 
-// a small green crocodile: long body, snout, eyes on top, four feet
+// a friendly little crocodile: long round body, bumps along the back, a wide smile with
+// small teeth, eyes up on top of the head, a tail that sways
 function makeGuard() {
   const guard = new THREE.Group();
-  const skin = 0x2e7d32;
-  const body = mesh(new THREE.BoxGeometry(0.34, 0.2, 0.62), skin);
-  body.position.y = 0.16;
-  const tail = mesh(new THREE.ConeGeometry(0.1, 0.4, 5), skin);
-  tail.rotation.x = -Math.PI / 2;
-  tail.position.set(0, 0.14, -0.48);
-  const feet = [[-0.17, 0.2], [0.17, 0.2], [-0.17, -0.2], [0.17, -0.2]].map(([x, z]) => {
-    const foot = mesh(new THREE.BoxGeometry(0.1, 0.08, 0.12), 0x1b5e20);
-    foot.position.set(x, 0.04, z);
+  const skin = 0x4caf50;
+  const dark = 0x2e7d32;
+  const belly = 0xc5e1a5;
+  const body = at(blob(0.2, skin), 0, 0.17, -0.02);
+  body.scale.set(0.95, 0.62, 1.45);
+  const under = at(blob(0.16, belly), 0, 0.12, 0);
+  under.scale.set(0.95, 0.5, 1.5);
+  const bumps = [-0.18, -0.06, 0.06, 0.18].map((z, i) => {
+    const bump = at(blob(0.045 - i * 0.003, dark), 0, 0.28, z);
+    bump.scale.set(1, 0.7, 1.2);
+    return bump;
+  });
+  const feet = [[-0.17, 0.16], [0.17, 0.16], [-0.17, -0.18], [0.17, -0.18]].map(([x, z]) => {
+    const foot = at(blob(0.06, dark), x, 0.04, z);
+    foot.scale.set(1.1, 0.6, 1.3);
     return foot;
   });
+  const tail = new THREE.Group(); // sways from where it meets the body
+  tail.position.set(0, 0.15, -0.3);
+  tail.add(tube([[0, 0, 0], [0, -0.03, -0.15], [0.04, -0.08, -0.3], [0.1, -0.1, -0.4]], 0.06, skin));
+  tail.add(at(blob(0.035, skin), 0.1, -0.1, -0.41));
+
   const head = new THREE.Group();
-  head.position.set(0, 0.2, 0.3);
-  const snout = mesh(new THREE.BoxGeometry(0.26, 0.12, 0.3), 0x388e3c);
-  snout.position.set(0, -0.02, 0.14);
-  const teeth = mesh(new THREE.BoxGeometry(0.22, 0.03, 0.24), 0xfafafa);
-  teeth.position.set(0, -0.08, 0.15);
-  head.add(snout, teeth, ...eyesAt(0.08, 0.02, 0.08));
-  return finish(guard, [body, tail, ...feet], head);
+  head.position.set(0, 0.2, 0.27);
+  const skull = at(blob(0.15, skin), 0, 0.02, 0.02);
+  skull.scale.set(1.05, 0.8, 1);
+  const snout = at(blob(0.12, skin), 0, -0.02, 0.17);
+  snout.scale.set(1, 0.55, 1.4);
+  const jaw = at(blob(0.11, belly), 0, -0.06, 0.15);
+  jaw.scale.set(1, 0.35, 1.4);
+  const nostrils = [-0.03, 0.03].map((x) => at(blob(0.014, 0x1b3a1b, {}, [8, 6]), x, 0.03, 0.33));
+  const teeth = [-0.07, -0.025, 0.025, 0.07].map((x) => {
+    const tooth = at(new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.035, seg(8, 3)), soft(0xffffff, { gloss: true })), x, -0.055, 0.27 - Math.abs(x) * 0.6);
+    tooth.rotation.x = Math.PI; // pointing down
+    return tooth;
+  });
+  const lids = [-0.07, 0.07].map((x) => at(blob(0.06, skin), x, 0.12, 0.02)); // eye bumps
+  head.add(skull, snout, jaw, ...nostrils, ...teeth, ...lids);
+  const eyes = cuteFace(head, {
+    r: 0.05, y: 0.14, z: 0.05, spread: 0.07, iris: 0xc8a000, turn: 1, // the pale jaw is its smile
+  });
+  return cartoon(guard, [body, under, ...bumps, ...feet, tail], head, { eyes, tail });
 }
 
+// a round little ghost that floats up and down: a dome, a wavy hem, small arms
 function makeGhost() {
   const ghost = new THREE.Group();
-  const body = mesh(new THREE.CylinderGeometry(0.18, 0.26, 0.5, 10), 0xf5f5f5, { transparent: true, opacity: 0.85 });
-  body.position.y = 0.3;
+  const white = 0xf3f0ff;
+  const look = { transparent: true, opacity: 0.9, emissive: 0xb8b0ff, emissiveIntensity: 0.25 };
+  const float = new THREE.Group(); // bobs up and down (idleLife)
+  float.position.y = 0.08;
+  const skirt = at(new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.24, 0.24, seg(32, 8), 1, true), soft(white, look)), 0, 0.26, 0);
+  skirt.castShadow = true;
+  const hem = Array.from({ length: 7 }, (_, i) => {
+    const angle = (i / 7) * Math.PI * 2;
+    return at(blob(0.06, white, look), Math.sin(angle) * 0.2, 0.14, Math.cos(angle) * 0.2);
+  });
+  const arms = [-1, 1].map((side) => {
+    const arm = at(blob(0.055, white, look), side * 0.23, 0.32, 0.03);
+    arm.scale.set(0.7, 1.2, 0.7);
+    arm.rotation.z = side * 0.6;
+    return arm;
+  });
   const head = new THREE.Group();
-  head.position.y = 0.55;
-  const top = mesh(new THREE.SphereGeometry(0.18, 10, 8), 0xf5f5f5, { transparent: true, opacity: 0.85 });
-  head.add(top, ...eyesAt(0.04, 0.15, 0.06));
-  return finish(ghost, [body], head);
+  head.position.y = 0.38;
+  head.add(dome(0.21, white, look));
+  const eyes = cuteFace(head, {
+    r: 0.055, y: 0.08, z: 0.16, spread: 0.07, iris: 0x2a2440, turn: 1.2,
+    smile: { y: 0.0, z: 0.2, size: 0.035, color: 0x2a2440 },
+  });
+  float.add(skirt, ...hem, ...arms, head);
+  ghost.add(float);
+  ghost.userData.head = head;
+  ghost.userData.eyes = eyes;
+  ghost.userData.float = float;
+  ghost.rotation.order = "YXZ";
+  return ghost;
 }
 
+// a round beetle in the program's colour: two shiny wing cases with spots, a dark head
+// with big eyes and two antennae, six little legs
 function makeBeetle(colour) {
   const beetle = new THREE.Group();
-  const shell = mesh(new THREE.IcosahedronGeometry(0.24, 1), colour);
-  shell.scale.set(1, 0.6, 1.2);
-  shell.position.y = 0.17;
-  const spots = [[-0.09, 0.05], [0.09, -0.06]].map(([x, z]) => {
-    const spot = mesh(new THREE.SphereGeometry(0.05, 8, 6), 0x212121);
-    spot.position.set(x, 0.3, z);
-    return spot;
-  });
-  const legs = [-0.12, 0, 0.12].flatMap((z) =>
-    [-0.24, 0.24].map((x) => {
-      const leg = mesh(new THREE.BoxGeometry(0.1, 0.03, 0.03), 0x212121);
-      leg.position.set(x, 0.05, z);
+  const dark = 0x222222;
+  const shell = new THREE.Group();
+  for (const side of [-1, 1]) {
+    // one wing case: this side's quarter of a ball (a dark line runs between the two)
+    const half = at(new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, seg(20, 6), seg(12, 4), side > 0 ? 0 : Math.PI, Math.PI, 0, Math.PI / 2),
+      soft(colour, { gloss: true, side: THREE.DoubleSide }),
+    ), side * 0.002, 0.08, -0.02);
+    half.scale.set(1, 0.85, 1.2);
+    half.castShadow = true;
+    shell.add(half);
+    for (const [x, z] of [[0.09, 0.06], [0.08, -0.12], [0.14, -0.03]]) {
+      const spot = at(blob(0.035, dark, {}, [12, 8]), side * x, 0.08 + 0.17 * Math.sqrt(Math.max(0, 1 - (x * x) / 0.04 - (z * z) / 0.0576)) - 0.01, z);
+      spot.scale.y = 0.35;
+      shell.add(spot);
+    }
+  }
+  const seam = at(limb(0.008, 0.36, dark), 0, 0.245, -0.03);
+  seam.rotation.x = Math.PI / 2;
+  seam.scale.z = 0.6;
+  const base = at(blob(0.19, dark), 0, 0.09, -0.02);
+  base.scale.set(1, 0.3, 1.2);
+  const legs = [-0.1, 0, 0.1].flatMap((z) =>
+    [-1, 1].map((side) => {
+      const leg = at(limb(0.014, 0.08, dark), side * 0.2, 0.05, z);
+      leg.rotation.z = side * 1.1;
       return leg;
     }),
   );
   const head = new THREE.Group();
-  head.position.set(0, 0.16, 0.28);
-  head.add(mesh(new THREE.IcosahedronGeometry(0.11, 0), 0x212121), ...eyesAt(0.04, 0.08, 0.05));
-  return finish(beetle, [shell, ...spots, ...legs], head);
+  head.position.set(0, 0.14, 0.24);
+  head.add(blob(0.1, dark, { gloss: true }));
+  const antennae = [-1, 1].map((side) => {
+    const stalk = at(limb(0.008, 0.08, dark), side * 0.045, 0.11, 0.02);
+    stalk.rotation.set(0.4, 0, -side * 0.4);
+    const ball = at(blob(0.018, dark, { gloss: true }, [10, 8]), 0, 0.055, 0);
+    stalk.add(ball);
+    return stalk;
+  });
+  head.add(...antennae);
+  const eyes = cuteFace(head, { r: 0.045, y: 0.02, z: 0.075, spread: 0.045, iris: colour, turn: 1.3, cheeks: false });
+  return cartoon(beetle, [shell, seam, base, ...legs], head, { eyes, body: shell });
 }
 
 // the shortest way round from one angle to another
@@ -537,10 +1303,11 @@ export class Stage3D {
   constructor(container) {
     this.container = container;
     this.duration = 250;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // smoothing the edges is chosen once, when the drawing surface is made
+    this.renderer = new THREE.WebGLRenderer({ antialias: quality() !== "low", alpha: true });
+    // gentle filmic colour handling: bright parts roll off softly instead of clipping
+    this.renderer.toneMapping = THREE.NeutralToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.domElement.className = "stage-canvas";
     this.overlay = document.createElement("div");
     this.overlay.className = "stage-overlay";
@@ -562,8 +1329,17 @@ export class Stage3D {
     sun.position.set(-4, 9, 6);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.radius = 4;
     this.sun = sun;
-    this.scene.add(sun, sun.target);
+    // a cool light from behind outlines the characters against the ground (rim light)
+    const rim = new THREE.DirectionalLight(0xb3d9ff, 1.4);
+    rim.position.set(3, 4, -8);
+    this.rim = rim;
+    this.scene.add(sun, sun.target, rim);
+    this.applyQuality();
+    window.addEventListener("codezoo-look", () => {
+      if (quality() !== this.quality) this.applyQuality();
+    });
 
     this.tweens = new Set();
     this.clock = new THREE.Clock();
@@ -610,9 +1386,12 @@ export class Stage3D {
     this.height = height;
 
     const [tileA, tileB, edge] = GROUND[pack.id] || GROUND.monkey;
-    const ground = mesh(new THREE.BoxGeometry(width + 0.6, 0.3, height + 0.6), edge);
+    const ground = roundedBox(width + 0.6, 0.3, height + 0.6, 0.08, edge);
     ground.position.set((width - 1) / 2, -0.2, (height - 1) / 2);
-    board.add(ground);
+    // a layer of earth under the grass, like a slice of cake: the board reads as a little world
+    const earth = roundedBox(width + 0.5, 0.3, height + 0.5, 0.1, new THREE.Color(edge).multiplyScalar(0.62).getHex());
+    earth.position.set((width - 1) / 2, -0.45, (height - 1) / 2);
+    board.add(ground, earth);
     const terrain = new Map((world.terrain || []).map(([x, y, kind]) => [`${x},${y}`, kind]));
     this.tiles = new Map();
     for (let y = 0; y < height; y++) {
@@ -623,22 +1402,18 @@ export class Stage3D {
         board.add(tile);
         this.tiles.set(`${x},${y}`, tile);
         if (kind === "t") {
-          const tree = makeTree();
+          const tree = makeTree(x * 3 + y);
           tree.position.set(x, 0, y);
           board.add(tree);
         }
         if (kind === "o") {
-          const post = mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.5, 6), 0xb71c1c);
-          post.position.set(x + 0.35, 0.25, y - 0.35);
-          const lamp = mesh(new THREE.SphereGeometry(0.09, 8, 6), 0xffeb3b, { emissive: 0xffc107, emissiveIntensity: 0.6 });
-          lamp.position.set(x + 0.35, 0.55, y - 0.35);
-          board.add(post, lamp);
+          board.add(at(makeLamp(), x + 0.35, 0, y - 0.35));
         }
       }
     }
     // a few plants around the edge, placed the same way every time
     for (let i = 0; pack.id !== "penguin" && i < width + height; i++) {
-      const plant = makePlant(i);
+      const plant = makePlant(i, pack.id);
       const side = i % 4;
       const along = (i * 7) % Math.max(width, height);
       const x = side === 0 ? -0.75 : side === 1 ? width - 0.25 : Math.min(along, width - 1);
@@ -648,7 +1423,7 @@ export class Stage3D {
       board.add(plant);
     }
     for (const [x, y] of world.walls) {
-      const rock = makeRock();
+      const rock = makeRock(x * 5 + y * 3, pack.id);
       rock.position.set(x, 0, y);
       rock.rotation.y = (x * 3 + y * 5) % 6;
       board.add(rock);
@@ -685,15 +1460,15 @@ export class Stage3D {
   makeTile(kind, color) {
     switch (kind) {
       case "~":
-        return mesh(new THREE.BoxGeometry(0.98, 0.06, 0.98), 0x4fa3e0, { transparent: true, opacity: 0.85, roughness: 0.2 });
+        return roundedBox(0.98, 0.06, 0.98, 0.02, 0x4fa3e0, { transparent: true, opacity: 0.85, roughness: 0.15 });
       case "-":
-        return mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), 0x81d4fa, { transparent: true, opacity: 0.7, roughness: 0.1 });
+        return roundedBox(0.96, 0.1, 0.96, 0.03, 0x81d4fa, { transparent: true, opacity: 0.7, roughness: 0.1 });
       case "o":
-        return mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), 0xf8bbd0);
+        return roundedBox(0.96, 0.1, 0.96, 0.03, 0xf8bbd0);
       case "=":
-        return mesh(new THREE.BoxGeometry(0.96, 0.12, 0.96), 0xa1887f);
+        return roundedBox(0.96, 0.12, 0.96, 0.03, 0xa1887f);
       default:
-        return mesh(new THREE.BoxGeometry(0.96, 0.1, 0.96), color);
+        return roundedBox(0.94, 0.1, 0.94, 0.03, color);
     }
   }
 
@@ -726,6 +1501,45 @@ export class Stage3D {
     shadow.updateProjectionMatrix();
   }
 
+  // what "3D detail" changes at once: pixels drawn, shadows and the rim light. The animals'
+  // own detail follows on the next reset (Reset, the next level), when they are built again.
+  applyQuality() {
+    const level = quality();
+    this.quality = level;
+    const ratio = window.devicePixelRatio || 1;
+    this.renderer.setPixelRatio(level === "high" ? Math.min(ratio, 2) : level === "medium" ? Math.min(ratio, 1.25) : 1);
+    this.renderer.shadowMap.enabled = level !== "low";
+    this.renderer.shadowMap.type = level === "high" ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    this.sun.castShadow = level !== "low";
+    this.sun.shadow.mapSize.setScalar(level === "high" ? 1024 : 512);
+    this.sun.shadow.map?.dispose();
+    this.sun.shadow.map = null;
+    this.rim.visible = level !== "low";
+    this.scene.traverse((object) => {
+      for (const material of [object.material].flat()) if (material) material.needsUpdate = true;
+    });
+    this.frameTimes = [];
+    this.slowWindows = 0;
+    if (this.running) this.resize();
+  }
+
+  // "3D detail: automatic": when frames keep coming slowly, go down a step (look.js decides
+  // whether it may). Only ordinary frame gaps count: a hidden tab pauses drawing altogether.
+  watchSpeed(now) {
+    const gap = now - (this.lastFrame ?? now);
+    this.lastFrame = now;
+    if (gap <= 0 || gap > 250) return;
+    this.frameTimes.push(gap);
+    if (this.frameTimes.reduce((sum, time) => sum + time, 0) < 3000) return;
+    const average = this.frameTimes.reduce((sum, time) => sum + time, 0) / this.frameTimes.length;
+    this.frameTimes = [];
+    this.slowWindows = average > 45 ? this.slowWindows + 1 : 0; // under about 22 pictures a second
+    if (this.slowWindows >= 2) {
+      this.slowWindows = 0;
+      lowerGraphics(); // look.js announces it, and the listener above applies it
+    }
+  }
+
   resize() {
     const { clientWidth: width, clientHeight: height } = this.container;
     if (!width || !height) return;
@@ -742,6 +1556,7 @@ export class Stage3D {
     const { clientWidth, clientHeight } = this.container;
     if (`${clientWidth}x${clientHeight}` !== this.size) this.resize();
     const now = performance.now();
+    this.watchSpeed(now);
     for (const tween of [...this.tweens]) {
       const progress = Math.min(1, (now - tween.start) / tween.duration);
       tween.step(ease(progress), progress);
@@ -750,9 +1565,12 @@ export class Stage3D {
         tween.done();
       }
     }
-    if (this.monkey && !reducedMotion.matches && this.tweens.size === 0) {
+    if (this.monkey && !reducedMotion.matches) {
       const t = this.clock.getElapsedTime();
-      this.monkey.userData.head.rotation.z = Math.sin(t * 1.6) * 0.05;
+      if (this.tweens.size === 0) this.monkey.userData.head.rotation.z = Math.sin(t * 1.6) * 0.05;
+      idleLife(this.monkey, t);
+      for (const model of this.others?.values() || []) idleLife(model, t); // friends playing along
+      for (const model of this.critters?.values() || []) idleLife(model, t);
     }
     for (const item of this.items?.values() || []) {
       if (!reducedMotion.matches) item.rotation.y += 0.01;
