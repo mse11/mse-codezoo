@@ -14,7 +14,7 @@ import { setupDebugSwitches, Watch, WatchBar } from "./debug.js";
 import { Gallery } from "./gallery.js";
 import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupPaneToggles, setupSplitters } from "./layout.js";
-import { lockLook, openLook, setupThemeButton } from "./look.js";
+import { lockLook, openLook, reducedMotion, setupThemeButton } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
@@ -1007,16 +1007,58 @@ function invalidateRun() {
 }
 
 // The call stack as nested burrows: one box for every function that is still running.
-function renderStack() {
-  $("callstack").replaceChildren(
-    ...state.stack.map((frame, i) =>
-      el(
-        "div",
-        { class: `frame${i === state.stack.length - 1 ? " active" : ""}`, style: `margin-left:${i * 14}px` },
-        `${frame.name}(${frame.args.join(", ")})`,
-      ),
-    ),
-  );
+// Without a change it draws the whole stack at once (reset, step back); with "push" a new
+// call lands on top of the others, with "pop" the newest one lifts off, so a child can
+// follow a call going in and coming back out. Instant when nothing plays (stepping back,
+// speed "instant") and with less motion.
+const stackFrame = (frame, i) =>
+  el("div", { class: "frame", style: `margin-left:${i * 14}px` }, `${frame.name}(${frame.args.join(", ")})`);
+
+// The stack stands in the drawing's bottom left corner and grows up, as a stack does: the
+// first call at the bottom, each new call on top. At most as tall as the drawing; placed
+// again whenever the stage, its pane or the stack changes size.
+function placeStack() {
+  const box = $("callstack");
+  const pane = box.offsetParent;
+  const drawing = $("stage").firstElementChild || $("stage");
+  if (!pane || !box.childElementCount) return;
+  const area = pane.getBoundingClientRect();
+  const rect = drawing.getBoundingClientRect();
+  box.style.maxHeight = `${Math.max(0, rect.height - 16)}px`;
+  box.style.top = `${rect.bottom - area.top - pane.clientTop + pane.scrollTop - 8 - box.offsetHeight}px`;
+  box.style.left = `${rect.left - area.left - pane.clientLeft + pane.scrollLeft + 8}px`;
+}
+new ResizeObserver(() => placeStack()).observe($("stage"));
+
+function renderStack(change) {
+  const box = $("callstack");
+  const moving = change && !state.seeking && stage.duration > 0 && !reducedMotion();
+  // burrows still sinking away are not part of the stack any more
+  for (const gone of box.querySelectorAll(".frame.pop")) if (!moving) gone.remove();
+  const live = () => [...box.children].filter((node) => !node.classList.contains("pop"));
+  if (change === "push" && live().length === state.stack.length - 1) {
+    const node = stackFrame(state.stack.at(-1), state.stack.length - 1);
+    if (moving) node.classList.add("push");
+    node.addEventListener("animationend", () => node.classList.remove("push"), { once: true });
+    box.append(node);
+  } else if (change === "pop" && live().length === state.stack.length + 1) {
+    const node = live().at(-1);
+    if (moving) {
+      node.classList.remove("push", "active");
+      node.classList.add("pop");
+      const remove = () => {
+        if (!node.isConnected) return;
+        node.remove();
+        placeStack();
+      };
+      node.addEventListener("animationend", remove, { once: true });
+      setTimeout(remove, 500); // in case the animation never runs
+    } else node.remove();
+  } else {
+    box.replaceChildren(...state.stack.map(stackFrame));
+  }
+  live().forEach((node, i, all) => node.classList.toggle("active", i === all.length - 1));
+  placeStack();
 }
 
 function stopPlayback() {
@@ -1156,10 +1198,10 @@ async function playStep(step, index) {
   for (const event of step.events) {
     if (event.type === "call") {
       state.stack.push(event);
-      renderStack();
+      renderStack("push");
     } else if (event.type === "return") {
       state.stack.pop();
-      renderStack();
+      renderStack("pop");
     } else if (event.type === "print") {
       printToConsole(event.text, stage.duration > 0);
     } else {

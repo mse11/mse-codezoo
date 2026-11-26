@@ -808,7 +808,7 @@ function bigTargets(workspace) {
     const source = flyout.getBlockById(event.blockId)?.getRootBlock();
     if (!source) return;
     const state = Blockly.serialization.blocks.save(source, { addCoordinates: false });
-    const top = workspace.getTopBlocks(true).find((b) => b.previousConnection || b.nextConnection);
+    const top = lastStack(workspace);
     const block = Blockly.serialization.blocks.append(state, workspace);
     workspace.cubTapped?.(block); // read the new block aloud
     const last = top && top !== block ? lastInStack(top) : null;
@@ -820,11 +820,14 @@ function bigTargets(workspace) {
   });
 }
 
-// Step marks beside the blocks, like the code pane's gutter: a tag left of each block with
-// its code line number, and ▶ (with the number framed) on the block that runs next, like
-// the code pane. An
-// HTML layer over the workspace (the block itself keeps its colour), moved along when the
-// workspace scrolls, zooms or changes, and hidden while a block is dragged.
+// Step marks in a gutter like the code pane's: one column at the workspace's left edge with
+// each block's code line number at the height of the block's first row, and ▶ (with the
+// number framed) on the block that runs next. An HTML layer over the workspace (the block
+// itself keeps its colour), drawn again when the workspace scrolls, zooms, changes or is
+// resized (window or splitter), and hidden while a block is dragged.
+const SVG_NS = "http://www.w3.org/2000/svg";
+// one colour for each taught command's rail (stepMarks callArrows)
+const RAIL_COLOURS = ["#995BA5", "#4C97FF", "#59C059", "#FF8C1A", "#FF6680", "#5CB1D6"];
 function stepMarks(workspace, container) {
   const layer = document.createElement("div");
   layer.className = "block-marks";
@@ -862,10 +865,78 @@ function stepMarks(workspace, container) {
       number.textContent = lines.get(id) ?? "";
       tag.append(arrow, number);
       tag.style.top = `${rect.top - box.top + row / 2}px`;
-      tag.style.right = `${box.right - rect.left + 2}px`;
       tags.push(tag);
     }
-    layer.replaceChildren(...tags);
+    layer.replaceChildren(callArrows(box, left), ...tags);
+    layer.classList.toggle("numbered", tags.some((tag) => tag.lastChild.textContent));
+  }
+
+  // Rails like gitk's branch lines, from each "do countdown" to the "teach countdown" it
+  // uses: right of all the blocks, one vertical rail per taught command in a colour and
+  // column of its own; each call joins it with a short line and a dot, and the rail ends
+  // in an arrow pointing at the "teach" block. A call inside its own function (recursion)
+  // gets none: it would point at the block it sits in. The rail of the call that runs
+  // next is drawn stronger.
+  function callArrows(box, left) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "call-arrows");
+    const all = workspace.getAllBlocks(false).filter((b) => !b.isInFlyout && !b.isInsertionMarker?.());
+    const defs = new Map();
+    for (const b of all) if (b.type === "cz_def" || b.type === "cz_async_def") defs.set(b.getFieldValue("NAME"), b);
+    const calls = new Map(); // def -> its calls
+    for (const call of all) {
+      if (call.type !== "cz_call" && call.type !== "cz_call_value") continue;
+      const def = defs.get(call.getFieldValue("NAME"));
+      if (!def || call.getRootBlock() === def) continue;
+      if (!calls.has(def)) calls.set(def, []);
+      calls.get(def).push(call);
+    }
+    if (!calls.size) return svg;
+    // the block's own shape: its group's box also holds the blocks under it
+    const own = (b) => (b.pathObject?.svgPath || b.getSvgRoot()).getBoundingClientRect();
+    const x = (px) => px - box.left - left;
+    const rowY = (rect) => rect.top - box.top + Math.min(rect.height, 48 * workspace.scale) / 2;
+    // the rails start right of every block on the workspace
+    let base = 0;
+    for (const top of workspace.getTopBlocks(false)) base = Math.max(base, x(top.getSvgRoot().getBoundingClientRect().right));
+    const add = (name, attrs) => {
+      const node = document.createElementNS(SVG_NS, name);
+      for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+      svg.append(node);
+      return node;
+    };
+    const r = 6; // the rounded corners
+    // one colour and rail per taught command, all its calls on it; given out in the order
+    // of the "teach" blocks top to bottom, so moving a call never changes the colour
+    const order = [...defs.values()].sort((a, b) => a.getRelativeToSurfaceXY().y - b.getRelativeToSurfaceXY().y);
+    const entries = [...calls.entries()].sort(([a], [b]) => order.indexOf(a) - order.indexOf(b));
+    entries.forEach(([def, users], lane) => {
+      const colour = RAIL_COLOURS[order.indexOf(def) % RAIL_COLOURS.length];
+      const rail = base + 16 + lane * 14;
+      const active = users.some((call) => call.id === next) ? " next" : "";
+      const target = own(def);
+      if (!target.width) return;
+      const ends = [{ y: rowY(target), from: x(target.right) + 10, def: true }];
+      for (const call of users) {
+        const rect = own(call);
+        if (rect.width) ends.push({ y: rowY(rect), from: x(rect.right) + 3, next: call.id === next });
+      }
+      if (ends.length < 2) return;
+      const top = Math.min(...ends.map((e) => e.y));
+      const bottom = Math.max(...ends.map((e) => e.y));
+      const style = `stroke:${colour}`;
+      add("path", { d: `M ${rail} ${top + r} V ${bottom - r}`, class: `call-arrow${active}`, style });
+      for (const end of ends) {
+        // a branch: along its row to the rail, round the corner at the rail's two ends
+        const corner = end.y === top ? `Q ${rail} ${top} ${rail} ${top + r}`
+          : end.y === bottom ? `Q ${rail} ${bottom} ${rail} ${bottom - r}` : `H ${rail}`;
+        const into = end.y === top || end.y === bottom ? rail - r : rail;
+        add("path", { d: `M ${end.from} ${end.y} H ${into} ${corner}`, class: `call-arrow${end.def || end.next ? active : ""}`, style });
+        if (end.def) add("path", { d: `M ${end.from - 9} ${end.y} l 9 -5 v 10 z`, class: `call-arrow-head${active}`, style: `fill:${colour}` });
+        else add("circle", { cx: end.from, cy: end.y, r: 3.5, class: `call-dot${end.next ? " next" : ""}`, style: `fill:${colour}` });
+      }
+    });
+    return svg;
   }
 
   function schedule() {
@@ -879,6 +950,8 @@ function stepMarks(workspace, container) {
     schedule();
   });
   window.addEventListener("resize", schedule);
+  // a splitter changes the workspace's size without a window resize
+  new ResizeObserver(schedule).observe(container);
   return {
     schedule,
     setLines(map) {
@@ -927,6 +1000,7 @@ export function createWorkspace(container, onChange, { game = false } = {}) {
   let unlocked = [];
   workspace.addChangeListener((event) => {
     if (loading || event.isUiEvent) return;
+    fitCalls(workspace, { fill: true });
     onChange();
   });
   // a tap on a block in the program: read it aloud (Cub mode, or Read aloud in Look and feel)
@@ -934,6 +1008,8 @@ export function createWorkspace(container, onChange, { game = false } = {}) {
     if (event.type !== Blockly.Events.CLICK || !event.blockId || event.targetType !== "block") return;
     const block = workspace.getBlockById(event.blockId);
     if (block) workspace.cubTapped?.(block);
+    // a call loaded from code without its inputs (`countdown()`): a tap gives it the boxes
+    if (block && (block.type === "cz_call" || block.type === "cz_call_value") && !loading) fitCalls(workspace, { fill: true });
   });
   window.addEventListener("resize", () => Blockly.svgResize(workspace));
   darkQuery.addEventListener("change", () => workspace.setTheme(currentTheme()));
@@ -959,13 +1035,23 @@ export function createWorkspace(container, onChange, { game = false } = {}) {
       try {
         workspace.clear();
         const context = { names, sourceText, positions, game };
-        const first = chainState(program.body, context);
-        // x: room on the left for the line numbers and step arrows (stepMarks)
-        if (first) Blockly.serialization.blocks.append({ ...first, x: 56, y: 24 }, workspace);
+        // a function or a class stands on its own, like in the code: the program's own
+        // statements between them are a stack of their own. Top to bottom in code order,
+        // which is the order toProgram() reads them back in (getTopBlocks(true))
+        let y = 24;
+        for (const group of topGroups(program.body)) {
+          const first = chainState(group, context);
+          if (!first) continue;
+          // x: room on the left for the line numbers and step arrows (stepMarks)
+          const block = Blockly.serialization.blocks.append({ ...first, x: 64, y }, workspace);
+          Blockly.renderManagement?.triggerQueuedRenders?.();
+          y += block.getHeightWidth().height + 32;
+        }
       } finally {
         Blockly.Events.enable();
         loading = false;
       }
+      fitCalls(workspace, { fill: false }); // the code is the truth here: no inputs added
       marks.schedule();
     },
     // Rebuild the block definitions in the current language; load() the program again after.
@@ -1008,7 +1094,7 @@ export function createWorkspace(container, onChange, { game = false } = {}) {
     // palette block does with big targets); false for a value block, which can't stand alone
     addEntry(key) {
       if (!PALETTE[key]) return false;
-      const top = workspace.getTopBlocks(true).find((b) => b.previousConnection || b.nextConnection);
+      const top = lastStack(workspace);
       const block = Blockly.serialization.blocks.append(galleryState(key), workspace);
       if (block.outputConnection) {
         block.dispose();
@@ -1210,6 +1296,58 @@ export function describeBlock(block) {
 }
 
 // --- IR -> blocks ------------------------------------------------------------
+
+// A "do countdown" block fits its "teach countdown": one slot for each of its inputs, with a
+// number in it to type over (a new call, or one renamed, would otherwise have only empty
+// slots, and the run stops with "`countdown` needs input `n`"); slots it doesn't take are
+// hidden. A call of a name with no "teach" block keeps both slots. `fill: false` (loading
+// code) only hides slots, so the blocks never show an input the code doesn't have.
+function fitCalls(workspace, { fill }) {
+  const params = new Map();
+  for (const b of workspace.getAllBlocks(false)) {
+    if (b.type !== "cz_def" && b.type !== "cz_async_def") continue;
+    params.set(b.getFieldValue("NAME"), String(b.getFieldValue("PARAMS") || "").split(",").map((p) => p.trim()).filter(Boolean));
+  }
+  for (const call of workspace.getAllBlocks(false)) {
+    if (call.type !== "cz_call" && call.type !== "cz_call_value") continue;
+    const takes = params.get(call.getFieldValue("NAME"));
+    let changed = false;
+    ["A", "B"].forEach((slot, i) => {
+      const input = call.getInput(slot);
+      const target = input?.connection?.targetBlock();
+      if (!input) return;
+      const used = !takes || i < takes.length;
+      if (!used && target?.isShadow()) {
+        input.connection.setShadowState(null);
+      } else if (used && takes && !target && fill && !call.isInFlyout) {
+        input.connection.setShadowState({ type: "cz_number", fields: { NUM: 0 } });
+      }
+      // a block the child put in an unused slot stays in sight
+      const visible = used || Boolean(input.connection.targetBlock());
+      if (input.isVisible() !== visible) {
+        input.setVisible(visible);
+        changed = true;
+      }
+    });
+    if (changed && call.rendered) call.queueRender ? call.queueRender() : call.render();
+  }
+}
+
+// top-level statements split into stacks: each def or class alone, the rest grouped
+const standsAlone = (stmt) => stmt.type === "FunctionDef" || stmt.type === "ClassDef";
+function topGroups(stmts) {
+  const groups = [];
+  for (const stmt of stmts) {
+    const last = groups.at(-1);
+    if (last && !standsAlone(stmt) && !standsAlone(last[0])) last.push(stmt);
+    else groups.push([stmt]);
+  }
+  return groups;
+}
+
+// the stack new blocks go under: the last one (the program's own code comes after its functions)
+const lastStack = (workspace) =>
+  workspace.getTopBlocks(true).filter((b) => b.previousConnection || b.nextConnection).at(-1);
 
 function chainState(stmts, context) {
   const states = stmts.map((stmt) => blockState(stmt, context));

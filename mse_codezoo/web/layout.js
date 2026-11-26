@@ -42,7 +42,7 @@ export function fitStage(panes) {
   const columnBottom = () => {
     let bottom = stage.getBoundingClientRect().bottom;
     for (const part of pane.children) {
-      if (part === stage || part.matches(".stage-head, #split-head, .sr-only") || !part.offsetParent) continue;
+      if (part === stage || part.matches(".stage-head, #split-head, .sr-only, #callstack") || !part.offsetParent) continue;
       const rect = part.getBoundingClientRect();
       bottom = Math.max(bottom, rect.bottom + parseFloat(window.getComputedStyle(part).marginBottom));
     }

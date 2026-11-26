@@ -297,7 +297,8 @@ html[data-motion="reduce"] .watch-table tr { transition: none; }
 html[data-cub="true"] .bug-button { display: none; }
 /* 🐞 beside Run, Step and Reset: as tall as they are, square */
 .controls .run-bug { min-width: 2.6rem; font-size: 1.05em; }
-html:not([data-debug-blocks="true"]) .block-line { display: none; }
+html:not([data-debug-blocks="true"]) .block-line,
+html:not([data-debug-blocks="true"]) .block-marks.numbered::before { display: none; }
 /* Cub mode doesn't print: two panes, as before */
 html[data-cub="true"] .console-pane, html[data-cub="true"] #split-console { display: none; }
 html[data-cub="true"] .panes {
@@ -370,7 +371,7 @@ html[data-cub="true"] .panes {
   html[data-layout="side"] .stage-pane > * { grid-column: 1; }
   /* no gaps for the empty rows under the stage: the parts keep their own space instead */
   html[data-layout="side"] .stage-pane { row-gap: 0; }
-  html[data-layout="side"] .stage-pane > :is(#stage, .callstack, .lanes, .timeline) { margin-top: 10px; }
+  html[data-layout="side"] .stage-pane > :is(#stage, .lanes, .timeline) { margin-top: 10px; }
   html[data-layout="side"] .stage-pane > .cub-levels { grid-column: 1 / -1; }
   html[data-layout="side"] .stage-pane > #split-head {
     display: block;
@@ -510,23 +511,41 @@ html[data-motion="reduce"] .stage-svg .body, html[data-motion="reduce"] .mood3d 
 .result .printed { font-family: var(--code-font); white-space: pre-wrap; margin: 0.3rem 0 0; }
 
 .blockly { flex: 1; min-height: 280px; position: relative; }
-/* beside each block: its code line and the step arrows (blocks.js stepMarks) */
-.block-marks { position: absolute; top: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+/* a gutter like the code pane's: each block's code line and the step arrow, in one column
+   at the workspace's left edge, drawn like the Python pane's line numbers (blocks.js stepMarks).
+   The column shows while there are numbers (the Blocks pane's 🐞) */
+.block-marks { position: absolute; top: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 5;
+  --gutter-w: calc(3.4rem * var(--zoom, 1)); }
+.block-marks.numbered::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--gutter-w);
+  background: var(--panel); border-right: 1px solid var(--border);
+}
 .block-tag {
   position: absolute;
+  left: 0;
+  width: var(--gutter-w);
+  box-sizing: border-box;
+  padding-right: 0.5rem;
+  justify-content: flex-end;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 2px;
-  font: 600 calc(0.72rem * var(--zoom, 1))/1 var(--code-font);
+  gap: 3px;
+  font: calc(0.94rem * var(--zoom, 1))/1 var(--code-font);
   white-space: nowrap;
 }
-.block-line { color: var(--muted); background: var(--panel); border-radius: 4px; padding: 1px 3px; }
+.block-line { color: var(--muted); }
 .block-line:empty { display: none; }
-.block-arrow { color: var(--accent); font-size: 0.95em; }
-.block-tag.next .block-line { color: var(--text); box-shadow: inset 0 0 0 1.5px var(--accent); }
-.block-tag.next.error .block-arrow { color: var(--err); }
-.block-tag.next.error .block-line { box-shadow: inset 0 0 0 1.5px var(--err); }
+.block-arrow { color: var(--accent); font-size: 0.8em; }
+.block-tag.next .block-line { color: var(--text); font-weight: 600; }
+.block-tag.next.error .block-arrow, .block-tag.next.error .block-line { color: var(--err); }
+html[data-cub="true"] .block-marks.numbered::before { display: none; }
+/* rails like gitk's, from each call of a taught command to its "teach" block (blocks.js callArrows) */
+.call-arrows { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.call-arrow { fill: none; stroke-width: 2; stroke-linecap: round; opacity: 0.7; }
+.call-arrow-head, .call-dot { opacity: 0.8; }
+.call-arrow.next { stroke-width: 3; opacity: 1; }
+.call-arrow-head.next, .call-dot.next { opacity: 1; }
 html[data-cub="true"] .block-line { display: none; }
 /* Editing a number or text on a block: the editor sits over the block's white field, so it
    stays light in dark mode too (color-scheme: dark would paint it black, and the selected
@@ -923,11 +942,25 @@ html[data-cub="true"] .gallery-chip { max-width: none; font-size: 1.1em; padding
 .body.swing { transition-timing-function: cubic-bezier(.3, -.4, .6, 1.4); }
 .body.hidden-animal { opacity: .45; }
 
-.callstack { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; font: 0.82rem/1.3 var(--mono, monospace); }
+/* over the stage's bottom left corner, growing up like a stack (app.js places it): the
+   first call at the bottom, the newest on top. It never pushes the stage smaller; with more
+   calls than fit, the oldest go out of sight at the bottom. Clicks go through to the stage */
+.stage-pane { position: relative; }
+.callstack { position: absolute; z-index: 3; display: flex; flex-direction: column-reverse; justify-content: flex-end;
+  gap: 3px; overflow: hidden; pointer-events: none; max-width: min(45%, 16rem);
+  font: 0.78rem/1.25 var(--mono, monospace); }
 .callstack:empty { display: none; }
-.callstack .frame { border: 2px solid #b08a5b; background: #f7ecd9; color: #4a3520; border-radius: 12px 12px 4px 4px; padding: 3px 10px; }
+.callstack .frame { width: max-content; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border: 2px solid #b08a5b; background: #f7ecd9e6; color: #4a3520; border-radius: 10px 10px 4px 4px; padding: 2px 8px; }
 .callstack .frame.active { border-color: #e6732e; box-shadow: 0 0 0 2px #e6732e33; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callstack .frame { background: #3a2f23; color: #f3e6d3; } }
+/* a call drops onto the top of the stack; a return lifts it off */
+.callstack .frame { transition: border-color 0.2s, box-shadow 0.2s; }
+.callstack .frame.push { animation: stack-push 0.28s cubic-bezier(.34, 1.56, .64, 1) both; }
+.callstack .frame.pop { animation: stack-pop 0.22s ease-in both; pointer-events: none; }
+@keyframes stack-push { from { opacity: 0; transform: translateY(-10px) scale(0.92); } }
+@keyframes stack-pop { to { opacity: 0; transform: translateY(-8px) scale(0.92); } }
+html[data-motion="reduce"] .callstack .frame { transition: none; animation: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callstack .frame { background: #3a2f23e6; color: #f3e6d3; } }
 
 .result .traceback { margin: 6px 0; padding: 0 0 0 18px; font: 0.82em/1.4 var(--code-font); }
 .result .suggestion, .result .sticker-new { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: #fff4d6; color: #4a3a10; }
