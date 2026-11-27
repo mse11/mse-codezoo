@@ -8,7 +8,8 @@ import { api } from "./api.js";
 import { GALLERY_GROUPS, createPreview, galleryEntries } from "./blocks.js";
 import { Watch } from "./debug.js";
 import { t } from "./i18n.js";
-import { speak } from "./speech.js";
+import { icon } from "./icons.js";
+import { speak, voiceLabel } from "./speech.js";
 import { highlightPython } from "./syntax.js";
 
 const GROUP_NAMES = {
@@ -292,7 +293,9 @@ export class Gallery {
     const parts = this.from === "code" ? [code, this.blockBox] : [this.blockBox, code];
     // a block of a later module can be added too: to try it out, or for a teacher to show it
     const canUse = typing || entry.statement;
-    const say = make("button", { type: "button", class: "gallery-say", title: t("Read it aloud"), "aria-label": t("Read it aloud") }, "🔊");
+    // its tooltip also names the voice that reads (Piper or this computer's own)
+    const say = make("button", { type: "button", class: "gallery-say", title: `${t("Read it aloud")}
+${voiceLabel()}`, "aria-label": t("Read it aloud") }, icon("speaker"));
     say.addEventListener("click", () => speak(this.spoken(entry), { force: true }));
     const use = make("button", { type: "button", class: "gallery-use primary" }, typing ? `✏️ ${t("Write it in my code")}` : `➕ ${t("Add it to my program")}`);
     use.disabled = !canUse;

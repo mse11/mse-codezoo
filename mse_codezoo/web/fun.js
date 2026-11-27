@@ -7,8 +7,9 @@
 // Nothing is recorded or sent.
 
 import { t } from "./i18n.js";
-import { isLocked, look, reducedMotion, setLook } from "./look.js";
+import { look, reducedMotion, setupSoundButton as setupSoundPanel } from "./look.js";
 import { EMOJI } from "./stage.js";
+import { animalSay } from "./speech.js";
 
 // --- sounds ---------------------------------------------------------------------------
 
@@ -112,7 +113,9 @@ export const sfx = {
   hide() {
     tone({ freq: 900, to: 300, type: "sine", dur: 0.3, vol: 0.06 });
   },
+  // the animal speaks the words aloud; little blips when the device has no voice for them
   say(text = "") {
+    if (look().sounds && look().sayVoice && animalSay(text)) return;
     const blips = Math.min(4, Math.max(2, Math.ceil(text.length / 6)));
     for (let i = 0; i < blips; i++) {
       tone({ freq: 700 + Math.random() * 500, type: "square", dur: 0.05, vol: 0.025, delay: i * 0.07 });
@@ -501,22 +504,8 @@ export class Fun {
 }
 
 // the 🎵 button in the header: sounds on or off (the same switch as in Look and feel)
+// the top bar's sound button: sounds, the animal's voice and the guide's voice in one
+// (look.js); switching sounds back on plays a little pop
 export function setupSoundButton(button) {
-  const show = () => {
-    const on = look().sounds;
-    button.hidden = isLocked("sounds"); // the teacher decides for the class
-    button.textContent = on ? "🎵" : "🔇";
-    button.setAttribute("aria-pressed", String(on));
-    const label = on ? t("Sounds on") : t("Sounds off");
-    button.title = label;
-    button.setAttribute("aria-label", label);
-  };
-  button.addEventListener("click", () => {
-    if (isLocked("sounds")) return;
-    setLook({ sounds: !look().sounds });
-    if (look().sounds) sfx.poke();
-  });
-  window.addEventListener("codezoo-look", show);
-  show();
-  return show;
+  return setupSoundPanel(button, { onSoundsOn: () => sfx.poke() });
 }

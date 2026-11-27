@@ -301,7 +301,7 @@ def test_the_game_page_has_a_3d_stage_and_keeps_2d():
     """Games draw on the zoo's 3D stage (loaded only when picked) or the flat board."""
     web = webbuild.WEB_DIR
     page = (web / "game.html").read_text(encoding="utf-8")
-    assert 'id="view-2d"' in page and 'id="view-3d"' in page
+    assert 'id="stage-view"' in page  # the 2D/3D button in the top bar (look.js setupStageButton)
     script = (web / "game.js").read_text(encoding="utf-8")
     assert 'import("./stage3d.js")' in script  # not loaded for 2D
     assert "webglAvailable()" in script  # no WebGL: the flat board

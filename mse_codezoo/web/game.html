@@ -27,10 +27,11 @@
       <button id="stop" type="button" disabled><span class="icon" aria-hidden="true">■</span> <span data-i18n>Stop</span></button>
       <button id="restart" type="button"><span class="icon" aria-hidden="true">↺</span> <span data-i18n>Start code again</span></button>
     </div>
-    <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
-    <button id="music" type="button" class="look-button sound-button" aria-pressed="true">🎶</button>
-    <!-- 3D detail: auto, low, medium, high (look.js setupGraphicsSwitch) -->
-    <span id="detail-switch"></span>
+    <!-- sounds, the animal's voice and the guide's voice, with the voice settings (look.js) -->
+    <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true"></button>
+    <button id="music" type="button" class="look-button sound-button" aria-pressed="true"></button>
+    <!-- the stage: 2D or 3D, and the 3D detail (look.js setupStageButton) -->
+    <button id="stage-view" type="button" class="look-button">3D</button>
     <select id="lang" class="lang-select" data-i18n-label="Language"></select>
   </header>
   <main class="game-main">
@@ -39,10 +40,6 @@
         <span><span data-i18n>Score</span>: <b id="score">0</b></span>
         <span><span data-i18n>Tick</span>: <b id="tick">0</b></span>
         <span id="status-text" class="game-message"></span>
-        <span class="game-views" role="group" data-i18n-label="Stage view">
-          <button id="view-2d" type="button" class="small" aria-pressed="true">2D</button>
-          <button id="view-3d" type="button" class="small" aria-pressed="false">3D</button>
-        </span>
       </div>
       <!-- the world editor (G2): pick a brush, then tap squares on the board -->
       <div id="world-tools" class="world-tools" hidden>

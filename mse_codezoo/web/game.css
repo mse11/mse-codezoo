@@ -37,44 +37,6 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .game-stage.stage-3d { background: linear-gradient(#1d2b35, #1b261b); }
 }
-/* 2D / 3D: one pill-shaped switch; the knob slides under the picked side */
-.game-views {
-  position: relative;
-  margin-left: auto;
-  display: inline-grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg);
-}
-.game-views::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
-  border-radius: 999px;
-  background: var(--accent);
-  transition: transform 160ms ease;
-}
-.game-views:has(#view-3d[aria-pressed="true"])::before { transform: translateX(100%); }
-html[data-motion="reduce"] .game-views::before { transition: none; }
-.game-views button {
-  position: relative;
-  min-height: 1.9rem;
-  min-width: 2.8rem;
-  padding: 0.1rem 0.8rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-}
-.game-views button[aria-pressed="true"] { color: var(--accent-text); }
-.game-views button:disabled { opacity: 0.4; }
-
 /* the pieces are emoji text: without this, a double-click or drag on the board selects them
    and the browser draws its selection boxes over the animals and things */
 .board { position: relative; transform-origin: top left; user-select: none; -webkit-user-select: none; }

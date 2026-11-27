@@ -78,7 +78,6 @@ export class Classroom {
 
   async start(info) {
     $("class-button").hidden = false;
-    $("grownups").hidden = true; // the teacher's screen has the grown-up settings
     $("class-name").textContent = info.hub.name;
     $("class-name").hidden = false;
     const params = new URLSearchParams(location.search);

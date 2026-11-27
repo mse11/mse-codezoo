@@ -15,9 +15,10 @@
 import { api } from "./api.js";
 import { GAME_PALETTE, createWorkspace } from "./blocks.js";
 import "./look.js"; // the "Look and feel" settings apply here too
-import { reducedMotion, setupGraphicsSwitch } from "./look.js";
+import { reducedMotion, setupStageButton } from "./look.js";
 import { fillLangSelect, initialLang, setLang, t, translatePage } from "./i18n.js";
 import { music, sfx, setupSoundButton } from "./fun.js";
+import { icon } from "./icons.js";
 import { decodeShare, encodeShare } from "./share.js";
 import { colourTextarea, setCommandNames } from "./syntax.js";
 import { EMOJI } from "./stage.js";
@@ -107,6 +108,9 @@ function savedView() {
   }
 }
 
+// the 2D/3D button in the top bar, with the 3D detail in its panel (look.js)
+let stageView = null;
+
 async function setView(view, { save = false } = {}) {
   let next = view === "3d" ? "3d" : "2d";
   if (next === "3d" && !state.stage3d) {
@@ -120,9 +124,8 @@ async function setView(view, { save = false } = {}) {
   }
   if (next === "2d" && state.stage3d) state.stage3d.detach();
   state.view = next;
-  $("view-2d").setAttribute("aria-pressed", String(next === "2d"));
-  $("view-3d").setAttribute("aria-pressed", String(next === "3d"));
-  $("view-3d").disabled = !state.stage3d && view === "3d" && next === "2d";
+  stageView ??= setupStageButton($("stage-view"), { onPick: (picked) => setView(picked, { save: true }) });
+  stageView?.update({ view: next, ...(!state.stage3d && view === "3d" && next === "2d" ? { can3d: false } : {}) });
   if (save) {
     try {
       localStorage.setItem(VIEW_KEY, next);
@@ -358,8 +361,10 @@ async function blocksChanged() {
 function setupMusicButton() {
   const button = $("music");
   if (!button) return;
+  button.replaceChildren(icon("music"));
   const show = () => {
     const on = music.on();
+    button.classList.toggle("is-off", !on); // crossed out, like the sound button
     button.setAttribute("aria-pressed", String(on));
     button.title = on ? t("Game music on") : t("Game music off");
     button.setAttribute("aria-label", button.title);
@@ -1370,7 +1375,6 @@ async function start() {
 
 function wire() {
   setupSoundButton($("sounds"));
-  setupGraphicsSwitch($("detail-switch"));
   setupMusicButton();
   $("lanes-box").addEventListener("toggle", () => $("lanes-box").open && drawLanes());
   $("play").addEventListener("click", play);
@@ -1388,8 +1392,6 @@ function wire() {
     saveDraft();
     drawGutter();
   });
-  $("view-2d").addEventListener("click", () => setView("2d", { save: true }));
-  $("view-3d").addEventListener("click", () => setView("3d", { save: true }));
   $("game-select").addEventListener("change", (event) => {
     const game = state.games.find((found) => found.id === event.target.value);
     if (!game) return;

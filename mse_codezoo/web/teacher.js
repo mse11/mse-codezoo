@@ -6,6 +6,7 @@
 import { api, setTeacherKey } from "./api.js";
 import { describeGoal } from "./goals.js";
 import { LANGS, concept, initialLang, lang, langLabel, setLang, t, translatePage } from "./i18n.js";
+import { fillIcons } from "./icons.js";
 import { openLook, setupThemeButton } from "./look.js";
 import { displayName, FACES } from "./players.js";
 import { encodeShare } from "./share.js";
@@ -753,8 +754,9 @@ $("t-level-files").addEventListener("change", (event) => {
   addLevelFiles(event.target.files);
   event.target.value = "";
 });
-$("look").addEventListener("click", openLook);
+$("look").addEventListener("click", () => openLook());
 setupThemeButton($("theme"));
+fillIcons(); // the sound icons in the class settings (icons.js)
 $("t-projector-close").addEventListener("click", () => $("t-projector").close());
 $("t-report-close").addEventListener("click", () => $("t-report-dialog").close());
 $("lang").addEventListener("change", (event) => {

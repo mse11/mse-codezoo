@@ -44,6 +44,14 @@ Phase 4:
     All routes go through ``dispatch()``, which the offline browser build calls directly
     inside Pyodide instead of over HTTP.
 
+Natural voices (voice.py, only when the optional Piper add-on and a voice are installed):
+    GET  /api/voice                    {engine, langs, voices}: languages with a natural
+                                          voice, and each voice's name
+    POST /api/speak {text, lang, pace?} -> audio/wav (not JSON); 404 without a voice for it.
+                                          pace: Piper's length_scale (more = slower).
+                                          Not over the classroom hub, and not in Pyodide:
+                                          the page then uses the device's own voice.
+
 Phase 5: ``codezoo class serve`` gives the server a classroom hub (``hub.Hub``), which
 checks the class code or the teacher's key and adds ``/api/class/*`` and ``/api/teacher/*``
 before passing the usual routes on to ``dispatch()``.
@@ -84,7 +92,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from mse_codezoo import __version__, gamemode, gamerooms, ir, pilot, versions
+from mse_codezoo import __version__, gamemode, gamerooms, ir, pilot, versions, voice
 from mse_codezoo.cards import card_for_code, card_public, cards_html
 from mse_codezoo.game import (
     attempt_from_run,
@@ -662,6 +670,8 @@ def dispatch(
             return api_game(unquote(path.removeprefix("/api/games/")), query.get("animal"))
         if path == "/api/rooms":
             return {"rooms": gamerooms.ROOMS.list(), "reactions": list(gamerooms.REACTIONS)}
+        if path == "/api/voice":  # natural voices, when the Piper add-on is installed
+            return voice.available()
         if path == "/api/room/events":
             try:
                 return gamerooms.EventStream(gamerooms.ROOMS.get(query.get("room")))
@@ -800,6 +810,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self._read_body()  # always read first: replying early resets the connection
             body = self._parse_body(raw)
+            if path == "/api/speak" and getattr(self.server, "hub", None) is None:
+                self._speak(body)
+                return
             with use_lang(self._lang(body)):
                 self._json(self._dispatch("POST", path, {}, body, store))
         except ApiError as exc:
@@ -823,6 +836,23 @@ class Handler(BaseHTTPRequestHandler):
         if animal not in animal_names():
             raise ApiError(HTTPStatus.NOT_FOUND, "no such animal")
         self._html(cards_html(animal, _all_levels()))
+
+    def _speak(self, body: dict[str, Any]) -> None:
+        """A natural voice says the text (voice.py); 404 lets the page use its own voice."""
+        text, lang, pace = body.get("text"), body.get("lang"), body.get("pace")
+        if not isinstance(text, str) or not isinstance(lang, str):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "text and lang must be strings")
+        if pace is not None and (isinstance(pace, bool) or not isinstance(pace, int | float)):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "pace must be a number")
+        audio = voice.speak_wav(text, lang.lower()[:3], pace)
+        if audio is None:
+            raise ApiError(HTTPStatus.NOT_FOUND, "no natural voice for this language")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "audio/wav")
+        self.send_header("Content-Length", str(len(audio)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(audio)
 
     def _html(self, text: str) -> None:
         payload = text.encode("utf-8")

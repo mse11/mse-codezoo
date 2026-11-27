@@ -10,7 +10,8 @@ from pathlib import Path
 import pytest
 
 PACKAGE = Path(__file__).parents[1] / "mse_codezoo"
-ALLOWED_THIRD_PARTY = {"cli.py": {"click"}}
+# voice.py: Piper is an optional add-on, imported only when a grown-up installed it
+ALLOWED_THIRD_PARTY = {"cli.py": {"click"}, "voice.py": {"piper"}}
 
 
 def imported_top_level_names(path: Path) -> set[str]:

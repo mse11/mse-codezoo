@@ -6,6 +6,7 @@
 // - "show values" in the Python pane: the newest values written beside each line.
 
 import { t } from "./i18n.js";
+import { icon } from "./icons.js";
 import { speak } from "./speech.js";
 
 // The 🐞 switches: one just before Run for all panes, and one in each pane's title
@@ -177,7 +178,7 @@ export class WatchBar {
     this.back = make("button", { type: "button", class: "watch-back" }, "◀");
     this.next = make("button", { type: "button", class: "watch-next" }, "▶");
     // 🔊 reads the last step and the values that changed (the device's own voice)
-    this.say = make("button", { type: "button", class: "watch-say" }, "🔊");
+    this.say = make("button", { type: "button", class: "watch-say" }, icon("speaker"));
     this.say.addEventListener("click", () => speak(this.spoken(), { force: true }));
     this.back.addEventListener("click", () => onBack());
     this.next.addEventListener("click", () => onNext());

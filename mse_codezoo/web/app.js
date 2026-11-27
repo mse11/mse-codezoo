@@ -12,9 +12,10 @@ import { Classroom } from "./classroom.js";
 import { CodeView } from "./code.js";
 import { setupDebugSwitches, Watch, WatchBar } from "./debug.js";
 import { Gallery } from "./gallery.js";
+import { icon } from "./icons.js";
 import { deviceLang, fillLangSelect, initialLang, lang, setLang, t, translatePage, urlLang } from "./i18n.js";
 import { setupPaneToggles, setupSplitters } from "./layout.js";
-import { lockLook, openLook, reducedMotion, setupGraphicsSwitch, setupThemeButton } from "./look.js";
+import { lockLook, openLook, reducedMotion, setupStageButton, setupThemeButton } from "./look.js";
 import { Pilot } from "./pilot.js";
 import { Players } from "./players.js";
 import { decodeShare } from "./share.js";
@@ -164,7 +165,6 @@ let paneToggles = null; // set up with the splitters, at the end; the class may 
 let classPanes = null; // the teacher's choice, if it came before the toggles were set up
 const debugSwitches = setupDebugSwitches($("debug-run"), [...document.querySelectorAll(".pane-bug")], () => renderWatch());
 setupThemeButton($("theme"));
-setupGraphicsSwitch($("detail-switch"));
 $("stage").addEventListener("click", (event) => {
   if (state.playing || !stage.hitAnimal?.(event)) return;
   fun.poke();
@@ -458,13 +458,15 @@ function predictFeedback(run) {
 
 function readAloudButtons() {
   if (!(state.cub || readAloudOn()) || !canSpeak()) return null;
-  const again = el("button", { type: "button", class: "small speak-again", "aria-label": t("Read it to me"), title: t("Read it to me") }, "🔊");
+  const again = el("button", { type: "button", class: "small speak-again", "aria-label": t("Read it to me"), title: t("Read it to me") }, icon("speaker"));
   again.addEventListener("click", () => speak(goalSpeech(), { force: true }));
   if (!state.cub) return again;
   const mute = el(
     "button",
     { type: "button", class: "small", "aria-pressed": String(isMuted()) },
-    isMuted() ? t("🔇 Quiet") : t("🔈 Talking"),
+    icon(isMuted() ? "speaker-off" : "speaker-low"),
+    " ",
+    isMuted() ? t("Quiet") : t("Talking"),
   );
   mute.addEventListener("click", () => {
     setMuted(!isMuted());
@@ -867,11 +869,12 @@ function describeStage() {
 // The teacher can allow only one stage view for the class (a slow tablet: 2D only). Then the
 // 3D switch goes away and the child's own choice is kept for later; with both allowed it's back.
 let classViews = null;
+// the 2D/3D button in the player's group, with the 3D detail in its panel (look.js)
+const stageView = setupStageButton($("stage-view"), { onPick: (view) => useView(view === "3d") });
 async function applyViews(views) {
   classViews = views.length === 1 ? views[0] : null;
-  $("view-3d").closest("label").hidden = Boolean(classViews);
+  stageView.update({ locked: classViews });
   const want3d = classViews ? classViews === "3d" : readSetting(VIEW_KEY) !== "2d";
-  $("view-3d").checked = want3d;
   if (want3d !== (stage !== stage2d)) await useView(want3d, { save: false });
 }
 
@@ -886,13 +889,13 @@ async function useView(want3d, { save = true } = {}) {
       next = stage3d;
       next.setOutfit?.(state.outfit);
     } catch {
-      $("view-3d").checked = false;
-      $("view-3d").disabled = true; // this device can't draw 3D; the 2D stage works everywhere
+      stageView.update({ can3d: false }); // this device can't draw 3D; the 2D stage works everywhere
       next = stage2d;
     }
   }
   if (next !== stage) stage.detach();
   stage = next;
+  stageView.update({ view: stage === stage2d ? "2d" : "3d" });
   stage.setOutfit?.(state.outfit);
   stage.setSpeed(Number($("speed").value));
   if (save && !classViews) saveSetting(VIEW_KEY, stage === stage2d ? "2d" : "3d");
@@ -909,9 +912,10 @@ function renderLanguages() {
   fillLangSelect($("lang")); // a drawn flag and "SK"; the full name on hover
 }
 
-async function changeLanguage(code, { save = true } = {}) {
+// (the language is `langCode`: `code` is the Python pane, used further down)
+async function changeLanguage(langCode, { save = true } = {}) {
   stopPlayback();
-  setLang(code, { save });
+  setLang(langCode, { save });
   translatePage();
   players.relabel();
   updateButtons();
@@ -1644,7 +1648,6 @@ for (const button of document.querySelectorAll(".gallery-open")) {
 renderWatch();
 $("level-select").addEventListener("change", (event) => loadLevel(event.target.value));
 $("player").addEventListener("click", () => players.choose());
-$("view-3d").addEventListener("change", (event) => useView(event.target.checked));
 $("lang").addEventListener("change", (event) => changeLanguage(event.target.value));
 window.addEventListener("hashchange", () => {
   const id = location.hash.slice(1);
@@ -1654,10 +1657,11 @@ window.addEventListener("hashchange", () => {
   }
   if (id !== state.level?.id && visibleLevels().some((l) => l.id === id)) loadLevel(id);
 });
-$("grownups").addEventListener("click", () => players.openGrownups());
 $("animal-select").addEventListener("change", (event) => switchAnimal(event.target.value));
 $("zoo").addEventListener("click", () => openZoo());
-$("look").addEventListener("click", openLook);
+// ⚙️ settings; its "Advanced" opens the grown-ups' area (not on a classroom hub: the
+// teacher's screen has those settings)
+$("look").addEventListener("click", () => openLook({ advanced: players.classroom ? null : () => players.openGrownups() }));
 $("reset-view").addEventListener("click", resetAllZoom);
 $("card-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1699,9 +1703,7 @@ async function start() {
   renderLanguages();
   updateButtons();
   stage.setSpeed(Number($("speed").value));
-  const want3d = readSetting(VIEW_KEY) !== "2d";
-  $("view-3d").checked = want3d;
-  await useView(want3d);
+  await useView(readSetting(VIEW_KEY) !== "2d");
   state.animal = readSetting(ANIMAL_KEY);
   const info = await api.info();
   if (info.hub) {

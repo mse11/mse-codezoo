@@ -283,9 +283,14 @@ def test_the_page_has_the_cub_pieces():
 def test_read_aloud_uses_only_the_devices_own_voices():
     speech = (WEB / "speech.js").read_text(encoding="utf-8")
     assert "speechSynthesis" in speech and "localService" in speech
-    # nothing is sent anywhere: the only file read is the app's own list of recordings
-    # (voices/<lang>/manifest.json, next to the page), and no address outside it
-    assert re.findall(r"fetch\(([^)]*)\)", speech) == ["`voices/${code}/manifest.json`"]
+    # nothing is sent anywhere else: the app's own list of recordings (voices/<lang>/
+    # manifest.json, next to the page) and the natural voice of its own server on this
+    # computer (voice.py: /api/voice, /api/speak), never an address outside it
+    assert re.findall(r"fetch\(([^,)]*)", speech) == [
+        "`voices/${code}/manifest.json`",
+        '"/api/voice"',
+        '"/api/speak"',
+    ]
     assert "http" not in speech
     look = (WEB / "look.js").read_text(encoding="utf-8")
     assert 'checkbox("read"' in look and "canSpeak" in look

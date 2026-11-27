@@ -471,14 +471,13 @@ html[data-cub="true"] .panes {
 .stage-overlay:has(.mood3d:not([hidden])) .bubble3d.beside { transform: translate(1.5rem, -100%); } /* stage3d.js */
 
 .stage-tools { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; justify-content: flex-start; }
-.stage-tools .view-toggle { margin-left: auto; }
+.stage-tools .zoom-tools { margin-left: auto; } /* − + ⤢ at the right, like the other panes */
 /* the Playground's name: the same weight and size as the other panes' titles */
 .stage-title { font-weight: 600; font-size: calc(1rem * var(--title-zoom, 1)); margin-right: 0.4rem; }
 .worlds { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
 .worlds button { min-height: 2rem; padding: 0.15rem 0.7rem; font-size: 0.9rem; }
 .worlds button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .worlds .note { color: var(--muted); font-size: 0.85rem; }
-.view-toggle { display: flex; gap: 0.35rem; align-items: center; color: var(--muted); font-size: 0.9rem; }
 .feeling { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
 .feeling .face { font-size: 1.8em; }
 .lang-select { min-height: 2.2rem; }
@@ -811,6 +810,28 @@ html[data-cub="true"] .modes { display: none; }
 .detail-switch .bars[data-n="3"] i { opacity: 1; }
 html[data-targets="true"] .detail-switch button { height: 2.4rem; min-width: 2.4rem; }
 html[data-cub="true"] .detail-switch { display: none; }
+
+/* the 🗣️ voice panel under its top-bar button (look.js setupVoiceButton) */
+.voice-panel {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  box-sizing: border-box;
+  width: 15rem;
+  max-width: calc(100vw - 16px);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  font-size: 0.85rem;
+}
+.voice-panel .voice-name { margin: 0 0 0.5rem; font-weight: 700; }
+.voice-panel .voice-row { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; margin: 0.5rem 0; }
+.voice-panel .voice-row > span:first-child { color: var(--muted); }
+.voice-panel .detail-switch { display: inline-flex; } /* shown here even in Cub mode */
+.voice-panel > button.small { margin-top: 0.4rem; }
 /* which panes are shown under the stage (layout.js setupPaneToggles): one pill per pane, lit when shown */
 .pane-toggles { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); }
 .pane-toggles button {
@@ -830,7 +851,7 @@ html[data-cub="true"] .pane-toggles { display: none; }
 .player-pick > .player, .player-pick > .animal-select { border: 0; border-radius: 0; margin: 0; }
 .player-pick > .animal-select { border-left: 1px solid var(--border); font-size: 1rem; }
 .player-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-.grownups { color: var(--muted); }
+.advanced-button { margin-right: auto; color: var(--muted); } /* ⚙️ settings: the grown-ups' area, at the left */
 
 .dialog {
   border: 1px solid var(--border);
@@ -1254,7 +1275,6 @@ html[data-motion="reduce"] .cz-wiggle .blocklyPath { filter: drop-shadow(0 0 4px
 /* the star rules ("no line limit") are for readers; cubs see the stars and the message */
 html[data-cub="true"] .result > ul { display: none; }
 .cub-level.today { box-shadow: 0 0 0 3px var(--star); } /* the teacher picked it for today */
-.view-toggle[hidden] { display: none; } /* the teacher allowed only one stage view */
 
 /* --- the fun pass (fun.js): confetti, "+1" texts, banners, popping stars, poking ---------- */
 .fun-layer { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
@@ -1297,7 +1317,99 @@ html[data-cub="true"] .result > ul { display: none; }
   100% { opacity: 1; transform: scale(1) rotate(0); }
 }
 @keyframes fun-star-empty { from { opacity: 0; } to { opacity: 1; } }
-.sound-button[aria-pressed="false"] { opacity: 0.7; }
+/* the sound button's picture (look.js setupSoundButton): 🎵, crossed out when all is
+   quiet; a little "say" bubble when the animals speak; 🗣️ when the guide reads aloud */
+.sound-button { display: inline-flex; align-items: center; gap: 0.2rem; }
+.sound-button [hidden] { display: none; }
+.sound-button > .icon:first-child { position: relative; }
+.sound-button.is-off > .icon:first-child { opacity: 0.55; }
+.sound-button.is-off > .icon:first-child::after {
+  content: "";
+  position: absolute;
+  left: -0.15em;
+  right: -0.15em;
+  top: 50%;
+  height: 2px;
+  border-radius: 2px;
+  background: #ff6b6b;
+  transform: rotate(-35deg);
+}
+.snd-say {
+  position: relative;
+  display: inline-block;
+  padding: 0.12em 0.32em 0.16em;
+  border: 1.5px solid currentColor;
+  border-radius: 0.45em;
+  color: inherit;
+  font: 800 0.6rem/1 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  transform: translateY(-0.2em);
+}
+.snd-say::after { /* the bubble's little tail */
+  content: "";
+  position: absolute;
+  left: 0.3em;
+  bottom: -0.42em;
+  border-width: 0.4em 0.4em 0 0;
+  border-style: solid;
+  border-color: currentColor transparent transparent transparent;
+}
+/* sound icons (icons.js): outlines in the text's own colour, the size of the letters */
+.icon { display: inline-flex; width: 1.2em; height: 1.2em; vertical-align: -0.22em; flex: none; }
+.icon svg { width: 100%; height: 100%; }
+
+/* its panel: three light switches, then the voice settings */
+.sound-panel { width: 17.5rem; }
+.snd-toggle {
+  display: grid;
+  grid-template-columns: 1.8rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 0;
+  margin: 0 0 0.15rem;
+  padding: 0.4rem 0.45rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.snd-toggle:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 7%, transparent); }
+.snd-toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.snd-toggle:disabled { opacity: 0.45; cursor: default; }
+.snd-toggle-icon { display: grid; place-items: center; font-size: 1.15rem; }
+.snd-toggle-icon .snd-say { transform: none; font-size: 0.62rem; }
+.snd-toggle-text { display: flex; flex-direction: column; gap: 0.05rem; }
+.snd-toggle-name { font-weight: 700; }
+.snd-toggle-hint { color: var(--muted); font-size: 0.75rem; }
+.snd-toggle-knob {
+  position: relative;
+  width: 2.1rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  transition: background 150ms ease;
+}
+.snd-toggle-knob::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transform: translateY(-50%);
+  transition: transform 150ms ease;
+}
+.snd-toggle[aria-checked="true"] .snd-toggle-knob { background: var(--accent); }
+.snd-toggle[aria-checked="true"] .snd-toggle-knob::after { transform: translate(0.95rem, -50%); }
+html[data-motion="reduce"] .snd-toggle-knob, html[data-motion="reduce"] .snd-toggle-knob::after { transition: none; }
+.snd-voices { margin-top: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .stage-svg .animal { cursor: pointer; }
 .stage-svg .body.poked { animation: fun-poke 0.45s ease-out 1; }
 .stage-svg .body.dance { animation: fun-dance 2.2s ease-in-out 1; }

@@ -46,3 +46,22 @@ def test_the_pane_toggles_are_beside_the_modes():
         assert f'data-show="{pane}"' in page
     layout = (WEB / "layout.js").read_text(encoding="utf-8")
     assert "export function setupPaneToggles" in layout and "setAllowed" in layout
+
+
+def test_changing_language_redraws_the_level():
+    """Switching the language reloads the level and redraws its goal, the animals and the
+    blocks. The language must not be called `code`: that is the Python pane, and inside the
+    function it would hide it (the redraw then stopped half way, leaving the old language)."""
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    start = script.index("async function changeLanguage(")
+    body = script[start : script.index("\n}\n", start)]
+    params = body[body.index("(") + 1 : body.index(")")]
+    assert not re.search(r"\bcode\b", params)
+    for step in (
+        "api.level(",
+        "renderGoal()",
+        "renderAnimals()",
+        "code.setCommands(",
+        "blocks.load(",
+    ):
+        assert step in body

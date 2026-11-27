@@ -33,22 +33,24 @@
         <button id="player" type="button" class="player" aria-label="Change player">🐾 Who's playing?</button>
         <select id="animal-select" class="animal-select" data-i18n-label="Choose an animal"></select>
       </span>
-      <select id="python-select" class="python-select" data-i18n-label="Python release"></select>
       <select id="lang" class="lang-select" data-i18n-label="Language"></select>
       <button id="theme" type="button" class="look-button theme-button">🌙</button>
-      <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true">🎵</button>
-      <button id="look" type="button" class="look-button" data-i18n-title="Look and feel" aria-label="Look and feel" data-i18n-label="Look and feel">Aa</button>
-      <!-- 3D detail: auto, low, medium, high (look.js setupGraphicsSwitch) -->
-      <span id="detail-switch"></span>
+      <!-- sounds, the animal's voice and the guide's voice, with the voice settings (look.js) -->
+      <button id="sounds" type="button" class="look-button sound-button" aria-pressed="true"></button>
+      <!-- the stage: 2D or 3D, and the 3D detail (look.js setupStageButton) -->
+      <button id="stage-view" type="button" class="look-button">3D</button>
       <button id="reset-view" type="button" class="look-button" data-i18n-title="Everything back to normal size" aria-label="Everything back to normal size" data-i18n-label="Everything back to normal size"><span aria-hidden="true">⤢</span> 100%</button>
       <button id="zoo" type="button" class="zoo" hidden data-i18n>My zoo</button>
       <button id="class-button" type="button" class="zoo" hidden>🏫 <span data-i18n>Our class</span> <span id="class-badge" class="badge" hidden></span></button>
-      <button id="grownups" type="button" class="grownups"><span aria-hidden="true">⚙️</span> <span data-i18n>Grown-ups</span></button>
+      <!-- ⚙️ settings last, at the group's right end (its "Advanced" opens the grown-ups' area) -->
+      <button id="look" type="button" class="look-button" data-i18n-title="Settings" aria-label="Settings" data-i18n-label="Settings">⚙️</button>
     </div>
     <span class="bar-break" aria-hidden="true"></span>
     <!-- second row: the level and what runs it, together in one group -->
     <div class="controls bar-group run-group" role="group" aria-label="Run" data-i18n-label="Run">
       <select id="level-select" data-i18n-label="Choose a level"></select>
+      <!-- the Python release the program runs as: it decides which levels and words are open -->
+      <select id="python-select" class="python-select" data-i18n-label="Python release"></select>
       <!-- debugging on or off for every pane, just before Run (each pane has its own 🐞 too) -->
       <button id="debug-run" type="button" class="bug-button run-bug" aria-pressed="false">🐞</button>
       <button id="run" class="primary" type="button">▶ Run</button>
@@ -81,7 +83,6 @@
         <!-- the pane's name, like Blocks, Python and Console have theirs -->
         <span class="stage-title" data-i18n>Playground</span>
         <div id="worlds" class="worlds" role="group"></div>
-        <label class="view-toggle" data-i18n-title="Show the stage in 3D"><input type="checkbox" id="view-3d"> 3D</label>
       </div>
       <div id="stage" class="stage" aria-describedby="stage-description"></div>
       <p id="stage-description" class="sr-only"></p>

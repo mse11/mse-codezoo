@@ -126,16 +126,15 @@ def test_the_top_bar_is_in_groups():
     page = (WEB / "index.html").read_text(encoding="utf-8")
     header = page[page.index("<header") : page.index("</header>")]
     # first row: the modes, then the player's group and the grown-ups;
-    # second row: the level together with the buttons that run it
+    # second row: the level and its Python release together with the buttons that run it
     run = header[header.index("run-group") :]
     assert 'id="run"' in run and 'id="step"' in run and 'id="speed"' in run
-    assert 'id="level-select"' in run
+    assert 'id="level-select"' in run and 'id="python-select"' in run
     assert header.index("user-group") < header.index("bar-break") < header.index("run-group")
     user = header[header.index("user-group") : header.index("bar-break")]
     for part in (
         'id="player"',
         'id="animal-select"',
-        'id="python-select"',
         'id="lang"',
         'id="zoo"',
     ):
